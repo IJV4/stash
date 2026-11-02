@@ -415,7 +415,17 @@ PyPI `hermes-agent` 0.19.0 is stale and is **not** a dependency).
 **Interfaces:**
 - Consumes: `StashApp` / `build_app`, `load_config`, `IncomingMessage`, `ProcessResult`, `Reply`, `FixHandler`, `BurstCoalescer`.
 - Produces:
-  - `register(ctx) -> None` in `stash.hermes_adapter.plugin` (the shim `deploy/hermes-plugin/stash/__init__.py` is `from stash.hermes_adapter.plugin import register`).
+  - `register(ctx) -> None` in `stash.hermes_adapter.plugin`. The shim
+    `deploy/hermes-plugin/stash/__init__.py` defines `register(ctx)` that puts
+    `<repo>/src` on `sys.path` (found via `Path(__file__).resolve().parents[3] / "src"`,
+    so it works when `~/.hermes/plugins/stash` is a **symlink** to
+    `deploy/hermes-plugin/stash`) and delegates to `stash.hermes_adapter.plugin.register`.
+    Hermes installs plugin deps only from a `pyproject.toml` next to `plugin.yaml`
+    (direct-URL/path requirements are not managed), so
+    `deploy/hermes-plugin/stash/pyproject.toml` lists stash's **runtime** deps
+    (`httpx>=0.28.1,<0.29`, `yt-dlp[default]>=2026.10.26`, `pytesseract>=0.3.13,<0.4`,
+    `pillow>=11,<13`) with upper bounds, `requires-python = ">=3.11"`, no build-system.
+    Hermes' managed runtime is Python 3.11–3.13.
   - `StashPlugin(app: StashApp, outbox: Outbox, inject: Callable[[str, str], bool])` with:
     `async on_dispatch(event, gateway, session_store, **kw) -> dict[str, str]` — `/`-prefixed text → `{"action":"allow"}`; otherwise `receive` in a worker thread (`asyncio.to_thread`), schedule processing as a background task, return `{"action":"skip"}`; duplicate → skip silently;
     processing: `Filed`/`Deferred` → `BurstCoalescer` → `outbox.send(chat_id, reply)` when due; `IsRequest` → `inject(text, session_key)`; any exception → log, capture stays pending.
@@ -433,11 +443,10 @@ PyPI `hermes-agent` 0.19.0 is stale and is **not** a dependency).
 **Files:**
 - Create: `docs/deploy/wsl-setup.md`, `docs/spike-m0.md`,
   `deploy/hermes/config.yaml.example`, `deploy/systemd/ollama.override.conf`,
-  `deploy/systemd/hermes-gateway.service`, `deploy/windows/start-stash.ps1`,
   `deploy/windows/wslconfig.example`
 
 - [ ] **Step 1:** `config.yaml.example`: `model: {provider: custom, default: <ollama model>, base_url: http://localhost:11434/v1, context_length: 65536}` with commented OpenRouter alternative (`provider: openrouter`, key in `~/.hermes/.env`); `platform_toolsets: {telegram: [web, stash]}`; `agent: {disabled_toolsets: [terminal, file, code_execution, browser, delegation]}`; `plugins: {enabled: [stash], entries: {stash: {allow_gateway_injection: true, settings: {config_path: ~/.config/stash/stash.toml}}}}`; Telegram `TELEGRAM_ALLOWED_USERS`.
-- [ ] **Step 2:** `ollama.override.conf`: `OLLAMA_CONTEXT_LENGTH=65536`, `OLLAMA_KEEP_ALIVE=5m`. `hermes-gateway.service` (systemd user unit, `Restart=on-failure`). `start-stash.ps1` + Task Scheduler instructions (at logon, `wsl -d Ubuntu --exec /bin/true` keep-alive). `.wslconfig`: `networkingMode=mirrored`, `vmIdleTimeout=-1`.
+- [ ] **Step 2:** `ollama.override.conf`: `OLLAMA_CONTEXT_LENGTH=65536`, `OLLAMA_KEEP_ALIVE=5m`. The gateway service comes from Hermes itself (`hermes gateway setup` / `hermes gateway install`, a systemd user unit) — no hand-written unit. WSL kept alive by a Task Scheduler entry at logon: `C:\Windows\System32\wsl.exe -d Ubuntu --exec /bin/sh -c "sleep infinity"` (Hermes' WSL guide). `.wslconfig`: `networkingMode=mirrored`.
 - [ ] **Step 3:** `wsl-setup.md`: step-by-step (WSL2 Ubuntu + systemd, NVIDIA driver/CUDA in WSL, Ollama, pull candidate models, Hermes v0.22.6 install pinned, `uv pip install -e` stash into Hermes' environment, plugin shim copy, BotFather token, `stash doctor`, `stash eval`, deno for yt-dlp, tesseract).
 - [ ] **Step 4:** `spike-m0.md`: the six unverified points from the spec, each with how to verify on the PC and the expected observation; the **go/no-go criteria** (raw save before LLM via `pre_gateway_dispatch`; buttons sent and callbacks received); what to record and where (ADR in `docs/adr/`).
 - [ ] **Step 5: Commit** `docs: WSL deploy kit and M0 spike checklist`.

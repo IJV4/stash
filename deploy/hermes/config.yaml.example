@@ -1,0 +1,35 @@
+# Hermes config fragment for stash — merge into ~/.hermes/config.yaml.
+# Hermes pinned at v0.22.6. Keys below come from the Hermes docs at that version
+# (configuring-models.md, configuration.md, features/plugins.md).
+
+# --- Model: local Ollama (default) ---------------------------------------
+model:
+  provider: custom
+  default: hermes3:8b            # replace with the model the stash eval picks
+  base_url: http://localhost:11434/v1
+  context_length: 65536          # Hermes needs >= 64k; Ollama must match (OLLAMA_CONTEXT_LENGTH)
+
+# --- Model: OpenRouter (swap in instead of the block above) --------------
+# model:
+#   provider: openrouter
+#   default: nousresearch/hermes-4-70b   # example id, unverified — use one from the eval report
+# Put OPENROUTER_API_KEY=... in ~/.hermes/.env (and in stash's environment).
+
+# --- Tool scope: stash tools + read-only web only ------------------------
+platform_toolsets:
+  telegram: [web, stash]
+agent:
+  disabled_toolsets: [terminal, file, code_execution, browser, delegation]
+
+# --- Plugins ---------------------------------------------------------------
+plugins:
+  enabled: [stash]
+  entries:
+    stash:
+      allow_gateway_injection: true    # lets stash hand questions to the agent
+      settings:
+        config_path: ~/.config/stash/stash.toml
+
+# Telegram credentials live in ~/.hermes/.env (written by `hermes gateway setup`):
+#   TELEGRAM_BOT_TOKEN=...
+#   TELEGRAM_ALLOWED_USERS=<your numeric Telegram user id>

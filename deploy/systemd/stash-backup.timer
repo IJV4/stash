@@ -1,0 +1,11 @@
+# Run `stash backup` nightly; Persistent=true runs a missed backup at next start.
+# ~/.config/systemd/user/stash-backup.timer
+[Unit]
+Description=Nightly stash database backup to the NAS
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

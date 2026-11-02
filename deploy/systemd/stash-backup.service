@@ -1,0 +1,9 @@
+# ~/.config/systemd/user/stash-backup.service
+[Unit]
+Description=stash database backup to the NAS
+RequiresMountsFor=/mnt/nas/stash-backups
+
+[Service]
+Type=oneshot
+Environment=STASH_CONFIG=%h/.config/stash/stash.toml
+ExecStart=%h/code/stash/.venv/bin/stash backup --to /mnt/nas/stash-backups
