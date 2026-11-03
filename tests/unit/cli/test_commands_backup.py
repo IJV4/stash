@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 from fakes.backup_source import FakeBackupSource
+
 from stash.cli.commands import backup
 from stash.cli.failure import CommandFailed
-
 from stash.store.backup import Backups
 
 TODAY = date(2026, 11, 2)

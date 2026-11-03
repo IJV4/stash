@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from stash.cli.config_path import config_path
 
+from stash.cli.config_path import config_path
 from stash.config import ConfigError
 
 HOME_ENV = {"HOME": "/home/u"}

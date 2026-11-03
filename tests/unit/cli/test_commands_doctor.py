@@ -2,8 +2,8 @@ import io
 
 import pytest
 from fakes.provider_probe import FakeProviderProbe
-from stash.cli.commands import run_doctor
 
+from stash.cli.commands import run_doctor
 from stash.doctor import Doctor, DoctorCheck
 from stash.llm import ProbeResult
 

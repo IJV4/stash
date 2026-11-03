@@ -3,8 +3,8 @@ import io
 from app_builders import stored
 from builders import BASE, an_item
 from fakes.memory_store import MemoryStore
-from stash.cli.commands import list_items
 
+from stash.cli.commands import list_items
 from stash.domain import ItemType, Stage
 from stash.store import ItemStore
 

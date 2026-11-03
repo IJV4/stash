@@ -2,9 +2,9 @@ import io
 
 from builders import a_capture, an_item
 from fakes.pending_intake import PendingIntake
-from stash.cli.commands import retry
 
 from stash.capture import CaptureIntake, Deferred, Filed
+from stash.cli.commands import retry
 
 
 def retried(intake: CaptureIntake) -> tuple[int, str]:

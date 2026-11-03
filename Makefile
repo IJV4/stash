@@ -16,8 +16,8 @@ test-integration:
 	$(UV) run pytest -q -m integration
 
 check:
-	$(UV) run ruff format --check .
-	$(UV) run ruff check .
+	$(UV) run ruff format --check --no-cache .
+	$(UV) run ruff check --no-cache .
 	$(UV) run mypy --strict src tests/fakes
 	$(UV) run pytest -q
 	$(UV) run pytest -q -m integration
