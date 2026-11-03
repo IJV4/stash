@@ -1,3 +1,4 @@
+from stash.domain._validation import require_aware
 from stash.domain.capture import CaptureStatus, RawCapture, Route, SourceRef
 from stash.domain.item import Filing, Item, ItemType, Stage, derive_title
 
@@ -11,4 +12,5 @@ __all__ = [
     "SourceRef",
     "Stage",
     "derive_title",
+    "require_aware",
 ]

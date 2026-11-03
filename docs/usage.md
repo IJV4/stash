@@ -75,6 +75,74 @@ Ollama is unreachable, times out, or OpenRouter returns an error.
 Forwarding a backlog produces one combined reply: `✅ Saved 3 items:` followed
 by one bullet per item, instead of three replies.
 
+## Configuration  [Task 4]
+
+`load_config(path, env)` (in `stash.config.loader`) reads a TOML file (example:
+`deploy/stash.toml.example`). Secrets come from the environment only.
+`load_config` is the whole surface and has no edge to fake, so these
+statements are pinned by unit tests (like "Storage guarantees"), not repeated
+as acceptance tests.
+
+- A minimal file (`[llm] provider = "ollama"` plus `[llm.ollama] model = "m"`)
+  loads with Ollama at `http://localhost:11434/v1`, timezone
+  `America/Los_Angeles`, `busy_fallback = "wait"` and the default GPU limits.
+- `[llm.openrouter] model = "x"` with `OPENROUTER_API_KEY` in the environment
+  gives OpenRouter settings at `https://openrouter.ai/api/v1` carrying that key.
+- Choosing OpenRouter (as `provider`, as `busy_fallback`, or in `[llm.tasks]`)
+  without `OPENROUTER_API_KEY` is a `ConfigError` that names the variable.
+- An unknown provider name is a `ConfigError` naming the key path.
+- `[llm.tasks] suggestions = "openrouter"` sends suggestions to OpenRouter while
+  filing keeps using `provider`.
+- An `api_key` inside the file is a `ConfigError` ("put secrets in env").
+- An unknown key anywhere is a `ConfigError` naming its path (typos fail loudly).
+- A `base_url` must be an http(s) URL with a host and no credentials; OpenRouter
+  must use https.
+
+## Switching the AI provider  [Tasks 4-5]
+
+One config line plus an API key moves every stash LLM call between Ollama and
+OpenRouter. Each statement below has one acceptance test in
+`tests/acceptance/test_provider_switching.py`.
+
+1. With `provider = "openrouter"`, a model request goes to
+   `https://openrouter.ai/api/v1/chat/completions` with `Authorization: Bearer`
+   and `X-OpenRouter-Title: stash`.
+2. With `provider = "ollama"` it goes to the local server with no
+   `Authorization` header.
+3. A per-task override (`[llm.tasks] suggestions = "openrouter"`) routes only
+   that task to the other provider.
+4. The answer is requested as a JSON schema (`response_format`, named after the
+   caller's schema).
+5. Text that is not JSON is `LlmBadOutput`.
+6. A provider that is down (timeout, connection refused, HTTP 402/408/429/5xx,
+   or an `{"error": ...}` body inside an HTTP 200) raises `LlmUnavailable`.
+7. A rejected request (HTTP 400) raises `LlmError` that is not `LlmUnavailable`.
+8. The Ollama doctor probe reports a configured model that is not pulled.
+9. The OpenRouter doctor probe reads "invalid key" for a rejected key.
+
+## GPU sharing  [Tasks 5-6]
+
+Each statement below has one acceptance test in
+`tests/acceptance/test_gpu_sharing.py`.
+
+1. Another application filling the GPU's VRAM (less free than
+   `min_free_vram_mib`) makes the gate busy.
+2. Foreign utilisation above `max_foreign_utilization_pct` while stash's model
+   is unloaded makes the gate busy.
+3. No `nvidia-smi` means "no GPU info" and the gate stays free.
+4. With `busy_fallback = "wait"` a busy GPU defers Ollama work (`LlmDeferred`)
+   without sending any request.
+5. With `busy_fallback = "openrouter"` the same call goes to OpenRouter.
+6. Work configured for OpenRouter is never deferred.
+7. `gpu off` makes the gate busy for `manual_off_hours` (default 4); work flows
+   again after the expiry.
+8. `gpu on` ends the switch-off early.
+9. The status reads `turned off until HH:MM` (in the caller's timezone).
+10. The switch-off survives a restart (it is a stored setting).
+11. Telling Ollama to unload (`keep_alive: 0`) frees VRAM immediately.
+12. VRAM held by stash's own Ollama model is not counted against the GPU: the
+    gate stays free when stash's model is the only thing filling it.
+
 ## stash --version  [T1]
 
     $ stash --version

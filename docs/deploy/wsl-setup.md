@@ -65,6 +65,10 @@ cp deploy/stash.toml.example ~/.config/stash/stash.toml   # edit model names
 ```
 **Check:** `.venv/bin/stash --version`.
 
+If WSL has `HTTP_PROXY`/`HTTPS_PROXY` set, also set
+`NO_PROXY=localhost,127.0.0.1` — stash's HTTP client honours proxy env vars, and
+local Ollama traffic must not go through a proxy.
+
 ## 6. Hermes Agent (pinned v0.22.6)
 
 ```bash

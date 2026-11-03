@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
+from stash.config import ProviderName, ProviderSettings
 from stash.domain import (
     CaptureStatus,
     Filing,
@@ -15,8 +16,13 @@ from stash.domain import (
 BASE = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 LATER = BASE + timedelta(hours=3)
 NAIVE = datetime(2026, 11, 2, 12, 0)
+API_KEY = "sk-or-test-key"
 PLUS_FIVE = timezone(timedelta(hours=5))
 EARLIER_INSTANT_LATER_WALL_CLOCK = BASE.astimezone(PLUS_FIVE) - timedelta(minutes=30)
+
+
+def chat_body(content: str) -> dict[str, object]:
+    return {"choices": [{"message": {"content": content}}]}
 
 
 def minutes_after(minutes: int) -> datetime:
@@ -37,6 +43,25 @@ def a_capture(**overrides: Any) -> RawCapture:
         "status": CaptureStatus.PENDING,
     }
     return RawCapture(**{**fields, **overrides})
+
+
+def an_ollama_settings(**overrides: Any) -> ProviderSettings:
+    fields: dict[str, Any] = {
+        "name": ProviderName.OLLAMA,
+        "base_url": "http://localhost:11434/v1",
+        "model": "llama3:8b",
+    }
+    return ProviderSettings(**{**fields, **overrides})
+
+
+def an_openrouter_settings(**overrides: Any) -> ProviderSettings:
+    fields: dict[str, Any] = {
+        "name": ProviderName.OPENROUTER,
+        "base_url": "https://openrouter.ai/api/v1",
+        "model": "cloud/model",
+        "api_key": API_KEY,
+    }
+    return ProviderSettings(**{**fields, **overrides})
 
 
 def a_filing(**overrides: Any) -> Filing:

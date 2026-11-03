@@ -1,0 +1,31 @@
+# stash configuration — copy to ~/.config/stash/stash.toml (or point $STASH_CONFIG at it).
+# Secrets never go in this file: OPENROUTER_API_KEY is read from the environment only.
+
+data_dir = "~/.local/share/stash"   # holds stash.db
+timezone = "America/Los_Angeles"
+burst_window_seconds = 8.0          # messages arriving within this window get one combined reply
+
+[llm]
+provider = "ollama"                 # or "openrouter" — the one-line switch
+busy_fallback = "wait"              # "wait" defers filing while the GPU is busy; "openrouter" files via the cloud instead
+
+[llm.ollama]
+base_url = "http://localhost:11434/v1"
+model = "hermes3:8b"                # replace with the model the stash eval picks
+# vision_model = "qwen2.5vl:7b"     # optional, used by the image eval arm
+
+[llm.openrouter]
+# base_url = "https://openrouter.ai/api/v1"
+model = "nousresearch/hermes-4-70b" # example id, unverified — use one from the eval report
+# vision_model = "..."              # optional
+# The key comes from the environment: export OPENROUTER_API_KEY=...
+
+# Per-task override: keep routine filing local, send heavier work to the cloud.
+# Tasks: filing, suggestions, vision. Unlisted tasks use [llm] provider.
+# [llm.tasks]
+# suggestions = "openrouter"
+
+[gpu]
+min_free_vram_mib = 9000            # below this much VRAM free for stash => busy
+max_foreign_utilization_pct = 30    # other apps above this GPU load (stash model unloaded) => busy
+manual_off_hours = 4.0              # how long `stash gpu off` lasts before it expires

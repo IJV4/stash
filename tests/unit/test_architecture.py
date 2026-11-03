@@ -1,67 +1,22 @@
-import ast
-import sys
-from pathlib import Path
-
 import pytest
+from architecture_guard import (
+    ADAPTER_MODULES,
+    forbidden_imports_in,
+    imported_modules,
+    importers_outside,
+    is_storage_free,
+    is_within,
+    project_sources,
+    storage_dependencies_in,
+)
 
-SOURCE_ROOT = Path(__file__).resolve().parents[2] / "src"
 ADAPTER_MODULE = "stash.store.sqlite"
 ADAPTER_IMPORTERS = ("stash.app",)
 SQLITE_USERS = ("stash.store.sqlite", "stash.store._rows", "stash.store._migrate")
 ADAPTER_ONLY_IMPORTERS = ("stash.store.sqlite",)
-
-
-def module_name(path: Path) -> str:
-    parts = list(path.relative_to(SOURCE_ROOT).with_suffix("").parts)
-    return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
-
-
-def imported_modules(source: str) -> set[str]:
-    imported: set[str] = set()
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Import):
-            imported.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                raise ValueError("relative imports are not supported by the architecture guard")
-            base = node.module or ""
-            imported.update([base, *(f"{base}.{alias.name}" for alias in node.names)])
-    return imported
-
-
-def project_sources(*relative: str) -> dict[str, str]:
-    paths = sorted(SOURCE_ROOT.joinpath("stash", *relative).rglob("*.py"))
-    if not paths:
-        raise ValueError(f"no source files found under {relative or 'stash'}")
-    return {module_name(path): path.read_text(encoding="utf-8") for path in paths}
-
-
-def is_within(module: str, package: str) -> bool:
-    return module == package or module.startswith(f"{package}.")
-
-
-def is_storage_free(module: str) -> bool:
-    if is_within(module, "sqlite3"):
-        return False
-    return module.split(".")[0] in sys.stdlib_module_names or is_within(module, "stash.domain")
-
-
-def storage_dependencies_in(sources: dict[str, str]) -> list[str]:
-    return sorted(
-        f"{name} -> {module}"
-        for name, source in sources.items()
-        for module in imported_modules(source)
-        if not is_storage_free(module)
-    )
-
-
-def importers_outside(target: str, allowed: tuple[str, ...], sources: dict[str, str]) -> list[str]:
-    return [
-        name
-        for name, source in sources.items()
-        if any(is_within(module, target) for module in imported_modules(source))
-        and not any(is_within(name, root) for root in allowed)
-    ]
+LLM_ADAPTERS = tuple(module for module in ADAPTER_MODULES if is_within(module, "stash.llm"))
+ENTRY_POINTS = ("stash.app", "stash.cli")
+CONFIG_LOADER = "stash.config.loader"
 
 
 def test_a_plain_import_is_reported_by_its_module_name() -> None:
@@ -125,6 +80,72 @@ def test_a_storage_import_is_reported_against_the_module_that_makes_it() -> None
     assert offenders == ["stash.domain.leaky -> sqlite3"]
 
 
+def test_a_forbidden_import_is_reported_against_the_module_that_makes_it() -> None:
+    # Setup
+    sources = {"stash.gpu.leaky": "import os\nimport httpx"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("httpx",))
+
+    # Assert
+    assert offenders == ["stash.gpu.leaky -> httpx"]
+
+
+def test_an_allowed_import_is_not_reported_as_forbidden() -> None:
+    # Setup
+    sources = {"stash.gpu.clean": "import os\nfrom stash.gpu import port"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("httpx", "stash.gpu.probe"))
+
+    # Assert
+    assert offenders == []
+
+
+def test_a_from_import_of_a_forbidden_submodule_is_reported() -> None:
+    # Setup
+    sources = {"stash.llm.router": "from stash.gpu import probe"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("stash.gpu.probe",))
+
+    # Assert
+    assert offenders == ["stash.llm.router -> stash.gpu.probe"]
+
+
+def test_importing_a_name_from_a_forbidden_package_is_reported_once() -> None:
+    # Setup
+    sources = {"stash.llm.router": "from httpx import Client, Timeout"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("httpx",))
+
+    # Assert
+    assert offenders == ["stash.llm.router -> httpx"]
+
+
+def test_a_module_whose_name_merely_starts_like_a_forbidden_one_is_not_reported() -> None:
+    # Setup
+    sources = {"stash.gpu.other": "import httpx_extras"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("httpx",))
+
+    # Assert
+    assert offenders == []
+
+
+def test_each_forbidden_import_of_a_module_is_reported_in_sorted_order() -> None:
+    # Setup
+    sources = {"stash.gpu.leaky": "import subprocess\nimport httpx"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("subprocess", "httpx"))
+
+    # Assert
+    assert offenders == ["stash.gpu.leaky -> httpx", "stash.gpu.leaky -> subprocess"]
+
+
 def test_an_importer_outside_the_allowed_packages_is_reported() -> None:
     # Setup
     sources = {
@@ -165,8 +186,29 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         ("stash.store._rows", ADAPTER_ONLY_IMPORTERS),
         ("stash.store._migrate", ADAPTER_ONLY_IMPORTERS),
         (ADAPTER_MODULE, ADAPTER_IMPORTERS),
+        ("stash.http_client", ADAPTER_IMPORTERS),
+        ("stash.llm.openai_compat", ADAPTER_IMPORTERS),
+        ("stash.llm.probes", ADAPTER_IMPORTERS),
+        ("stash.gpu.probe", ADAPTER_IMPORTERS),
+        ("stash.llm._auth", LLM_ADAPTERS),
+        (CONFIG_LOADER, ENTRY_POINTS),
+        ("tomllib", (CONFIG_LOADER,)),
+        ("stash.config._section", (CONFIG_LOADER,)),
     ],
-    ids=["sqlite3", "rows", "migrate", "adapter"],
+    ids=[
+        "sqlite3",
+        "rows",
+        "migrate",
+        "adapter",
+        "http-client",
+        "llm-openai-compat",
+        "llm-probes",
+        "gpu-probe",
+        "llm-auth",
+        "config-loader",
+        "tomllib",
+        "config-section",
+    ],
 )
 def test_a_storage_module_is_imported_only_by_its_allowed_importers(
     target: str, allowed: tuple[str, ...]
