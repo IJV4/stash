@@ -115,7 +115,7 @@ def test_foreign_utilisation_above_the_limit_with_no_stash_model_loaded_makes_th
 
 def test_a_missing_nvidia_smi_means_no_gpu_info_and_the_gate_stays_free(tmp_path: Path) -> None:
     # Setup
-    rig = build_rig(tmp_path, llm_toml("ollama"), None, probe=missing_nvidia_smi())
+    rig = build_rig(tmp_path, llm_toml("ollama"), None, run=missing_nvidia_smi())
 
     # Execute
     status = rig.gate.status(BASE)

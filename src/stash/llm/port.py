@@ -35,3 +35,8 @@ class ProviderProbe(Protocol):
 
 class ModelUnloader(Protocol):
     def unload(self) -> None: ...
+
+
+class NoModelToUnload:
+    def unload(self) -> None:
+        return None

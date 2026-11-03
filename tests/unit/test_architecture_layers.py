@@ -16,7 +16,13 @@ PURE_LLM_MODULES = (
     "stash.llm.router",
 )
 PURE_GPU_MODULES = ("stash.gpu", "stash.gpu.port", "stash.gpu.override", "stash.gpu.gate")
-PURE_ENRICH_MODULES = ("stash.enrich", "stash.enrich.links", "stash.enrich.urls")
+PURE_ENRICH_MODULES = (
+    "stash.enrich",
+    "stash.enrich.links",
+    "stash.enrich.urls",
+    "stash.enrich.deadline",
+    "stash.enrich.platform_scope",
+)
 
 
 def test_the_adapter_list_names_every_adapter_module_in_the_source_tree() -> None:

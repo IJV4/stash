@@ -3,9 +3,10 @@ import sys
 from pathlib import Path
 
 import pytest
+import yt_dlp
 from yt_dlp.utils import YoutubeDLError
 
-from stash.enrich.ytdlp import default_ytdlp_extract
+from stash.enrich.ytdlp import default_ytdlp_extract, ytdlp_params
 
 LOCAL_PAGE = (
     "<html><head><title>Local page</title></head>"
@@ -47,3 +48,33 @@ def test_importing_the_ytdlp_adapter_does_not_load_yt_dlp() -> None:
 
     # Assert
     assert result.stdout.strip() == "False"
+
+
+def matching_extractors(url: str) -> list[str]:
+    with yt_dlp.YoutubeDL(ytdlp_params()) as ydl:
+        return [key for key, extractor in ydl._ies.items() if extractor.suitable(url)]
+
+
+@pytest.mark.integration
+def test_no_yt_dlp_extractor_accepts_a_plain_web_page() -> None:
+    # Execute
+    matching = matching_extractors("https://example.com/ramen-tokyo")
+
+    # Assert
+    assert matching == []
+
+
+@pytest.mark.integration
+def test_a_youtube_link_is_still_accepted_by_a_yt_dlp_extractor() -> None:
+    # Execute
+    matching = matching_extractors("https://www.youtube.com/watch?v=abcdefghijk")
+
+    # Assert
+    assert "Youtube" in matching
+
+
+@pytest.mark.integration
+def test_the_default_extractor_refuses_a_plain_web_page_because_no_extractor_accepts_it() -> None:
+    # Execute / Assert
+    with pytest.raises(YoutubeDLError, match="No suitable extractor"):
+        default_ytdlp_extract("https://example.com/ramen-tokyo")

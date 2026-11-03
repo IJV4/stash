@@ -5,7 +5,8 @@ ENTRY_POINTS_AND_COMPOSITION_ROOT = ("stash.app", "stash.cli", "stash.hermes_ada
 
 
 @pytest.mark.parametrize(
-    "package", ["enrich", "filing", "llm", "gpu", "store", "config", "domain", "capture"]
+    "package",
+    ["enrich", "filing", "llm", "gpu", "store", "config", "domain", "capture", "evaluation"],
 )
 def test_no_package_imports_the_composition_root_or_an_entry_point(package: str) -> None:
     # Execute

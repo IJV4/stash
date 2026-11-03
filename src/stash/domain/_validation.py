@@ -13,6 +13,11 @@ def require_aware(name: str, moment: dt.datetime) -> None:
         raise ValueError(f"{name} must be timezone-aware")
 
 
+def require_text(name: str, value: str) -> None:
+    if not value.strip():
+        raise ValueError(f"{name} must not be blank")
+
+
 def frozen_strings(name: str, values: Iterable[str]) -> tuple[str, ...]:
     if isinstance(values, str):
         raise TypeError(f"{name} must be a collection of strings, not a single string")

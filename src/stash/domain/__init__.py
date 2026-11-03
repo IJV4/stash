@@ -5,9 +5,11 @@ from stash.domain._validation import (
     require_aware,
     require_http_url,
     require_safe_media_path,
+    require_text,
 )
 from stash.domain.capture import CaptureStatus, RawCapture, Route, SourceRef
 from stash.domain.coercion import enum_member
+from stash.domain.failure import describe_failure
 from stash.domain.item import Filing, Item, ItemType, Stage, derive_title, lacks_required_date
 
 __all__ = [
@@ -21,6 +23,7 @@ __all__ = [
     "Stage",
     "collapse_and_clip",
     "derive_title",
+    "describe_failure",
     "enum_member",
     "frozen_strings",
     "http_url_host",
@@ -28,4 +31,5 @@ __all__ = [
     "require_aware",
     "require_http_url",
     "require_safe_media_path",
+    "require_text",
 ]

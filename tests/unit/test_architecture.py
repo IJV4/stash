@@ -12,7 +12,12 @@ from architecture_guard import (
 
 ADAPTER_MODULE = "stash.store.sqlite"
 ADAPTER_IMPORTERS = ("stash.app",)
-SQLITE_USERS = ("stash.store.sqlite", "stash.store._rows", "stash.store._migrate")
+SQLITE_USERS = (
+    "stash.store.sqlite",
+    "stash.store._rows",
+    "stash.store._migrate",
+    "stash.app.database",
+)
 ADAPTER_ONLY_IMPORTERS = ("stash.store.sqlite",)
 LLM_ADAPTERS = tuple(module for module in ADAPTER_MODULES if is_within(module, "stash.llm"))
 ENTRY_POINTS = ("stash.app", "stash.cli")
@@ -186,12 +191,14 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         ("stash.store._rows", ADAPTER_ONLY_IMPORTERS),
         ("stash.store._migrate", ADAPTER_ONLY_IMPORTERS),
         (ADAPTER_MODULE, ADAPTER_IMPORTERS),
+        ("stash.store.backup", ADAPTER_IMPORTERS),
         ("stash.http_client", ADAPTER_IMPORTERS),
         ("stash.llm.openai_compat", ADAPTER_IMPORTERS),
         ("stash.llm.probes", ADAPTER_IMPORTERS),
         ("stash.gpu.probe", ADAPTER_IMPORTERS),
         ("stash.enrich.ytdlp", ADAPTER_IMPORTERS),
         ("stash.enrich.html_meta", ADAPTER_IMPORTERS),
+        ("stash.evaluation.tesseract", ADAPTER_IMPORTERS),
         ("stash.llm._auth", LLM_ADAPTERS),
         (CONFIG_LOADER, ENTRY_POINTS),
         ("tomllib", (CONFIG_LOADER,)),
@@ -202,12 +209,14 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         "rows",
         "migrate",
         "adapter",
+        "store-backup",
         "http-client",
         "llm-openai-compat",
         "llm-probes",
         "gpu-probe",
         "enrich-ytdlp",
         "enrich-html-meta",
+        "evaluation-tesseract",
         "llm-auth",
         "config-loader",
         "tomllib",

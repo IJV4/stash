@@ -1,0 +1,25 @@
+{"id": "t01", "arm": "text", "text": "Ramen Ichiban in Shibuya, Tokyo - try the spicy miso", "link": null, "expect": {"route": "capture", "item_type": "place", "stage": "want_to", "details": {"city": "Tokyo"}}}
+{"id": "t02", "arm": "text", "text": "Pastéis de Belém in Lisbon, must try when we go", "link": null, "expect": {"route": "capture", "item_type": "place", "stage": "want_to", "details": {"city": "Lisbon"}}}
+{"id": "t03", "arm": "text", "text": "recipe: lemon garlic roast chicken, 45 min, from grandma", "link": null, "expect": {"route": "capture", "item_type": "recipe", "stage": "want_to"}}
+{"id": "t04", "arm": "text", "text": "try this for lunch https://www.youtube.com/watch?v=fake0001", "link": {"url": "https://www.youtube.com/watch?v=fake0001", "title": "5-Minute Miso Soup for Busy Weeknights", "description": "A quick miso soup with tofu and scallions.", "uploader": "Fake Kitchen", "duration_s": 312, "has_captions": true}, "expect": {"route": "capture", "item_type": "recipe", "stage": "want_to", "details": {"platform": "youtube"}}}
+{"id": "t05", "arm": "text", "text": "Read 'The Overstory' by Richard Powers", "link": null, "expect": {"route": "capture", "item_type": "book", "stage": "want_to", "details": {"author": "Powers"}}}
+{"id": "t06", "arm": "text", "text": "Book rec from Sam: Piranesi by Susanna Clarke", "link": null, "expect": {"route": "capture", "item_type": "book", "stage": "want_to", "details": {"author": "Clarke"}}}
+{"id": "t07", "arm": "text", "text": "Podcast: Deep Sleep Lab, episode 12 on how naps really work", "link": null, "expect": {"route": "capture", "item_type": "media", "stage": "want_to"}}
+{"id": "t08", "arm": "text", "text": "watch later https://www.youtube.com/watch?v=fake0002", "link": {"url": "https://www.youtube.com/watch?v=fake0002", "title": "The Deep Ocean: A 90 Minute Documentary", "description": "Exploring life below 4000 metres.", "uploader": "Fake Documentaries", "duration_s": 5400, "has_captions": true}, "expect": {"route": "capture", "item_type": "media", "stage": "want_to", "details": {"platform": "youtube"}}}
+{"id": "t09", "arm": "text", "text": "idea: sell handmade candles at the weekend market", "link": null, "expect": {"route": "capture", "item_type": "idea", "stage": "want_to"}}
+{"id": "t10", "arm": "text", "text": "Date night at the Harbor Jazz Club on 2027-03-14 at 8pm", "link": null, "expect": {"route": "capture", "stage": "planned", "date": "2027-03-14"}}
+{"id": "t11", "arm": "text", "text": "buy a standing desk, budget around 400", "link": null, "expect": {"route": "capture", "item_type": "purchase", "stage": "want_to"}}
+{"id": "t12", "arm": "text", "text": "want this for the trip https://shop.example.com/aeropress-go", "link": {"url": "https://shop.example.com/aeropress-go", "title": "AeroPress Go Travel Coffee Press", "description": "Compact coffee maker for travel. $39.95.", "uploader": null, "duration_s": null, "has_captions": false}, "expect": {"route": "capture", "item_type": "purchase", "stage": "want_to"}}
+{"id": "t13", "arm": "text", "text": "gift idea for Ana: a pottery class voucher for her birthday", "link": null, "expect": {"route": "capture", "item_type": "gift", "stage": "want_to"}}
+{"id": "t14", "arm": "text", "text": "Take the free Intro to Python course on example-academy.test", "link": null, "expect": {"route": "capture", "item_type": "learn", "stage": "want_to"}}
+{"id": "t15", "arm": "text", "text": "Weekend trip to Lake Tahoe sometime next autumn, look at cabins", "link": null, "expect": {"route": "capture", "item_type": "plan", "stage": "want_to"}}
+{"id": "t16", "arm": "text", "text": "Try indoor rock climbing at Summit Gym", "link": null, "expect": {"route": "capture", "item_type": "activity", "stage": "want_to"}}
+{"id": "t17", "arm": "text", "text": "Wi-Fi at the cabin: network PineView, ask the host for the password", "link": null, "expect": {"route": "capture", "item_type": "other"}}
+{"id": "r01", "arm": "text", "text": "what can I do Saturday afternoon?", "link": null, "expect": {"route": "request"}}
+{"id": "r02", "arm": "text", "text": "which books did I read this year?", "link": null, "expect": {"route": "request"}}
+{"id": "r03", "arm": "text", "text": "show me my kept recipes", "link": null, "expect": {"route": "request"}}
+{"id": "r04", "arm": "text", "text": "Saturday afternoon hike?", "link": null, "expect": {"route": "unsure"}}
+{"id": "r05", "arm": "text", "text": "sushi place near downtown", "link": null, "expect": {"route": "unsure"}}
+{"id": "i01", "arm": "image", "text": "", "link": null, "image": "images/recipe_card.png", "expect": {"route": "capture", "item_type": "recipe"}}
+{"id": "i02", "arm": "image", "text": "save this", "link": null, "image": "images/event_poster.png", "expect": {"route": "capture", "item_type": "activity", "date": "2027-05-22"}}
+{"id": "i03", "arm": "image", "text": "want this", "link": null, "image": "images/product_screenshot.png", "expect": {"route": "capture", "item_type": "purchase", "stage": "want_to"}}

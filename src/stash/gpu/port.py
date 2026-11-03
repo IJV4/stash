@@ -39,3 +39,8 @@ class GpuProbe(Protocol):
 
 class OwnVramUsage(Protocol):
     def own_mib(self) -> int: ...
+
+
+class NoOwnVram:
+    def own_mib(self) -> int:
+        return 0

@@ -4,6 +4,7 @@ from types import MappingProxyType
 
 from stash.domain import http_url_host
 
+WEB = "web"
 _PLATFORM_DOMAINS = MappingProxyType(
     {
         "instagram.com": "instagram",
@@ -16,7 +17,7 @@ _PLATFORM_DOMAINS = MappingProxyType(
         "redd.it": "reddit",
     }
 )
-PLATFORMS = (*dict.fromkeys(_PLATFORM_DOMAINS.values()), "web")
+PLATFORMS = (*dict.fromkeys(_PLATFORM_DOMAINS.values()), WEB)
 
 _LINK = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 _TRAILING_PUNCTUATION = ".,;:!?"
@@ -52,12 +53,12 @@ def extract_urls(text: str) -> tuple[str, ...]:
 def platform_of(url: str) -> str:
     host = http_url_host(url)
     if host is None:
-        return "web"
+        return WEB
     host = host.rstrip(".")
     for domain, platform in _PLATFORM_DOMAINS.items():
         if host == domain or host.endswith(f".{domain}"):
             return platform
-    return "web"
+    return WEB
 
 
 def is_public_http_url(url: str) -> bool:

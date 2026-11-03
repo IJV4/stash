@@ -2,6 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
+from stash.gpu import NoOwnVram
 from stash.gpu.port import GpuSample
 
 
@@ -217,3 +218,22 @@ def test_any_utilization_exceeds_a_limit_of_zero_except_idle() -> None:
 
     # Assert
     assert exceeds is True
+
+
+def test_no_own_vram_reports_nothing_held() -> None:
+    # Execute
+    held = NoOwnVram().own_mib()
+
+    # Assert
+    assert held == 0
+
+
+def test_no_own_vram_leaves_the_whole_foreign_usage_counted() -> None:
+    # Setup
+    sample = a_sample(used_mib=6000)
+
+    # Execute
+    foreign = sample.foreign_used_mib(NoOwnVram().own_mib())
+
+    # Assert
+    assert foreign == 6000

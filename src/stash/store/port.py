@@ -1,3 +1,5 @@
+from datetime import date
+from pathlib import Path
 from typing import Protocol
 
 from stash.domain import CaptureStatus, Item, ItemType, RawCapture, Stage
@@ -49,3 +51,19 @@ class SettingsStore(Protocol):
 
 
 class Store(CaptureStore, ItemStore, SettingsStore, Protocol): ...
+
+
+class BackupError(Exception):
+    pass
+
+
+class BackupSource(Protocol):
+    def backup_to(self, target: Path) -> None: ...
+
+
+class BackupWriter(Protocol):
+    def write(self, directory: Path, today: date) -> Path: ...
+
+
+class Closeable(Protocol):
+    def close(self) -> None: ...

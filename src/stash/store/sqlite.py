@@ -8,7 +8,12 @@ from pathlib import Path
 from stash.domain import CaptureStatus, Item, ItemType, RawCapture, Stage
 from stash.store._migrate import apply_migrations, packaged_migrations
 from stash.store._rows import capture_from_row, capture_values, item_from_row, item_values
-from stash.store.port import DEFAULT_PAGE_SIZE, UnknownCaptureError, require_non_negative
+from stash.store.port import (
+    DEFAULT_PAGE_SIZE,
+    BackupError,
+    UnknownCaptureError,
+    require_non_negative,
+)
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
 _FOREIGN_KEY_VIOLATION = "SQLITE_CONSTRAINT_FOREIGNKEY"
@@ -192,8 +197,11 @@ class SqliteStore:
             self._connection.execute(_UPSERT_SETTING, (key, value))
 
     def backup_to(self, target: Path) -> None:
-        with self._lock, closing(sqlite3.connect(str(target))) as destination:
-            self._connection.backup(destination)
+        try:
+            with self._lock, closing(sqlite3.connect(str(target))) as destination:
+                self._connection.backup(destination)
+        except sqlite3.Error as error:
+            raise BackupError(str(error)) from error
 
     def close(self) -> None:
         with self._lock:

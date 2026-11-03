@@ -16,14 +16,22 @@ YTDLP_OPTIONS: Mapping[str, object] = MappingProxyType(
         "skip_download": True,
         "noplaylist": True,
         "socket_timeout": 15,
+        "allowed_extractors": ("default", "-generic"),
     }
 )
+
+
+def ytdlp_params() -> dict[str, object]:
+    return {
+        key: list(value) if isinstance(value, tuple) else value
+        for key, value in YTDLP_OPTIONS.items()
+    }
 
 
 def default_ytdlp_extract(url: str) -> Mapping[str, object]:
     import yt_dlp
 
-    with yt_dlp.YoutubeDL(dict(YTDLP_OPTIONS)) as ydl:
+    with yt_dlp.YoutubeDL(ytdlp_params()) as ydl:
         info = ydl.extract_info(url, download=False)
         return ydl.sanitize_info(info) if info is not None else {}
 

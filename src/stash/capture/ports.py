@@ -1,5 +1,7 @@
 from typing import Protocol
 
+from stash.capture.message import IncomingMessage
+from stash.capture.results import ProcessResult
 from stash.domain import CaptureStatus, Filing, Item, RawCapture
 from stash.enrich.links import LinkInfo
 
@@ -30,3 +32,13 @@ class FixStore(Protocol):
 
 class CaptureFiler(Protocol):
     def file(self, text: str, link: LinkInfo | None) -> Filing: ...
+
+
+class CaptureIntake(Protocol):
+    def receive(self, message: IncomingMessage) -> RawCapture | None: ...
+
+    def process(self, capture: RawCapture) -> ProcessResult: ...
+
+    def handle(self, message: IncomingMessage) -> ProcessResult: ...
+
+    def retry_pending(self) -> list[ProcessResult]: ...

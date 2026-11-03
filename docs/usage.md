@@ -10,30 +10,44 @@ tests in the task named in brackets (see the plan in
 The owner talks to a Telegram bot. Every incoming message is saved raw before
 any AI step, so nothing is lost when the AI is slow, busy or down.
 
-## Calling it from code  [Tasks 7-9]
+## Calling it from code  [Tasks 7-9, 11]
 
 The Telegram adapter (Task 12) and the CLI (Task 11) call the same objects
 the acceptance tests do. `stash.app` is the only module that builds the
 adapters; everything else receives them.
 
-    from stash.capture import (
-        BurstCoalescer, CapturePipeline, FixHandler, IncomingMessage, reply_for,
-    )
-    from stash.enrich.links import FallbackInspector
-    from stash.filing import Filer
+    from stash.app import build_app
+    from stash.capture import IncomingMessage, reply_for
+    from stash.config.loader import load_config
 
-    inspector = FallbackInspector(YtDlpInspector(default_ytdlp_extract), HtmlMetaInspector(client))
-    filer = Filer(router, clock, config.timezone)
-    pipeline = CapturePipeline(store, inspector, filer, new_id, clock)
+    config = load_config(path, os.environ)
+    app = build_app(config)            # the only place adapters are built
 
-    result = pipeline.handle(IncomingMessage(source, text, media_paths, received_at))
+    result = app.pipeline.handle(IncomingMessage(source, text, media_paths, received_at))
     # Filed | IsRequest | Deferred | Duplicate
     reply = reply_for(result)          # Filed | Deferred -> Reply (text and buttons)
-    bursts = BurstCoalescer(config.burst_window_seconds)
+    bursts = app.burst_factory()       # BurstCoalescer(config.burst_window_seconds)
     bursts.add(result, now)            # Filed and Deferred only
     reply = bursts.due(now)            # Reply | None
-    answer = FixHandler(store, clock).apply("stash:t:<item id>")   # Reply | Reroute
-    pipeline.retry_pending()           # list[ProcessResult]
+    answer = app.fixes.apply("stash:t:<item id>")   # Reply | Reroute
+    app.pipeline.retry_pending()       # list[ProcessResult]
+    app.gpu_switch.turn_off(app.local_now())   # GpuSwitchResult(until, warnings); also turn_on(), status(app.local_now())
+    app.close()                        # closes the database
+
+Switch the GPU off only through `app.gpu_switch.turn_off(app.local_now())`,
+which also unloads the model; `app.gpu` (the raw gate) and `app.router` are
+exposed for read-only use (status, model routing) and for tests. The time
+given to `app.gpu_switch.status` and `turn_off` must be `app.local_now()`
+(the clock in the owner's zone), because the status text is formatted in the
+zone of that time. `app.today()` is the owner's calendar day, which names the
+day's backup. `GpuSwitchResult.warnings` is empty unless the model could not be
+unloaded, in which case it carries one line saying so.
+
+`app.pipeline` never runs `handle`, `process` and `retry_pending` at the same
+time inside one process (they take turns); a second process such as
+`stash retry` is safe because filing is idempotent (item id == capture id).
+Tests build the same app with `build_app(config, client=<MockTransport client>,
+run=<fake nvidia-smi runner>, which=<fake PATH lookup>)`.
 
 ## Link details  [Task 7]
 
@@ -54,6 +68,16 @@ acceptance test in `tests/acceptance/test_link_inspection.py`.
    redirect that leads there. (yt-dlp follows redirects inside its own HTTP
    stack; only the first address is checked on that path. DNS names that
    resolve to private addresses are not detected on either path.)
+
+5. yt-dlp is only asked about links from a known platform (`instagram`,
+   `youtube`, `tiktok`, `x`, `reddit`) and its generic extractor is switched
+   off; any other link (`web`) is read only by the page reader. Acceptance
+   tests in `tests/acceptance/test_link_inspection_app.py` (a message sent
+   through `build_app`'s pipeline: a web link, then a youtube link).
+6. When inspecting a link takes longer than 25 seconds in total (a hung
+   extractor or page), the result is unknown and the capture is filed from the
+   owner's own words. Acceptance test in the same file (an app built with a
+   hung extractor and a 5 ms deadline).
 
 Pinned by unit tests: hosts disguised with non-ASCII dots (`127。0。0。1`) or
 IPv6 translation prefixes (NAT64, 6to4) are judged by the address they really
@@ -259,34 +283,140 @@ Each statement below has one acceptance test in
 - The version it prints is the installed package's version (unit test
   `test_package_version_matches_installed_distribution_metadata`).
 
+## Command line  [Task 11]
+
+Every subcommand takes `--config PATH`; without it `$STASH_CONFIG`, then
+`~/.config/stash/stash.toml` is used. Output goes to the injected stream, so the
+acceptance tests in `tests/acceptance/test_cli.py` read it directly (they call
+`main([...], factory=...)` with an app built on a fake HTTP transport).
+
+1. An invalid or unreadable configuration exits 2 and prints the
+   `ConfigError` message on standard error, for every subcommand.
+2. A database that cannot be opened is reported the same way (exit 2).
+
 ## stash doctor  [Task 11]
 
-Prints one line per check, `✔`, `✖` or `!` followed by the name and a detail,
-and exits 1 when a required check fails (for example an OpenRouter key that is
-rejected). Invalid configuration exits 2 with the error message.
+Prints one line per check, `✔ name — detail` when it passes, `✖` when a
+required check fails and `!` when an optional one does. Exit 1 when a required
+check fails, otherwise 0. Checks: `config`, `database`, one line per configured
+provider (`ollama`, `openrouter`; required when any task or the busy fallback
+uses it; the `ollama` line also checks the model is pulled), `openrouter model`, then the optional
+`nvidia-smi`, `yt-dlp`, `deno` and `tesseract`. Acceptance tests in
+`tests/acceptance/test_cli_doctor.py`:
+
+1. With a reachable Ollama that has the model, every required line is `✔` and
+   the exit code is 0, even when optional tools are missing (shown as `!`).
+2. A rejected OpenRouter key prints `✖ openrouter — invalid key` and exits 1.
+3. A configured Ollama model that is not pulled prints
+   `✖ ollama — model <m> is not pulled (ollama pull <m>)` and exits 1.
+4. An OpenRouter model id that OpenRouter does not list prints
+   `✖ openrouter model — model <id> is not offered by OpenRouter` and exits 1.
+5. A provider that is configured but unused is checked too, but its failure is
+   an optional `!` line and does not change the exit code.
+
+Assumption not yet verified (the sandbox blocks openrouter.ai): the model list is
+`GET <base_url>/models` returning `{"data": [{"id": "..."}]}`; confirm in the
+M0 spike (`docs/spike-m0.md`).
+
+Pinned by unit tests: a check that raises is reported as a failed line, never
+crashes the run; line rendering; `Doctor.run` keeps the order given.
 
 ## stash list  [Task 11]
 
 `stash list --stage want_to --type place --limit 20` prints matching items,
-newest first.
+newest first, one line each: `<Type> · <title> · <Stage>` with the date appended
+when there is one. Acceptance tests:
+
+1. Filters narrow the list and the limit caps it.
+2. With nothing to show it prints `No items.` and exits 0.
 
 ## stash retry  [Task 11]
 
-Files every pending capture and prints one line for each.
+Files every pending capture and prints one line for each (`filed`, `request`,
+`deferred (gpu_busy)` or `deferred (ai_unavailable)` followed by the title or the
+start of the text). Acceptance tests:
+
+1. Pending captures are filed once the GPU is free; running it again prints
+   `Nothing pending.`
+2. While the GPU is busy the lines say `deferred (gpu_busy)`, the captures stay
+   pending and the exit code is 0.
 
 ## stash gpu  [Task 11]
 
-`stash gpu status | off | on`. `off` prints when the switch expires (4 hours
-by default) and tells Ollama to unload its model.
+`stash gpu status | off | on`, times shown in the configured timezone.
+Acceptance tests:
+
+1. `off` prints `GPU switched off until HH:MM` and tells Ollama to unload its
+   model (`keep_alive: 0`); `status` then reads `GPU busy — turned off until HH:MM`.
+2. `on` prints `GPU switched on` and `status` reads `GPU free — GPU is free`
+   (or the real reason when other apps use it).
+3. `off` still switches the gate off when Ollama cannot be reached; it adds a
+   `! could not unload the model: ...` line and exits 0.
+
+## Local-model eval  [Task 10]
+
+`evals/cases.jsonl` holds 25 fake cases (17 text filings, 5 routing questions
+of which 2 are ambiguous, 3 images whose PNGs are generated by
+`evals/make_images.py`). One JSON object per line:
+
+    {"id": "t01", "arm": "text", "text": "...", "link": null,
+     "expect": {"route": "capture", "item_type": "place", "stage": "want_to",
+                "date": null, "details": {"city": "Tokyo"}}}
+
+`"link"` is `null` or `{"url", "title", "description"}` (optional `uploader`,
+`duration_s`, `has_captions`); image cases carry `"arm": "image"`, the note in
+`"text"` and `"image": "images/<name>.png"` relative to the cases file.
+Omitted `item_type`, `stage`, `date` and empty `details` are not scored.
+Each statement has one unit test (`tests/unit/evaluation/`):
+
+1. `load_cases` reads that format; a bad line raises `ValueError` naming the
+   line (`line 2 ...`); the shipped `evals/cases.jsonl` loads and has 25 cases
+   in the stated mix, every image file present.
+2. A case passes a field when the filing agrees: route, type, stage and date
+   by equality, details when each expected value is a case-insensitive
+   substring of the filed value.
+3. The text arm runs text cases through the filer; the vision arm sends the
+   image to the vision model; the OCR arm reads the image to text first and
+   files that text. Vision and OCR run image cases only.
+4. A model that is unavailable (or OCR that fails) marks the case as an error
+   and fails every field it would have scored.
+5. `render_report` prints one Markdown table per arm with a column per model
+   label and rows for route, type, stage, date and details accuracy (a
+   percentage), p50 latency and error count.
+
+Acceptance test in `tests/acceptance/test_cli_eval.py`: `stash eval
+--providers ollama,openrouter --arms text,ocr --cases <file> --out <path>`
+prints and saves the table with a column for each provider, never touching the
+network (fake transport); an unknown provider exits 2.
+The eval talks to the models directly, bypassing the GPU gate: do not run it
+while gaming (acceptance test in `tests/acceptance/test_cli_eval.py`: with the
+GPU busy the eval still gets answers from the models). The OCR arm needs `tesseract`; without it that arm reports
+errors for every image case.
 
 ## stash eval  [Task 11]
 
-`stash eval --providers ollama,openrouter --arms text,vision,ocr` runs the fake
-case set against each provider and prints a Markdown comparison table.
+`stash eval --providers ollama,openrouter --arms text,vision,ocr --cases evals/cases.jsonl --out PATH`
+(all configured providers and all arms by default) runs the case set against
+each provider, with OpenRouter as the reference, and prints the Markdown
+comparison table (see *Local-model eval*).
 
 ## stash backup  [Task 11]
 
-`stash backup --to DIR` writes `stash-YYYYMMDD.db` and keeps the newest 30.
+`stash backup --to DIR` writes `stash-YYYYMMDD.db` (today's date in the
+configured timezone) and keeps the newest 30 `stash-*.db` files; other files in
+DIR are left alone. The copy is written to a temporary file in DIR and renamed
+into place, so an interrupted backup never replaces a good file with a partial
+one. Acceptance tests in `tests/acceptance/test_cli.py` (through the command);
+the same two statements are pinned on the files themselves in
+`tests/unit/store/test_backups_usage.py`:
+
+1. The backup file is a readable copy that holds the items.
+2. With 31 older backups present, writing today's leaves 32 files and the two
+   oldest are removed, so 30 remain.
+
+Pinned by unit tests: a failed copy leaves no temporary file and keeps the
+previous backup; running twice on one day replaces that day's file; names that
+only look like backups are not touched.
 
 ## Storage guarantees  [Tasks 2-3]
 

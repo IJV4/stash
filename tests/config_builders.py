@@ -1,6 +1,9 @@
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
 from builders import an_ollama_settings
 
-from stash.config import LlmConfig, ProviderName
+from stash.config import GpuConfig, LlmConfig, ProviderName, StashConfig
 
 
 def an_llm_config(**overrides: object) -> LlmConfig:
@@ -11,3 +14,13 @@ def an_llm_config(**overrides: object) -> LlmConfig:
         "tasks": {},
     }
     return LlmConfig(**{**fields, **overrides})
+
+
+def a_stash_config(**overrides: object) -> StashConfig:
+    fields: dict[str, object] = {
+        "data_dir": Path("/data/stash"),
+        "timezone": ZoneInfo("America/Los_Angeles"),
+        "llm": an_llm_config(),
+        "gpu": GpuConfig(),
+    }
+    return StashConfig(**{**fields, **overrides})

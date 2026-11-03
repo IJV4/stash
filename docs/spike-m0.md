@@ -17,6 +17,8 @@ spike confirms they behave that way at runtime.
 | 8 | Is the tool scope locked down? | Ask the bot to run a shell command. | It refuses / has no terminal tool. |
 | 9 | Do the real link inspectors work? (the suite only fakes yt-dlp and the page fetch) | Share a YouTube link, an Instagram link and a plain article; check the confirmation detail and the item note. | YouTube gets title/uploader/duration via yt-dlp; Instagram falls back to the page title or nothing (the note covers it); articles get their `<title>`. A link to `http://localhost:11434/` is never fetched. |
 | 10 | Do both providers accept the filing schema? (`details` is an object of strings) | `stash eval` text arm against Ollama and OpenRouter. | No HTTP 400 on `response_format`; if a strict provider rejects `additionalProperties` on `details`, change `details` to a list of key/value pairs in `stash.filing.schema` and `parse_filing`. |
+| 11 | Does `stash doctor` read OpenRouter's model list correctly? (assumed `GET /api/v1/models` → `{"data":[{"id": …}]}`) | With `OPENROUTER_API_KEY` set, run `stash doctor`. | `✔ openrouter model — …`. If it fails although the model exists, fix the parser in `stash.llm.probes`. |
+| 12 | Does real OCR work? (tesseract was absent on the dev Mac; its test skipped) | `stash eval --arms ocr --providers ollama`. | The three fake PNGs produce readable text; image cases score on the OCR arm. |
 
 ## Go / no-go
 

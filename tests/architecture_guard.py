@@ -6,12 +6,14 @@ from pathlib import Path
 SOURCE_ROOT = Path(__file__).resolve().parents[1] / "src"
 ADAPTER_MODULES = (
     "stash.store.sqlite",
+    "stash.store.backup",
     "stash.http_client",
     "stash.llm.openai_compat",
     "stash.llm.probes",
     "stash.gpu.probe",
     "stash.enrich.ytdlp",
     "stash.enrich.html_meta",
+    "stash.evaluation.tesseract",
 )
 
 
@@ -89,3 +91,30 @@ def sources_named(*modules: str) -> dict[str, str]:
     if missing:
         raise ValueError(f"no source found for modules {missing}")
     return {module: everything[module] for module in modules}
+
+
+def _names_imported_by(node: ast.AST) -> list[str]:
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+    if isinstance(node, ast.ImportFrom):
+        if node.level:
+            raise ValueError("relative imports are not supported by the architecture guard")
+        base = node.module or ""
+        return [base, *(f"{base}.{alias.name}" for alias in node.names)]
+    return []
+
+
+def module_level_imports(source: str) -> frozenset[str]:
+    imported: set[str] = set()
+    pending: list[ast.AST] = [ast.parse(source)]
+    while pending:
+        for child in ast.iter_child_nodes(pending.pop()):
+            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+                continue
+            imported.update(_names_imported_by(child))
+            pending.append(child)
+    return frozenset(imported)
+
+
+def line_count(source: str) -> int:
+    return len(source.splitlines())

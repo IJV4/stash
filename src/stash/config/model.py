@@ -93,17 +93,17 @@ class LlmConfig:
             raise ConfigError(f"llm.busy_fallback must be one of {', '.join(BUSY_FALLBACKS)}")
         object.__setattr__(self, "providers", MappingProxyType(dict(self.providers)))
         object.__setattr__(self, "tasks", MappingProxyType(dict(self.tasks)))
-        for name in self._used_providers():
-            self._require_usable(name)
+        for name in ProviderName:
+            if self.uses(name):
+                self._require_usable(name)
 
     def provider_for(self, task: LlmTask) -> ProviderName:
         return self.tasks.get(task, self.provider)
 
-    def _used_providers(self) -> tuple[ProviderName, ...]:
-        used = {self.provider, *self.tasks.values()}
-        if self.busy_fallback == "openrouter":
-            used.add(ProviderName.OPENROUTER)
-        return tuple(name for name in ProviderName if name in used)
+    def uses(self, name: ProviderName) -> bool:
+        if name is ProviderName.OPENROUTER and self.busy_fallback == "openrouter":
+            return True
+        return name == self.provider or name in self.tasks.values()
 
     def _require_usable(self, name: ProviderName) -> None:
         settings = self.providers.get(name)

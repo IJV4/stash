@@ -161,3 +161,44 @@ class OpenRouterProbe:
         if remaining is None:
             return ProbeResult(False, UNEXPECTED_OPENROUTER)
         return ProbeResult(True, f"key is valid; limit remaining: {remaining}")
+
+
+def _offered_model_ids(response: httpx.Response) -> list[str] | None:
+    try:
+        entries = response.json()["data"]
+    except MALFORMED_BODY:
+        return None
+    if not isinstance(entries, list):
+        return None
+    return [
+        entry["id"]
+        for entry in entries
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+    ]
+
+
+# Assumes GET <base_url>/models returns {"data": [{"id": ...}]}; unverified against the live API
+class OpenRouterModelProbe:
+    def __init__(self, settings: ProviderSettings, client: httpx.Client) -> None:
+        self._model = settings.model
+        self._base_url = settings.base_url
+        self._url = settings.endpoint("models")
+        self._headers = bearer_headers(settings)
+        self._client = client
+
+    def check(self) -> ProbeResult:
+        try:
+            response = self._client.get(self._url, headers=self._headers, timeout=PROBE_TIMEOUT)
+        except httpx.RequestError:
+            return ProbeResult(False, f"cannot reach OpenRouter at {self._base_url}")
+        if not response.is_success:
+            return ProbeResult(False, f"OpenRouter answered HTTP {response.status_code}")
+        offered = _offered_model_ids(response)
+        if offered is None:
+            return ProbeResult(False, UNEXPECTED_OPENROUTER)
+        return self._verdict(offered)
+
+    def _verdict(self, offered: list[str]) -> ProbeResult:
+        if self._model in offered:
+            return ProbeResult(True, f"model {self._model} is offered by OpenRouter")
+        return ProbeResult(False, f"model {self._model} is not offered by OpenRouter")

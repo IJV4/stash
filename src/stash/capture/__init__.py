@@ -3,7 +3,7 @@ from stash.capture.fixes import FixHandler, Reroute
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.message import IncomingMessage
 from stash.capture.pipeline import CapturePipeline
-from stash.capture.ports import CaptureFiler, FixStore, IntakeStore
+from stash.capture.ports import CaptureFiler, CaptureIntake, FixStore, IntakeStore
 from stash.capture.replies import (
     Button,
     Reply,
@@ -14,11 +14,13 @@ from stash.capture.replies import (
     summary,
 )
 from stash.capture.results import Deferred, Duplicate, Filed, IsRequest, ProcessResult
+from stash.capture.serial import SerializedPipeline
 
 __all__ = [
     "BurstCoalescer",
     "Button",
     "CaptureFiler",
+    "CaptureIntake",
     "CapturePipeline",
     "Deferred",
     "Duplicate",
@@ -31,6 +33,7 @@ __all__ = [
     "ProcessResult",
     "Reply",
     "Reroute",
+    "SerializedPipeline",
     "confirmation",
     "deferred",
     "gone",
