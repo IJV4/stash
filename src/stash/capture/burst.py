@@ -6,10 +6,19 @@ from stash.capture.results import Deferred, Filed
 from stash.domain import require_aware
 
 
+def _key(result: Filed | Deferred) -> tuple[str, str]:
+    if isinstance(result, Filed):
+        return ("filed", result.item.id)
+    return ("deferred", result.capture.id)
+
+
 @dataclass(frozen=True, slots=True)
 class _Batch:
     opened_at: datetime
     results: tuple[Filed | Deferred, ...]
+
+    def holds(self, result: Filed | Deferred) -> bool:
+        return _key(result) in {_key(held) for held in self.results}
 
     def with_result(self, result: Filed | Deferred) -> "_Batch":
         return _Batch(self.opened_at, (*self.results, result))
@@ -22,14 +31,20 @@ class BurstCoalescer:
     def __init__(self, window_seconds: float) -> None:
         if window_seconds < 0:
             raise ValueError("window_seconds must not be negative")
+        self._window_seconds = float(window_seconds)
         self._window = timedelta(seconds=window_seconds)
         self._batch: _Batch | None = None
 
+    @property
+    def window_seconds(self) -> float:
+        return self._window_seconds
+
     def add(self, result: Filed | Deferred, now: datetime) -> None:
         require_aware("now", now)
-        self._batch = (
-            _Batch(now, (result,)) if self._batch is None else self._batch.with_result(result)
-        )
+        if self._batch is None:
+            self._batch = _Batch(now, (result,))
+        elif not self._batch.holds(result):
+            self._batch = self._batch.with_result(result)
 
     def due(self, now: datetime) -> Reply | None:
         require_aware("now", now)

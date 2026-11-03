@@ -9,6 +9,9 @@ SEPARATOR = " · "
 DASH = " — "
 EXPIRY_FORMAT = "%H:%M"
 TEXT_PREVIEW_CHARS = 60
+NO_ITEMS = "No items."
+NOTHING_PENDING = "Nothing pending."
+SWITCHED_ON = "GPU switched on"
 
 
 def _printable(text: str) -> str:

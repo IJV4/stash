@@ -12,8 +12,8 @@ any AI step, so nothing is lost when the AI is slow, busy or down.
 
 ## Calling it from code  [Tasks 7-9, 11]
 
-The Telegram adapter (Task 12) and the CLI (Task 11) call the same objects
-the acceptance tests do. `stash.app` is the only module that builds the
+The Hermes adapter (Task 12, see *Telegram through Hermes*) and the CLI
+(Task 11) call the same objects the acceptance tests do. `stash.app` is the only module that builds the
 adapters; everything else receives them.
 
     from stash.app import build_app
@@ -48,6 +48,129 @@ time inside one process (they take turns); a second process such as
 `stash retry` is safe because filing is idempotent (item id == capture id).
 Tests build the same app with `build_app(config, client=<MockTransport client>,
 run=<fake nvidia-smi runner>, which=<fake PATH lookup>)`.
+
+## Telegram through Hermes  [Task 12]
+
+`stash.hermes_adapter` is the only package that knows Hermes. Hermes loads
+`deploy/hermes-plugin/stash/` (a symlink at `~/.hermes/plugins/stash`), whose
+`__init__.py` puts the repository's `src` on `sys.path` and calls
+`stash.hermes_adapter.plugin.register(ctx)`:
+
+    from stash.hermes_adapter.plugin import register
+
+    register(ctx)    # ctx is Hermes' plugin context; builds the app from the plugin's
+                     # `config_path` setting (default ~/.config/stash/stash.toml)
+
+Secrets and the owner list come from Hermes' secret store, then the process
+environment: `OPENROUTER_API_KEY` for the AI provider and `TELEGRAM_ALLOWED_USERS`
+(comma-separated Telegram user ids) for who the owner is. Hermes and
+`telegram` are imported lazily, inside functions, only by this package.
+
+Each statement below has one acceptance test, in
+`tests/acceptance/test_hermes_registration.py`, `test_hermes_capture.py`,
+`test_hermes_buttons.py`, `test_hermes_commands.py` and `test_hermes_tools.py`
+(all on fakes: a fake Hermes context, a fake outbox and a fake assistant).
+
+### Registration
+
+1. `register(ctx)` registers the `pre_gateway_dispatch` hook, a handler for the
+   `telegram` platform, the commands `/list`, `/gpu` and `/retry`, and the tools
+   `stash_search` and `stash_list` in the toolset `stash`. A command name that
+   Hermes refuses because a built-in owns it (`/retry` is one) is registered as
+   `/stash_retry` instead, and the log says so.
+2. An unreadable or invalid configuration makes `register` raise the
+   `ConfigError`, so the failure shows in Hermes' log instead of messages being
+   silently left to the agent.
+
+### Messages (the hook)
+
+The hook runs before Hermes authorises the sender, so stash checks the owner
+itself.
+
+1. A plain message from the owner is saved raw and the hook answers
+   `{"action": "skip"}`, so the agent never sees it. After the burst window the
+   owner gets one reply with the confirmation and its buttons.
+2. A message whose text starts with `/` answers `{"action": "allow"}` and stores
+   nothing: Hermes runs the command.
+3. A message from anybody else answers `{"action": "allow"}`; nothing is stored
+   and nothing is sent, so Hermes' own authorisation decides what they get.
+4. The same Telegram message delivered twice is one capture, one item, one
+   reply; the second delivery answers `skip` and sends nothing.
+5. Several messages inside the burst window get one combined
+   `✅ Saved 3 items:` reply. An item that is processed twice in one window
+   (a `/retry` overlapping the background filing) is listed once; that rule
+   lives in `BurstCoalescer.add` (unit-tested there).
+6. When the AI is down the owner gets `📥 Saved — I'll file it once the AI is
+   reachable.`; the capture stays pending.
+7. A message the AI routes as a question creates no item and is handed to the
+   assistant (`ctx.inject_message`); stash sends no reply of its own. If Hermes
+   refuses the hand-over the owner is told so.
+8. If the raw save itself fails the owner is told `⚠️ I could not save that
+   message — please send it again.` and the hook answers `skip`.
+9. If filing raises unexpectedly it is logged, nothing is sent and the capture
+   stays pending for `/retry`.
+
+Pinned by unit tests: a message with an unusable media path (for example
+containing `..`) is still saved, without the media; a message without a user
+id, without text and media, or with a missing message id is handled as above
+(passed through, or given a generated id).
+
+### Buttons
+
+Every callback is scoped to data starting `stash:`, so Hermes' own buttons keep
+working; stash always acknowledges a press.
+
+1. Pressing `Type`, then `Recipes`, edits the same message to the updated
+   confirmation.
+2. Pressing `That was a question →` hands the original text to the assistant.
+3. A press from anybody but the owner is acknowledged and otherwise ignored.
+4. A stale or forged press edits the message to `That item no longer exists.`
+
+Pinned by unit tests: Telegram refusing an edit (message unchanged) is logged
+and never raises; a press whose question cannot be handed to the assistant
+tells the owner.
+
+### Commands
+
+Replies are plain text, at most 4096 characters.
+
+1. `/list` prints the newest items as `<Type> · <title> · <Stage>`; `/list
+   want_to` filters by stage; with nothing to show it says `No items.`; an
+   unknown stage lists the valid ones.
+2. `/gpu status`, `/gpu off` and `/gpu on` answer as `stash gpu` does (see
+   *stash gpu*); `/gpu` alone is `status`; anything else prints the usage.
+3. `/retry` files the pending captures and prints one line each, or
+   `Nothing pending.`
+
+### Agent tools
+
+Both tools return a JSON string and never raise. Titles come from the owner's
+own captures and are data, not instructions.
+
+1. `stash_search {query}` returns `{"items": [{"id", "type", "title", "stage",
+   "date"}]}` for a case-insensitive match (the same search as the store).
+2. `stash_list {stage?, item_type?, limit?}` returns the same shape, newest
+   first, `limit` between 1 and 50 (default 20).
+3. A blank query, an unknown stage or type, a non-integer limit, or a store
+   that fails answers `{"error": "..."}`.
+
+### Telegram I/O
+
+Pinned by unit tests (real `python-telegram-bot` objects, no network): a reply
+becomes an `InlineKeyboardMarkup` whose `callback_data` equals each button's
+data; sending uses `send_message`, editing `edit_message_text`; the callback
+handler matches `stash:` data only; a callback query is answered before
+anything else.
+
+### The plugin shim
+
+1. The shim finds the repository's `src` through a symlink (integration test
+   with a real temporary symlink; Hermes is not imported).
+
+Deferred: nothing retries pending captures on a timer yet (Plan 3's scheduler);
+`/retry` does it by hand. The raw copy of a question is marked `request` rather
+than deleted. Everything Hermes-specific that the code assumes and the suite
+cannot check is listed in `docs/spike-m0.md` (items 13-21).
 
 ## Link details  [Task 7]
 

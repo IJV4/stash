@@ -19,6 +19,12 @@ spike confirms they behave that way at runtime.
 | 10 | Do both providers accept the filing schema? (`details` is an object of strings) | `stash eval` text arm against Ollama and OpenRouter. | No HTTP 400 on `response_format`; if a strict provider rejects `additionalProperties` on `details`, change `details` to a list of key/value pairs in `stash.filing.schema` and `parse_filing`. |
 | 11 | Does `stash doctor` read OpenRouter's model list correctly? (assumed `GET /api/v1/models` → `{"data":[{"id": …}]}`) | With `OPENROUTER_API_KEY` set, run `stash doctor`. | `✔ openrouter model — …`. If it fails although the model exists, fix the parser in `stash.llm.probes`. |
 | 12 | Does real OCR work? (tesseract was absent on the dev Mac; its test skipped) | `stash eval --arms ocr --providers ollama`. | The three fake PNGs produce readable text; image cases score on the OCR arm. |
+| 13 | Do hook results behave as assumed? | Send a plain message, then `/list`. | Plain message: no agent turn (`skip`), item saved. `/list`: handled by stash's command (`allow`). If the hook ever errors, the adapter fails open (message reaches Hermes unsaved) — check logs. |
+| 14 | Does a handed-off question loop back? (`inject_message` with `origin`) | Ask a question; watch `stash list --stage inbox` and the logs. | One agent answer in the same chat; the injected text is **not** captured as a new item (`event.internal` is True or the hook doesn't fire). |
+| 15 | Which command names registered? | Look at the Telegram command menu. | `/list` and `/gpu` under their own names; `/retry` probably clashes with a Hermes built-in and appears as `/stash_retry`. Update `docs/usage.md` to match. |
+| 16 | Group chats? (platform/chat_type are not checked) | Add the bot to a group, send a message as the owner. | Decide: ignore groups (add a guard in `hermes_adapter/events.py`) or allow. Default expectation: ignore. |
+| 17 | Secrets and allowed users resolve? | `stash doctor`; send a message from another Telegram account. | `OPENROUTER_API_KEY` / `TELEGRAM_ALLOWED_USERS` resolve via `agent.secret_scope` or env; strangers get no reply and nothing is stored. Empty owner list ⇒ stash ignores everyone and logs one warning. |
+| 18 | Hermes' pinned python-telegram-bot matches? (tests bind to PTB 22.8) | `~/.hermes/hermes-agent` Python: `python -c "import telegram; print(telegram.__version__)"`. | 22.x; if not, re-run the adapter's PTB contract tests against that version. |
 
 ## Go / no-go
 

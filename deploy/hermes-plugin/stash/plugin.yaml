@@ -1,0 +1,14 @@
+name: stash
+version: 0.1.0
+description: Personal organizer - saves every Telegram message raw, files it with an AI, and answers with fix buttons.
+manifest_version: 2
+provides_tools:
+  - stash_search
+  - stash_list
+provides_hooks:
+  - pre_gateway_dispatch
+config_schema:
+  config_path:
+    type: str
+    default: ~/.config/stash/stash.toml
+    description: Path to stash.toml (see deploy/stash.toml.example)

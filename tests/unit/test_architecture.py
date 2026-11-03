@@ -20,7 +20,12 @@ SQLITE_USERS = (
 )
 ADAPTER_ONLY_IMPORTERS = ("stash.store.sqlite",)
 LLM_ADAPTERS = tuple(module for module in ADAPTER_MODULES if is_within(module, "stash.llm"))
-ENTRY_POINTS = ("stash.app", "stash.cli")
+ENTRY_POINTS = (
+    "stash.app",
+    "stash.cli",
+    "stash.hermes_adapter.plugin",
+    "stash.hermes_adapter.wiring",
+)
 CONFIG_LOADER = "stash.config.loader"
 
 

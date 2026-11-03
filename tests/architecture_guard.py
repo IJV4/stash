@@ -15,6 +15,16 @@ ADAPTER_MODULES = (
     "stash.enrich.html_meta",
     "stash.evaluation.tesseract",
 )
+HERMES_MODULES = (
+    "gateway",
+    "hermes_cli",
+    "hermes_constants",
+    "agent",
+    "plugins",
+    "tools",
+    "hermes",
+)
+TELEGRAM = "telegram"
 
 
 def module_name(path: Path) -> str:
@@ -104,16 +114,43 @@ def _names_imported_by(node: ast.AST) -> list[str]:
     return []
 
 
-def module_level_imports(source: str) -> frozenset[str]:
+def _is_type_checking_guard(node: ast.If) -> bool:
+    test = node.test
+    return (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
+        isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
+    )
+
+
+def _module_level_imports(source: str, *, skip_type_checking: bool) -> frozenset[str]:
     imported: set[str] = set()
-    pending: list[ast.AST] = [ast.parse(source)]
+    pending: list[ast.AST] = list(ast.iter_child_nodes(ast.parse(source)))
     while pending:
-        for child in ast.iter_child_nodes(pending.pop()):
-            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
-                continue
-            imported.update(_names_imported_by(child))
-            pending.append(child)
+        node = pending.pop()
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            continue
+        if skip_type_checking and isinstance(node, ast.If) and _is_type_checking_guard(node):
+            pending.extend(node.orelse)
+            continue
+        imported.update(_names_imported_by(node))
+        pending.extend(ast.iter_child_nodes(node))
     return frozenset(imported)
+
+
+def module_level_imports(source: str) -> frozenset[str]:
+    return _module_level_imports(source, skip_type_checking=False)
+
+
+def runtime_module_level_imports(source: str) -> frozenset[str]:
+    return _module_level_imports(source, skip_type_checking=True)
+
+
+def runtime_import_offenders(sources: dict[str, str], banned: tuple[str, ...]) -> list[str]:
+    return sorted(
+        f"{name} -> {package}"
+        for name, source in sources.items()
+        for package in banned
+        if any(is_within(module, package) for module in runtime_module_level_imports(source))
+    )
 
 
 def line_count(source: str) -> int:

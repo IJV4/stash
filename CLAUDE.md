@@ -23,7 +23,7 @@ default tests, then `-m integration`). Green before every commit.
 ## Architecture
 
 - Layers: `stash.domain` (shared kernel) → ports (`stash.store.port`, …) →
-  adapters → features → `stash.app` (sole composition root) → entry points
+  adapters → features → `stash.rendering` → `stash.app` (sole composition root) → entry points
   (`stash.cli`, `stash.hermes_adapter`). `tests/unit/test_architecture.py`
   enforces that only `stash.app` imports adapters.
 - `stash.hermes_adapter` is the only Hermes-aware package; it imports Hermes

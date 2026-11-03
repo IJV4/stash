@@ -4,7 +4,7 @@ from architecture_guard import ADAPTER_MODULES, forbidden_imports_in, project_so
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 PURE_FEATURE_MODULES = ("stash.doctor", "stash.doctor_probes", "stash.gpu_switch")
 LOWER_PACKAGES = ["domain", "config", "llm", "gpu", "store", "enrich", "filing", "capture"]
-ENTRY_POINTS_AND_COMPOSITION_ROOT = ("stash.app", "stash.cli", "stash.hermes_adapter")
+HIGHER_LAYERS = ("stash.app", "stash.rendering", "stash.cli", "stash.hermes_adapter")
 
 
 def test_the_doctor_and_the_gpu_switch_import_no_network_extractor_or_adapter() -> None:
@@ -20,9 +20,7 @@ def test_the_doctor_and_the_gpu_switch_import_no_network_extractor_or_adapter() 
 
 def test_the_doctor_and_the_gpu_switch_import_no_entry_point_or_composition_root() -> None:
     # Execute
-    offenders = forbidden_imports_in(
-        sources_named(*PURE_FEATURE_MODULES), ENTRY_POINTS_AND_COMPOSITION_ROOT
-    )
+    offenders = forbidden_imports_in(sources_named(*PURE_FEATURE_MODULES), HIGHER_LAYERS)
 
     # Assert
     assert offenders == []

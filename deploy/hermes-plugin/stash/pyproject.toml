@@ -1,0 +1,12 @@
+# Read by Hermes, not built. Keep in step with the root [project].dependencies (with upper bounds);
+# stash itself is not managed by Hermes: install it per docs/deploy/wsl-setup.md.
+[project]
+name = "stash-hermes-plugin"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.1,<0.29",
+    "yt-dlp[default]>=2026.10.26",
+    "pytesseract>=0.3.13,<0.4",
+    "pillow>=11,<13",
+]

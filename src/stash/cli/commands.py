@@ -4,15 +4,19 @@ from typing import TextIO
 
 from stash.capture import CaptureIntake
 from stash.cli.failure import FAILURE, CommandFailed
-from stash.cli.rendering import gpu_status_line, listing_line, result_line, switched_off_lines
 from stash.doctor import Doctor
 from stash.domain import ItemType, Stage
 from stash.gpu_switch import GpuSwitch
+from stash.rendering import (
+    NO_ITEMS,
+    NOTHING_PENDING,
+    SWITCHED_ON,
+    gpu_status_line,
+    listing_line,
+    result_line,
+    switched_off_lines,
+)
 from stash.store import BackupError, BackupWriter, ItemStore
-
-NO_ITEMS = "No items."
-NOTHING_PENDING = "Nothing pending."
-SWITCHED_ON = "GPU switched on"
 
 
 def run_doctor(doctor: Doctor, out: TextIO) -> int:

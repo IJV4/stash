@@ -57,9 +57,13 @@ def _data_dir(root: Section, env: Mapping[str, str]) -> Path:
     configured = root.take_optional_text("data_dir")
     if configured is None:
         return _default_data_dir(env)
-    if configured == HOME_PREFIX or configured.startswith(f"{HOME_PREFIX}/"):
-        return _home(env) / configured[len(HOME_PREFIX) + 1 :]
-    return Path(configured)
+    return expand_home(configured, env)
+
+
+def expand_home(raw: str, env: Mapping[str, str]) -> Path:
+    if raw == HOME_PREFIX or raw.startswith(f"{HOME_PREFIX}/"):
+        return _home(env) / raw[len(HOME_PREFIX) + 1 :]
+    return Path(raw)
 
 
 def _default_data_dir(env: Mapping[str, str]) -> Path:
@@ -72,7 +76,7 @@ def _default_data_dir(env: Mapping[str, str]) -> Path:
 def _home(env: Mapping[str, str]) -> Path:
     home = env.get(HOME_VAR, "").strip()
     if not home:
-        raise ConfigError(f"{HOME_VAR} is not set, so the data directory cannot be resolved")
+        raise ConfigError(f"{HOME_VAR} is not set, so paths under it cannot be resolved")
     return Path(home)
 
 

@@ -5,10 +5,10 @@ from zoneinfo import ZoneInfo
 from builders import BASE, a_capture, an_item
 
 from stash.capture import Deferred, Duplicate, Filed, IsRequest
-from stash.cli.rendering import gpu_status_line, listing_line, result_line, switched_off_lines
 from stash.domain import Item, ItemType, Stage
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
+from stash.rendering import gpu_status_line, listing_line, result_line, switched_off_lines
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
 

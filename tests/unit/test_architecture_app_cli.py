@@ -7,6 +7,7 @@ from architecture_guard import (
     line_count,
     module_level_imports,
     project_sources,
+    sources_named,
 )
 
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
@@ -24,6 +25,7 @@ CLI_STASH_PACKAGES = (
     "stash.evaluation",
     "stash.gpu",
     "stash.gpu_switch",
+    "stash.rendering",
     "stash.store",
 )
 MAX_MODULE_LINES = 200
@@ -162,7 +164,7 @@ def test_the_composition_root_does_not_import_an_entry_point() -> None:
     assert offenders == []
 
 
-@pytest.mark.parametrize("package", ["app", "cli"])
+@pytest.mark.parametrize("package", ["app", "cli", "hermes_adapter"])
 def test_every_module_of_the_app_and_cli_packages_stays_small(package: str) -> None:
     # Execute
     oversized = sorted(
@@ -173,3 +175,11 @@ def test_every_module_of_the_app_and_cli_packages_stays_small(package: str) -> N
 
     # Assert
     assert oversized == []
+
+
+def test_the_rendering_module_stays_small() -> None:
+    # Execute
+    lines = line_count(sources_named("stash.rendering")["stash.rendering"])
+
+    # Assert
+    assert lines <= MAX_MODULE_LINES
