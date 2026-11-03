@@ -88,6 +88,9 @@ Tests: `tests/unit/domain/test_step.py`, `tests/unit/domain/test_nudge.py`,
     - Validation: exactly one of `lead_days` (0–60) or `due_on`; text 1–200 chars.
     - Methods: `due_date(item_date: date | None) -> date | None`,
       `confirmed_now() -> Step`, `marked_done() -> Step`.
+  - `Item.rescheduled(date: date | None, now) -> Item`: clearing the date of a
+    PLANNED item moves it to WANT_TO. Used by "Didn't happen" and by agent date
+    edits (Review Focus 3).
   - `NudgeKind(StrEnum)`: `STEP="step"`, `ITEM_DATE="item_date"`,
     `FOLLOWUP="followup"`, `DIGEST="digest"`, `STUCK="stuck"`
     (`PERSON_DATE` is added by Plan 4).
