@@ -17,6 +17,14 @@ ATTRIBUTION_TITLE = "stash"
 UNPARSEABLE_JSON = (ValueError, RecursionError)
 
 
+def _plain_json(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _plain_json(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_plain_json(item) for item in value]
+    return value
+
+
 def _encode_part(part: Part) -> dict[str, Any]:
     if isinstance(part, ImagePart):
         return {"type": "image_url", "image_url": {"url": part.data_url}}
@@ -109,7 +117,7 @@ class OpenAICompatibleChat:
             "temperature": 0,
             "response_format": {
                 "type": "json_schema",
-                "json_schema": {"name": schema_name, "strict": True, "schema": schema},
+                "json_schema": {"name": schema_name, "strict": True, "schema": _plain_json(schema)},
             },
         }
 

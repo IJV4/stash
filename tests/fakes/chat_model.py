@@ -10,9 +10,10 @@ class FakeChatModel:
         reply: Mapping[str, object] | None = None,
         error: LlmError | None = None,
     ) -> None:
-        self._reply: Mapping[str, object] = {} if reply is None else reply
-        self._error = error
+        self.reply: Mapping[str, object] = {} if reply is None else reply
+        self.error = error
         self.calls: list[list[ChatMessage]] = []
+        self.schemas: list[Mapping[str, object]] = []
         self.schema_names: list[str] = []
 
     def complete_json(
@@ -22,7 +23,8 @@ class FakeChatModel:
         schema_name: str,
     ) -> dict[str, object]:
         self.calls.append(list(messages))
+        self.schemas.append(schema)
         self.schema_names.append(schema_name)
-        if self._error is not None:
-            raise self._error
-        return copy.deepcopy(dict(self._reply))
+        if self.error is not None:
+            raise self.error
+        return copy.deepcopy(dict(self.reply))

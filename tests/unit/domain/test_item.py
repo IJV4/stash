@@ -336,3 +336,102 @@ def test_item_with_a_datetime_for_date_raises_value_error() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="date must be a date, not a datetime"):
         an_item(date=BASE)
+
+
+def test_item_with_a_source_url_that_is_not_http_raises_value_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="source_url"):
+        an_item(source_url="javascript:alert(1)")
+
+
+def test_item_with_an_http_source_url_is_accepted() -> None:
+    # Execute
+    item = an_item(source_url="http://example.com/ramen")
+
+    # Assert
+    assert item.source_url == "http://example.com/ramen"
+
+
+def test_item_without_a_source_url_is_accepted() -> None:
+    # Execute / Assert
+    assert an_item(source_url=None).source_url is None
+
+
+def test_an_undated_item_can_move_to_inbox_want_to_doing_and_dropped() -> None:
+    # Setup
+    item = an_item(date=None)
+
+    # Execute / Assert
+    assert item.moveable_stages() == (Stage.INBOX, Stage.WANT_TO, Stage.DOING, Stage.DROPPED)
+
+
+def test_a_dated_item_can_also_move_to_planned_in_menu_order() -> None:
+    # Setup
+    item = an_item(date=PLANNED_FOR)
+
+    # Execute / Assert
+    assert item.moveable_stages() == (
+        Stage.INBOX,
+        Stage.WANT_TO,
+        Stage.PLANNED,
+        Stage.DOING,
+        Stage.DROPPED,
+    )
+
+
+def test_an_undated_item_cannot_move_to_planned() -> None:
+    # Execute / Assert
+    assert not an_item(date=None).can_move_to(Stage.PLANNED)
+
+
+def test_a_dated_item_can_move_to_planned() -> None:
+    # Execute / Assert
+    assert an_item(date=PLANNED_FOR).can_move_to(Stage.PLANNED)
+
+
+def test_an_item_cannot_move_to_done_by_hand() -> None:
+    # Execute / Assert
+    assert not an_item(date=PLANNED_FOR).can_move_to(Stage.DONE)
+
+
+def test_every_stage_an_item_can_move_to_is_a_stage_moved_to_accepts() -> None:
+    # Setup
+    item = an_item(date=None)
+
+    # Execute / Assert
+    assert [item.moved_to(stage, LATER).stage for stage in item.moveable_stages()] == list(
+        item.moveable_stages()
+    )
+
+
+def test_the_summary_line_is_the_type_label_and_the_title() -> None:
+    # Execute / Assert
+    assert an_item(item_type=ItemType.RECIPE, title="Miso soup").summary_line() == (
+        "Recipes · Miso soup"
+    )
+
+
+@pytest.mark.parametrize(
+    "item_id", ["", "   ", "chat:42", "two words", "tab\there", "bell\x07", "x" * 41, "é" * 40]
+)
+def test_item_refuses_an_id_that_cannot_travel_in_callback_data(item_id: str) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="item id"):
+        an_item(id=item_id)
+
+
+@pytest.mark.parametrize(
+    "capture_id", ["", "   ", "chat:42", "two words", "tab\there", "bell\x07", "x" * 41, "é" * 40]
+)
+def test_item_refuses_a_capture_id_that_cannot_travel_in_callback_data(capture_id: str) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="item capture id"):
+        an_item(capture_id=capture_id)
+
+
+def test_item_accepts_ids_of_the_maximum_length() -> None:
+    # Execute
+    item = an_item(id="x" * 40, capture_id="y" * 40)
+
+    # Assert
+    assert (item.id, item.capture_id) == ("x" * 40, "y" * 40)

@@ -15,6 +15,8 @@ spike confirms they behave that way at runtime.
 | 6 | Does stash see every message **before** the LLM? | Stop Ollama (`sudo systemctl stop ollama`), send a message. | `stash list --stage inbox` shows it; the bot answers "📥 Saved — I'll file it once the AI is reachable." |
 | 7 | Does `inject_message` hand questions to the agent? | Ask "what can I do Saturday?" | The agent answers using `stash_search`/`stash_list`. |
 | 8 | Is the tool scope locked down? | Ask the bot to run a shell command. | It refuses / has no terminal tool. |
+| 9 | Do the real link inspectors work? (the suite only fakes yt-dlp and the page fetch) | Share a YouTube link, an Instagram link and a plain article; check the confirmation detail and the item note. | YouTube gets title/uploader/duration via yt-dlp; Instagram falls back to the page title or nothing (the note covers it); articles get their `<title>`. A link to `http://localhost:11434/` is never fetched. |
+| 10 | Do both providers accept the filing schema? (`details` is an object of strings) | `stash eval` text arm against Ollama and OpenRouter. | No HTTP 400 on `response_format`; if a strict provider rejects `additionalProperties` on `details`, change `details` to a list of key/value pairs in `stash.filing.schema` and `parse_filing`. |
 
 ## Go / no-go
 

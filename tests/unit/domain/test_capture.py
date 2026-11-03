@@ -82,3 +82,70 @@ def test_raw_capture_media_paths_given_a_bare_string_raise_type_error() -> None:
     # Execute / Assert
     with pytest.raises(TypeError, match="media_paths must be a collection of strings"):
         a_capture(media_paths="photo.jpg")
+
+
+def test_the_item_id_of_a_capture_is_the_capture_id() -> None:
+    # Execute
+    item_id = a_capture(id="c-42").item_id
+
+    # Assert
+    assert item_id == "c-42"
+
+
+@pytest.mark.parametrize(
+    ("path", "problem"),
+    [
+        ("", "must not be blank"),
+        ("   ", "must not be blank"),
+        ("media/a\x00.jpg", "NUL character"),
+        ("https://evil.example/a.jpg", "must not be a URL"),
+        ("file:///etc/passwd", "must not be a URL"),
+        ("../secret.jpg", "'..' segment"),
+        ("media/../../secret.jpg", "'..' segment"),
+        ("media\\..\\secret.jpg", "'..' segment"),
+    ],
+)
+def test_raw_capture_refuses_an_unsafe_media_path(path: str, problem: str) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match=problem):
+        a_capture(media_paths=("media/a.jpg", path))
+
+
+@pytest.mark.parametrize("path", ["media/a.jpg", "media/..hidden.jpg", "a..b/c.png", "photo.jpg"])
+def test_raw_capture_accepts_a_plain_relative_media_path(path: str) -> None:
+    # Execute
+    capture = a_capture(media_paths=(path,))
+
+    # Assert
+    assert capture.media_paths == (path,)
+
+
+@pytest.mark.parametrize(
+    "capture_id", ["", "   ", "chat:42", "two words", "tab\there", "bell\x07", "x" * 41]
+)
+def test_raw_capture_refuses_an_id_that_cannot_travel_in_callback_data(capture_id: str) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="capture id"):
+        a_capture(id=capture_id)
+
+
+def test_raw_capture_accepts_an_id_of_the_maximum_length() -> None:
+    # Execute
+    capture = a_capture(id="x" * 40)
+
+    # Assert
+    assert capture.id == "x" * 40
+
+
+def test_raw_capture_accepts_an_absolute_gateway_cache_path() -> None:
+    # Execute
+    capture = a_capture(media_paths=("/home/owner/.hermes/cache/images/img_ab12.jpg",))
+
+    # Assert
+    assert capture.media_paths == ("/home/owner/.hermes/cache/images/img_ab12.jpg",)
+
+
+def test_raw_capture_refuses_forty_non_ascii_characters_because_telegram_counts_bytes() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="capture id"):
+        a_capture(id="é" * 40)

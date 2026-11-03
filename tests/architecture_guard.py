@@ -10,6 +10,8 @@ ADAPTER_MODULES = (
     "stash.llm.openai_compat",
     "stash.llm.probes",
     "stash.gpu.probe",
+    "stash.enrich.ytdlp",
+    "stash.enrich.html_meta",
 )
 
 

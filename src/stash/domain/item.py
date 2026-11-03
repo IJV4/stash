@@ -4,8 +4,9 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from types import MappingProxyType
 
-from stash.domain._validation import frozen_strings, require_aware
+from stash.domain._validation import frozen_strings, require_aware, require_http_url
 from stash.domain.capture import RawCapture, Route
+from stash.domain.wire import require_wire_safe_id
 
 TITLE_LIMIT = 120
 ELLIPSIS = "…"
@@ -68,13 +69,21 @@ _STAGE_LABELS = {
 }
 
 
+MOVEABLE_STAGES = (Stage.INBOX, Stage.WANT_TO, Stage.PLANNED, Stage.DOING, Stage.DROPPED)
+PLANNED_NEEDS_DATE = "planned items need a date"
+
+
+def lacks_required_date(stage: Stage, date: dt.date | None) -> bool:
+    return stage is Stage.PLANNED and date is None
+
+
 def _require_fileable(title: str, stage: Stage, date: dt.date | None) -> None:
     if not title.strip():
         raise ValueError("title must not be blank")
     if isinstance(date, dt.datetime):
         raise ValueError("date must be a date, not a datetime")
-    if stage is Stage.PLANNED and date is None:
-        raise ValueError("planned items need a date")
+    if lacks_required_date(stage, date):
+        raise ValueError(PLANNED_NEEDS_DATE)
 
 
 def _freeze(filing_or_item: "Filing | Item") -> None:
@@ -116,9 +125,13 @@ class Item:
     updated_at: dt.datetime
 
     def __post_init__(self) -> None:
+        require_wire_safe_id("item id", self.id)
+        require_wire_safe_id("item capture id", self.capture_id)
         _require_fileable(self.title, self.stage, self.date)
         require_aware("created_at", self.created_at)
         require_aware("updated_at", self.updated_at)
+        if self.source_url is not None:
+            require_http_url("source_url", self.source_url)
         _freeze(self)
 
     @classmethod
@@ -151,6 +164,15 @@ class Item:
 
     def moved_to(self, stage: Stage, now: dt.datetime) -> "Item":
         return replace(self, stage=stage, updated_at=now)
+
+    def can_move_to(self, stage: Stage) -> bool:
+        return stage in MOVEABLE_STAGES and not lacks_required_date(stage, self.date)
+
+    def moveable_stages(self) -> tuple[Stage, ...]:
+        return tuple(stage for stage in MOVEABLE_STAGES if self.can_move_to(stage))
+
+    def summary_line(self) -> str:
+        return f"{self.item_type.label} · {self.title}"
 
 
 def derive_title(text: str) -> str:

@@ -10,70 +10,176 @@ tests in the task named in brackets (see the plan in
 The owner talks to a Telegram bot. Every incoming message is saved raw before
 any AI step, so nothing is lost when the AI is slow, busy or down.
 
+## Calling it from code  [Tasks 7-9]
+
+The Telegram adapter (Task 12) and the CLI (Task 11) call the same objects
+the acceptance tests do. `stash.app` is the only module that builds the
+adapters; everything else receives them.
+
+    from stash.capture import (
+        BurstCoalescer, CapturePipeline, FixHandler, IncomingMessage, reply_for,
+    )
+    from stash.enrich.links import FallbackInspector
+    from stash.filing import Filer
+
+    inspector = FallbackInspector(YtDlpInspector(default_ytdlp_extract), HtmlMetaInspector(client))
+    filer = Filer(router, clock, config.timezone)
+    pipeline = CapturePipeline(store, inspector, filer, new_id, clock)
+
+    result = pipeline.handle(IncomingMessage(source, text, media_paths, received_at))
+    # Filed | IsRequest | Deferred | Duplicate
+    reply = reply_for(result)          # Filed | Deferred -> Reply (text and buttons)
+    bursts = BurstCoalescer(config.burst_window_seconds)
+    bursts.add(result, now)            # Filed and Deferred only
+    reply = bursts.due(now)            # Reply | None
+    answer = FixHandler(store, clock).apply("stash:t:<item id>")   # Reply | Reroute
+    pipeline.retry_pending()           # list[ProcessResult]
+
+## Link details  [Task 7]
+
+When a message contains a link, the first link is inspected before filing.
+The inspector never raises: a link it cannot describe is "unknown" and the
+capture is filed from the owner's own words. Each statement below has one
+acceptance test in `tests/acceptance/test_link_inspection.py`.
+
+1. A link yt-dlp can describe yields its title, description, uploader, the
+   duration in whole seconds, and whether captions (manual or automatic) exist.
+2. When yt-dlp fails or finds no title, the page itself is read: Open Graph
+   title and description first, then `<title>` and the meta description.
+3. When neither can describe the link the result is unknown: only the platform
+   (`instagram`, `youtube`, `tiktok`, `x`, `reddit` or `web`, from the host)
+   is filled in.
+4. A link that points at the owner's own machine or network (`localhost`, a
+   private or link-local address) is never fetched, and neither is a page
+   redirect that leads there. (yt-dlp follows redirects inside its own HTTP
+   stack; only the first address is checked on that path. DNS names that
+   resolve to private addresses are not detected on either path.)
+
+Pinned by unit tests: hosts disguised with non-ASCII dots (`127。0。0。1`) or
+IPv6 translation prefixes (NAT64, 6to4) are judged by the address they really
+reach; hosts that are not plain host names (backslashes, percent escapes),
+names without a dot, multicast addresses and home-network suffixes (`.lan`,
+`.local`, `.internal`, `.localdomain`, `.svc`, ...) are never fetched; reading a page gives up after 20 seconds in total; only the first
+512 KiB of a page is read; at most three redirects are followed; non-HTML, error statuses and timeouts are unknown;
+trailing punctuation is not part of a link; the same link is reported once;
+fields from the page are clipped to a safe length; `http` and `https` are the
+only schemes accepted.
+
+## Filing  [Task 8]
+
+The filer asks the AI for a type, title, stage, details, tags, people and
+date, and treats the answer as untrusted. Each statement below has one
+acceptance test (1-4 in `tests/acceptance/test_filing.py`, 5 in
+`tests/acceptance/test_filing_over_http.py`).
+
+1. A clear capture is filed as the AI described it: type, title, stage
+   (Want to), details and tags.
+2. An answer with an unknown type, a forbidden stage such as `done`, or no
+   title still produces a filing: Other, Inbox, title taken from the text.
+3. An answer that is not JSON at all produces an Inbox filing titled from the
+   text (the AI being unsure is never an error for the owner).
+4. Words in a link's description reach the AI only inside the delimited
+   `<link>` block, whatever they say.
+5. The request to a real model carries the filing schema as plain JSON in
+   `response_format` (checked through the real client on a fake transport), so
+   a live Ollama or OpenRouter accepts it.
+
+Pinned by unit tests: a Planned answer without a valid date becomes Want to;
+at most 10 tags and 5 people; non-text details are dropped; titles are clipped
+to 120 characters; "today" is the owner's local date; a message with no text
+and no link is filed as an Other Inbox capture without asking the AI; an AI
+that is down or deferred propagates so the capture stays pending.
+
 ## Sharing a link  [Task 9]
 
 Send `https://example.com/ramen-tokyo` with the optional note `try this in March`.
 
-- The bot replies with one line: `✅ Places · Tokyo · Want to`.
-- The reply carries two buttons, `Type` and `Stage`.
-- The item exists in the store with stage Want to, the link as its source URL
-  and the note kept.
-- Sending the same Telegram message twice (a gateway retry) creates one item.
+1. The bot replies with one line, `✅ Places · Tokyo · Want to`, carrying two
+   buttons, `Type` and `Stage`. The item exists with stage Want to, the link as
+   its source URL and the whole message kept as the note.
+2. Sending the same Telegram message twice (a gateway retry) creates one
+   capture and one item; the second delivery is a duplicate.
 
 ## Typing a thought  [Task 9]
 
 Send `idea: sell handmade candles at the weekend market`.
 
-- The bot replies `✅ Ideas · Want to` (no detail segment when nothing fits).
-- A message of 10 000 characters is saved whole, gets a title of at most 120
-  characters, and the reply stays within 4096 characters.
+1. The bot replies `✅ Ideas · Want to` (no detail segment when nothing fits).
+2. A message of 10 000 characters is saved whole, gets a title of at most 120
+   characters, and the reply stays within 4096 characters.
 
 ## Sending an image  [Task 9]
 
 Send a picture with no caption.
 
-- The image path is saved with the capture and the item is filed from the note
-  alone; with no text the title is `Untitled`.
-- The bot still replies with a confirmation.
+1. The image path is saved with the capture and the item is filed from the note
+   alone; with no text the title is `Untitled` and the AI is not asked. The bot
+   still replies with a confirmation.
 
 ## Asking a question  [Task 9]
 
 Send `what can I do Saturday afternoon?`.
 
-- The AI routes it as a request: no item is created and the question is handed
-  to the assistant.
-- When the AI is unsure, the item is filed and the reply carries a
-  `That was a question →` button; pressing it deletes the item and hands the
-  original text to the assistant.
+1. The AI routes it as a request: no item is created, the capture is marked as
+   a request and the question is handed to the assistant.
+2. When the AI is unsure, the item is filed and the reply carries a
+   `That was a question →` button; pressing it deletes the item, marks the
+   capture as a request and hands the original text to the assistant. Pressing
+   it a second time answers `That item no longer exists.`
 
 ## Pressing a fix button  [Task 9]
 
-- `Type` opens a menu of item types; choosing `Recipes` retypes the item and
-  shows the updated confirmation.
-- `Stage` opens a menu of stages; items without a date are offered Inbox, Want
-  to, Doing and Dropped; items with a date also Planned.
-- A stale or forged button (unknown item, malformed data) answers
-  `That item no longer exists.` and never fails.
+1. `Type` opens a menu of item types; choosing `Recipes` retypes the item and
+   shows the updated confirmation.
+2. A stale or forged button (unknown item, malformed data) answers
+   `That item no longer exists.` and never fails.
+
+Pinned by unit tests: `Stage` opens a menu of stages; items without a date are
+offered Inbox, Want to, Doing and Dropped; items with a date are also offered
+Planned; a stage the menu did not offer is answered with the menu again;
+every button's data is at most 64 bytes.
 
 ## GPU busy  [Task 9]
 
 Another application is using the GPU (or the owner ran `stash gpu off`).
 
-- The bot replies `📥 Saved — I'll file it when the GPU is free.`
-- The capture stays pending; `stash retry` (or the next retry) files it once
-  the GPU is free.
+1. The bot replies `📥 Saved — I'll file it when the GPU is free.` The capture
+   stays pending; `stash retry` (or the next retry) files it once the GPU is
+   free, without creating a second item.
 
 ## AI down  [Task 9]
 
-Ollama is unreachable, times out, or OpenRouter returns an error.
+Ollama is unreachable, times out, returns an error, or the provider rejects
+the key.
 
-- The bot replies `📥 Saved — I'll file it once the AI is reachable.`
-- The capture stays pending and is filed by a later retry.
+1. The bot replies `📥 Saved — I'll file it once the AI is reachable.` The
+   capture stays pending and is filed by a later retry.
+2. A misconfigured provider (rejected key, unknown model) is treated the same
+   way: the capture is never lost and nothing crashes.
 
 ## Several messages at once  [Task 9]
 
-Forwarding a backlog produces one combined reply: `✅ Saved 3 items:` followed
-by one bullet per item, instead of three replies.
+1. Forwarding a backlog produces one combined reply once the burst window has
+   passed: `✅ Saved 3 items:` followed by one bullet per item, instead of
+   three replies. Nothing is sent before the window has passed.
+
+Pinned by unit tests: a single message in a window gets its normal reply and
+buttons; the combined reply never exceeds 4096 characters; a batch whose reply
+cannot be built is kept for the next attempt. The coalescer is not
+thread-safe: call it from one thread (the adapter's event loop).
+
+## Recovering from half-finished work  [Task 9]
+
+Pinned by unit tests: a capture whose processing fails unexpectedly is logged
+and skipped, stays pending, and does not stop the rest of `retry_pending`; a
+capture whose item was saved before the status write failed is completed on
+retry without asking the AI and without overwriting a fix the owner made in
+between; a retry that finds the item already saved returns it as a plain confirmation
+(the `That was a question →` button is not repeated); capture and item ids must
+be 1-40 ASCII characters without whitespace or `:` so every button fits in 64
+bytes; media paths containing `..`, a NUL or a
+URL are refused when the message is built (absolute gateway cache paths are
+accepted; keeping reads under the media directory is the media loader's job).
 
 ## Configuration  [Task 4]
 
