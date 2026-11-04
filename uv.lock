@@ -971,9 +971,13 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
+    { name = "yt-dlp", extra = ["default"] },
+]
+
+[package.optional-dependencies]
+ocr = [
     { name = "pillow" },
     { name = "pytesseract" },
-    { name = "yt-dlp", extra = ["default"] },
 ]
 
 [package.dev-dependencies]
@@ -982,15 +986,17 @@ dev = [
     { name = "pytest" },
     { name = "python-telegram-bot" },
     { name = "ruff" },
+    { name = "stash", extra = ["ocr"] },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1,<0.29" },
-    { name = "pillow", specifier = ">=11" },
-    { name = "pytesseract", specifier = ">=0.3.13" },
+    { name = "pillow", marker = "extra == 'ocr'", specifier = ">=11" },
+    { name = "pytesseract", marker = "extra == 'ocr'", specifier = ">=0.3.13" },
     { name = "yt-dlp", extras = ["default"], specifier = ">=2026.10.26" },
 ]
+provides-extras = ["ocr"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -998,6 +1004,7 @@ dev = [
     { name = "pytest", specifier = ">=9.2,<10" },
     { name = "python-telegram-bot", specifier = "==22.8" },
     { name = "ruff", specifier = "==0.17.3" },
+    { name = "stash", extras = ["ocr"] },
 ]
 
 [[package]]
