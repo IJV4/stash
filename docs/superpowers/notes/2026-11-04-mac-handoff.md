@@ -5,6 +5,13 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-04, answer for Plan 3 Task 6 (ticker).** Use the plan's in-process `Ticker`, started from the
+  platform-handler factory via `ctx.spawn_task` (verified live: running loop, supervised task survives).
+  Requirements: (1) a **once-only guard**, because Hermes re-runs the factory on every rebuilt Telegram
+  client; (2) cancel cleanly on unload (spawn_task tasks are cancelled for you). Keep `stash tick`
+  (cron `--no-agent`) as the fallback: it prints nothing when nothing is due and Hermes then stays
+  silent (verified), but its output has no buttons and gets Hermes's "Cronjob Response" wrapper.
+  Do not build a cron-plus-direct-send variant. See ADR 0001 rows 2, 2b, 2c.
 - **2026-11-04, spike #7 failed (not a no-go).** Questions never reach the Hermes agent because the
   hook returns `SKIP` for every message. Fix is in the adapter: classify inside the hook and return
   `ALLOW` for requests. Details in section 3 ("Questions do not reach the agent yet") and
