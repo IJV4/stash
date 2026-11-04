@@ -83,7 +83,7 @@ Stages, Outcome, Groups; Browsing).
 ### Task 2: Store — migration 0002, OutcomeStore, library and group queries
 
 **Files:** Create `src/stash/store/migrations/0002_lifecycle.sql`; Modify
-`store/port.py`, `store/sqlite.py`, `store/_rows.py`, `tests/fakes/memory_store.py`;
+`src/stash/domain/outcome.py` (`edited_at`), `store/port.py`, `store/sqlite.py`, `store/_rows.py`, `tests/fakes/memory_store.py`;
 Tests `tests/contract/test_store_outcomes_contract.py`,
 `tests/contract/test_store_library_contract.py`,
 `tests/integration/test_sqlite_migration_0002.py`.
@@ -97,7 +97,17 @@ Tests `tests/contract/test_store_outcomes_contract.py`,
   - `OutcomeStore(Protocol)`: `add_outcome(outcome: Outcome) -> None` (raises `UnknownItemError` for a missing item), `save_outcome(outcome) -> None` (upsert), `outcomes_for(item_id: str) -> list[Outcome]` (oldest first), `get_outcome(outcome_id) -> Outcome | None`.
   - `ItemStore` additions: `library(item_type: ItemType | None = None, limit: int = DEFAULT_PAGE_SIZE, offset: int = 0) -> list[Item]` (kept items, most recent completion first); `children_of(parent_id: str) -> list[Item]`; `done_between(start: date, end: date) -> list[Item]` (items with an outcome in range).
   - `Store` union gains `OutcomeStore`.
-- [ ] **Step 1: Failing contract tests** (both stores): outcome round-trip incl. takeaways; two outcomes for one item kept in order; `delete_item` removes its outcomes and ungroups its children; `library(ItemType.RECIPE)` returns only kept recipes; `children_of`; `done_between` bounds inclusive.
+- **Amendments (owner-approved 2026-11-04):**
+  - `recorded_at` never changes after creation. `Outcome` gains `edited_at: datetime | None = None`;
+    `with_notes(notes, takeaways, now)` keeps `recorded_at` and sets `edited_at = now`. The
+    `outcomes` table gets `edited_at TEXT` (NULL until the first edit). Ordering uses
+    `completed_on`, then `recorded_at`, then `id`, so edits never reorder.
+  - Completion is one atomic write: `OutcomeStore.record_completion(item: Item, outcome: Outcome) -> None`
+    saves the item and adds the outcome in one transaction (SQLite: one `with` block; nothing is
+    written if either half fails; `UnknownItemError` if the item does not exist).
+  - `library(...)` lists kept items whose stage is not DROPPED (kept survives reopen).
+  - `Item` only allows `drop_reason` on DROPPED items; the store round-trips it unchanged.
+- [ ] **Step 1: Failing contract tests** (both stores): outcome round-trip incl. takeaways and `edited_at`; two outcomes for one item kept in order, and editing the older one's notes does not reorder them; `record_completion` writes both or neither (SQLite: a failure injected after the item write leaves the item unchanged); `delete_item` removes its outcomes and ungroups its children; `library(ItemType.RECIPE)` returns only kept recipes and no dropped ones; `children_of`; `done_between` bounds inclusive.
 - [ ] **Step 2: Failing integration test:** a database created with only `0001` and filled via Plan 1's store migrates to version 2 with all rows intact and defaults set (Review Focus 1).
 - [ ] **Step 3:** Run → FAIL. **Step 4:** Implement (SQLite FK `ON DELETE` needs `foreign_keys=ON`, already set). **Step 5:** `make check`.
 - [ ] **Step 6: Commit** `feat(store): outcomes, library and group queries (migration 0002)`.
@@ -109,7 +119,13 @@ Tests `tests/unit/lifecycle/test_service.py`, `tests/acceptance/test_lifecycle.p
 
 **Interfaces:**
 - Consumes: Task 1–2 types; `new_id: Callable[[], str]`, `clock`.
-- Produces: `LifecycleStore(Protocol)` (narrow: get_item, save_item, add_outcome, save_outcome, outcomes_for, get_outcome, children_of);
+- **Amendments (owner-approved 2026-11-04):** `complete` uses the single `record_completion`
+  write (Task 2), and decides `repeat` from the item's **stored** stage (DONE → repeat), so a retry
+  after a failed write is not mistaken for a repeat. `group` also refuses a child that has
+  children of its own (`children_of(child_id)` non-empty), closing Review Focus 3. `drop` maps a
+  blank reason to `None` before calling `Item.dropped`. DONE is reached only through `complete`
+  (never `Item.moved_to(Stage.DONE)`).
+- Produces: `LifecycleStore(Protocol)` (narrow: get_item, save_item, record_completion, save_outcome, outcomes_for, get_outcome, children_of);
   `Lifecycle(store: LifecycleStore, new_id, clock, timezone: ZoneInfo)` with
   `complete(item_id, *, rating: int | None = None, notes: str = "", takeaways: Sequence[str] = (), keep: bool | None = None, on: date | None = None) -> Completion` (creates an Outcome, `completed_on` defaults to local today; repeat on a DONE item adds another outcome),
   `annotate(outcome_id, notes, takeaways) -> Outcome`, `rate(outcome_id, rating) -> Outcome`,
