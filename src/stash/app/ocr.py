@@ -8,6 +8,9 @@ TESSERACT = "tesseract"
 def make_ocr(which: Callable[[str], str | None]) -> Ocr:
     if which(TESSERACT) is None:
         return NoOcr()
-    from stash.evaluation.tesseract import TesseractOcr
+    try:
+        from stash.evaluation.tesseract import TesseractOcr
+    except ImportError:  # the optional "ocr" extra (pytesseract, pillow) is not installed
+        return NoOcr()
 
     return TesseractOcr()

@@ -7,15 +7,18 @@ requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1,<0.29",
     "yt-dlp[default]>=2026.10.26",
-    "pytesseract>=0.3.13",
-    "pillow>=11",
 ]
+
+[project.optional-dependencies]
+# Only needed for the eval's OCR arm and only if it beats the vision model (docs/adr/0003).
+ocr = ["pytesseract>=0.3.13", "pillow>=11"]
 
 [project.scripts]
 stash = "stash.cli:main"
 
 [dependency-groups]
 dev = [
+    "stash[ocr]",
     "pytest>=9.2,<10",
     "ruff==0.17.3",
     "mypy==2.4.1",
