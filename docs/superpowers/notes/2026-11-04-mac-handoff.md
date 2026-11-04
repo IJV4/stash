@@ -3,6 +3,20 @@
 Read this file first. It is written for the Claude session on the Mac. It is a brief, not a plan:
 the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is built).
 
+## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
+
+- **2026-11-04, spike #7 failed (not a no-go).** Questions never reach the Hermes agent because the
+  hook returns `SKIP` for every message. Fix is in the adapter: classify inside the hook and return
+  `ALLOW` for requests. Details in section 3 ("Questions do not reach the agent yet") and
+  `docs/adr/0001-hermes-gate.md` row 7. Check #14 waits for that fix. Land the per-task thinking
+  setting (ADR 0004) first, because the hook will wait for classification.
+- **2026-11-04, first handoff.** Everything else in this file.
+
+How to pick up an update while you are mid-work: finish or commit your current task, make sure the
+tree is clean (`git status`), then `git merge pc-m0` (a normal merge is fine if `main` has moved; the
+PC touched docs, `plugin.py`, `ocr.py`, `pyproject.toml` and their tests, so conflicts should be rare).
+Run `make check`, then read the new entries above and adjust the plan you are on.
+
 ## 1. Get the PC's work in (do this before anything else)
 
 1. `git merge pc-m0` (branch is in this repo; fast-forwards from `main` at `3d969d8`).
@@ -41,6 +55,14 @@ Full table in `docs/adr/0001-hermes-gate.md`. Summary:
   date `2027-03-14`) and `i02` (poster image; OCR reads the text correctly but the case errors).
   The eval report shows only aggregates, so first make it print each case's model output and
   expected values, reproduce `t10`, then try thinking off. See ADR 0004.
+- **Questions do not reach the agent yet (spike #7 failed).** `MessageIntake.on_dispatch` returns
+  `SKIP` for every message and later calls `inject_message` for requests; Hermes refuses
+  ("has no human message admitted yet; a plugin can continue a chat, not open one"), so the user gets
+  "I couldn't pass that on to the assistant." The raw capture is saved first, so nothing is lost.
+  Fix (the spec's own fallback): decide inside the hook. Save raw, classify, return `ALLOW` for
+  requests so Hermes runs a normal agent turn, `SKIP` for captures. The hook then waits for
+  classification, which is 25-45 s with thinking on and well under a second with it off, so land the
+  thinking setting first. Spike #14 (no loop-back) can only be checked after this.
 - **Pending captures are not items.** A message saved while the AI is down is a capture with
   `status=pending` and no item; `stash list` will not show it. It is filed by `/stash_retry`
   (no automatic retry exists in Plan 1).

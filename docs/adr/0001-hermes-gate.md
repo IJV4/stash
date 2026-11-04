@@ -22,6 +22,8 @@ Hermes `b7736eca98`, gateway in polling mode, local `qwen3.5:latest` at 64k, tes
 | 6 | **Pass (gate)** | Ollama stopped; message saved as a pending capture (`status=pending`, no item), gateway log shows `pre_gateway_dispatch skip`, bot replied "saved", log `deferred: ai_unavailable`. After restart, `/stash_retry` filed it (`media / want_to`). |
 | 10 | Ollama half **passes** | 22 text cases through the filing schema (`response_format`) against local Ollama: 0 errors, no HTTP 400. OpenRouter half not run (needs a key). |
 | 12 | **Pass** | Tesseract 5.3.4 read all three fake PNGs correctly; the eval OCR arm ran on all three (2 scored fine, 1 errored after OCR; see ADR 0004). |
+| 7 | **Fail (as the spec anticipated; not a no-go)** | Asked "What can I do this Saturday?": stash saved the raw capture (`status=request`, so raw-first held) and classified it as a request, but the handoff failed and the bot replied "I couldn't pass that on to the assistant." Gateway log: `Plugin message injection refused: plugin=stash origin=telegram/… has no human message admitted yet; a plugin can continue a chat, not open one`. Cause: `MessageIntake.on_dispatch` returns `SKIP` for every message, so Hermes never admits the human message, and `inject_message` can only *continue* a chat. The hook's verdicts are `skip`, `allow` and `rewrite` (`gateway/run_inbound_hooks.py`). Fix (spec fallback): decide inside the hook, i.e. save raw, classify, return `ALLOW` for requests so Hermes runs a normal agent turn, `SKIP` for captures. See the Mac handoff note. |
+| 14 | Blocked by #7 | Cannot be tested until questions reach the agent. |
 | 13 | Pass (plain-message half) | Plain message: the Hermes gateway log shows `pre_gateway_dispatch skip` (stash itself does not log the verdict), no agent turn, item saved. `/list` → allow and the fail-open case are not yet checked. |
 | 9 | Partial | A public web page's title and URL were captured on the item. YouTube, Instagram and the localhost refusal are untested. |
 | 15 | Resolved, with a bug fixed | Hermes refuses `/retry` (built-in). The alias was registered as `stash_retry`, but the gateway looks plugin commands up as `name.replace("_", "-")`, so Telegram's `/stash_retry` was "unknown command". Fixed by registering `stash-retry` (typed `/stash_retry`); test-first, `make check` green. `set_my_commands` succeeded with the hyphenated alias (60 commands; Hermes hides 66 more over Telegram's 60-command limit, so whether stash's commands are in the visible menu is still to eyeball; they work when typed). |
@@ -35,7 +37,7 @@ Hermes config changed from defaults to: local `qwen3.5:latest` at 64k, Telegram 
 `[web, stash]`, terminal/file/code/browser/delegation disabled. Backup of the original:
 `~/.hermes/backups/pre-stash-*`.
 
-Not yet run: #3, #4, #5 (baseline done for qwen3.5 only), #7, #8, #10 (OpenRouter half), #11, #14.
+Not yet run: #3, #4, #5 (baseline done for qwen3.5 only), #8, #10 (OpenRouter half), #11. #7 failed (above); #14 waits for its fix.
 
 ## Notes before the spike
 - The installed Hermes checkout (`b7736eca98`, 2026-11-03) is 412 commits past the pin
