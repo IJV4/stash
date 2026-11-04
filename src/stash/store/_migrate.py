@@ -4,6 +4,8 @@ from collections.abc import Iterator
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 
+from stash.store._transaction import immediate_transaction
+
 _MIGRATION_NAME = re.compile(r"([0-9]{4})_.*\.sql")
 
 
@@ -44,16 +46,11 @@ def _schema_version(connection: sqlite3.Connection) -> int:
 
 
 def _apply(connection: sqlite3.Connection, version: int, script: str) -> None:
-    connection.execute("BEGIN IMMEDIATE")
-    try:
+    with immediate_transaction(connection):
         if _schema_version(connection) < version:
             for statement in _statements(script):
                 connection.execute(statement)
             connection.execute(f"PRAGMA user_version = {int(version)}")
-        connection.execute("COMMIT")
-    except BaseException:
-        connection.execute("ROLLBACK")
-        raise
 
 
 def _statements(script: str) -> Iterator[str]:

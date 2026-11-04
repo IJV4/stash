@@ -13,6 +13,7 @@ from stash.domain import (
     SourceRef,
     Stage,
 )
+from stash.store import Store
 
 BASE = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 LATER = BASE + timedelta(hours=3)
@@ -31,6 +32,10 @@ def chat_body(content: str) -> dict[str, object]:
 
 def minutes_after(minutes: int) -> datetime:
     return BASE + timedelta(minutes=minutes)
+
+
+def days_after(days: int) -> date:
+    return COMPLETED_ON + timedelta(days=days)
 
 
 def a_source(message_id: str = "m1") -> SourceRef:
@@ -118,6 +123,7 @@ def an_outcome(**overrides: Any) -> Outcome:
         "notes": "Great",
         "takeaways": ("Salt early",),
         "recorded_at": BASE,
+        "edited_at": None,
     }
     return Outcome(**{**fields, **overrides})
 
@@ -131,3 +137,34 @@ def a_parent_item() -> Item:
 
 
 UNSAFE_WIRE_IDS = ("", "   ", "a:b", "two words", "bell\x07", "x" * 41, "é" * 40)
+
+
+def stored(store: Store, item: Item) -> Item:
+    store.add_capture(a_capture())
+    store.save_item(item)
+    return item
+
+
+def stored_item(store: Store, **overrides: Any) -> Item:
+    return stored(store, an_item(**overrides))
+
+
+def stored_parent(store: Store) -> Item:
+    return stored(store, a_parent_item())
+
+
+def stored_completion(
+    store: Store,
+    item_id: str,
+    completed_on: date = COMPLETED_ON,
+    recorded_at: datetime = BASE,
+    **overrides: Any,
+) -> Item:
+    fields: dict[str, Any] = {"id": item_id, "title": item_id, "stage": Stage.DONE}
+    item = stored_item(store, **{**fields, **overrides})
+    store.add_outcome(
+        an_outcome(
+            id=f"o-{item_id}", item_id=item_id, completed_on=completed_on, recorded_at=recorded_at
+        )
+    )
+    return item

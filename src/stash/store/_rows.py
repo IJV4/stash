@@ -2,7 +2,7 @@ import json
 import sqlite3
 from datetime import UTC, date, datetime
 
-from stash.domain import CaptureStatus, Item, ItemType, RawCapture, SourceRef, Stage
+from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, SourceRef, Stage
 
 
 def utc_text(moment: datetime) -> str:
@@ -32,7 +32,7 @@ def capture_from_row(row: sqlite3.Row) -> RawCapture:
     )
 
 
-def item_values(item: Item) -> tuple[str | None, ...]:
+def item_values(item: Item) -> tuple[str | int | None, ...]:
     return (
         item.id,
         item.capture_id,
@@ -47,6 +47,9 @@ def item_values(item: Item) -> tuple[str | None, ...]:
         None if item.date is None else item.date.isoformat(),
         utc_text(item.created_at),
         utc_text(item.updated_at),
+        int(item.kept),
+        item.parent_id,
+        item.drop_reason,
     )
 
 
@@ -65,6 +68,35 @@ def item_from_row(row: sqlite3.Row) -> Item:
         date=None if row["date"] is None else date.fromisoformat(row["date"]),
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
+        kept=bool(row["kept"]),
+        parent_id=row["parent_id"],
+        drop_reason=row["drop_reason"],
+    )
+
+
+def outcome_values(outcome: Outcome) -> tuple[str | int | None, ...]:
+    return (
+        outcome.id,
+        outcome.item_id,
+        outcome.completed_on.isoformat(),
+        outcome.rating,
+        outcome.notes,
+        _json(outcome.takeaways),
+        utc_text(outcome.recorded_at),
+        None if outcome.edited_at is None else utc_text(outcome.edited_at),
+    )
+
+
+def outcome_from_row(row: sqlite3.Row) -> Outcome:
+    return Outcome(
+        id=row["id"],
+        item_id=row["item_id"],
+        completed_on=date.fromisoformat(row["completed_on"]),
+        rating=row["rating"],
+        notes=row["notes"],
+        takeaways=tuple(json.loads(row["takeaways"])),
+        recorded_at=datetime.fromisoformat(row["recorded_at"]),
+        edited_at=None if row["edited_at"] is None else datetime.fromisoformat(row["edited_at"]),
     )
 
 

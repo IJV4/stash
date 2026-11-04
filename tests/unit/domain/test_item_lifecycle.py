@@ -203,3 +203,35 @@ def test_moving_a_dropped_item_to_want_to_changes_only_stage_drop_reason_and_upd
 
     # Assert
     assert moved == an_item(stage=Stage.WANT_TO, tags=("food",), updated_at=LATER)
+
+
+def test_a_kept_done_item_belongs_in_the_library() -> None:
+    # Setup
+    item = an_item(stage=Stage.DONE).kept_as(True, LATER)
+
+    # Assert
+    assert item.in_library is True
+
+
+def test_an_item_that_was_not_kept_does_not_belong_in_the_library() -> None:
+    # Setup
+    item = an_item(stage=Stage.DONE)
+
+    # Assert
+    assert item.in_library is False
+
+
+def test_a_kept_item_that_was_dropped_does_not_belong_in_the_library() -> None:
+    # Setup
+    item = an_item(stage=Stage.DONE).kept_as(True, LATER).dropped(None, LATER)
+
+    # Assert
+    assert item.in_library is False
+
+
+def test_a_kept_item_that_was_reopened_still_belongs_in_the_library() -> None:
+    # Setup
+    item = an_item(stage=Stage.DONE).kept_as(True, LATER).reopened(LATER)
+
+    # Assert
+    assert item.in_library is True

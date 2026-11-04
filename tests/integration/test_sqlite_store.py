@@ -1,11 +1,15 @@
 import sqlite3
-from contextlib import closing
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
 from pathlib import Path
 
 import pytest
-from builders import a_capture, an_item
+from builders import LATER, a_capture, an_item, an_outcome, stored_item
 from fakes.store_factories import opened
-from migration_sets import packaged_init_script, write_migrations
+from migration_sets import INIT_SCRIPT, LIFECYCLE_SCRIPT, packaged_scripts, write_migrations
+
+from stash.domain import Item, Stage
+from stash.store.sqlite import SqliteStore
 
 TRIGGER_MIGRATION = """
 CREATE TRIGGER refuse_forbidden_capture BEFORE INSERT ON captures WHEN new.text = 'forbidden'
@@ -13,13 +17,16 @@ BEGIN SELECT RAISE(ABORT, 'forbidden capture'); END;
 
 CREATE TRIGGER refuse_forbidden_item BEFORE INSERT ON items WHEN new.title = 'forbidden'
 BEGIN SELECT RAISE(ABORT, 'forbidden item'); END;
+
+CREATE TRIGGER refuse_forbidden_outcome BEFORE INSERT ON outcomes WHEN new.notes = 'forbidden'
+BEGIN SELECT RAISE(ABORT, 'forbidden outcome'); END;
 """
 
 
 def with_trigger_migration(directory: Path) -> Path:
     return write_migrations(
         directory,
-        {"0001_init.sql": packaged_init_script(), "0002_triggers.sql": TRIGGER_MIGRATION},
+        {**packaged_scripts(INIT_SCRIPT, LIFECYCLE_SCRIPT), "0003_triggers.sql": TRIGGER_MIGRATION},
     )
 
 
@@ -134,3 +141,34 @@ def test_an_item_refused_by_another_constraint_is_not_reported_as_an_unknown_cap
         # Execute / Assert
         with pytest.raises(sqlite3.IntegrityError):
             store.save_item(an_item(title="forbidden"))
+
+
+@contextmanager
+def store_holding_a_doing_item(tmp_path: Path) -> Iterator[tuple[SqliteStore, Item]]:
+    migrations = with_trigger_migration(tmp_path / "migrations")
+    with opened(tmp_path / "stash.db", migrations) as store:
+        yield store, stored_item(store, stage=Stage.DOING)
+
+
+@pytest.mark.integration
+def test_a_completion_whose_outcome_is_refused_leaves_the_item_unchanged(tmp_path: Path) -> None:
+    # Setup
+    with store_holding_a_doing_item(tmp_path) as (store, item):
+        # Execute
+        with pytest.raises(sqlite3.IntegrityError, match="forbidden outcome"):
+            store.record_completion(item.completed(LATER), an_outcome(notes="forbidden"))
+
+        # Assert
+        assert store.get_item("i1") == item
+
+
+@pytest.mark.integration
+def test_a_completion_whose_outcome_is_refused_stores_no_outcome(tmp_path: Path) -> None:
+    # Setup
+    with store_holding_a_doing_item(tmp_path) as (store, item):
+        # Execute
+        with pytest.raises(sqlite3.IntegrityError, match="forbidden outcome"):
+            store.record_completion(item.completed(LATER), an_outcome(notes="forbidden"))
+
+        # Assert
+        assert store.outcomes_for("i1") == []

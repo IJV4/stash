@@ -220,6 +220,10 @@ class Item:
     def ungrouped(self, now: dt.datetime) -> "Item":
         return replace(self, parent_id=None, updated_at=now)
 
+    @property
+    def in_library(self) -> bool:
+        return self.kept and self.stage is not Stage.DROPPED
+
     def can_move_to(self, stage: Stage) -> bool:
         return stage in MOVEABLE_STAGES and not lacks_required_date(stage, self.date)
 

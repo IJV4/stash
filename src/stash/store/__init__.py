@@ -4,10 +4,13 @@ from stash.store.port import (
     BackupWriter,
     CaptureStore,
     Closeable,
+    DuplicateOutcomeError,
     ItemStore,
+    OutcomeStore,
     SettingsStore,
     Store,
     UnknownCaptureError,
+    UnknownItemError,
 )
 
 __all__ = [
@@ -16,8 +19,11 @@ __all__ = [
     "BackupWriter",
     "CaptureStore",
     "Closeable",
+    "DuplicateOutcomeError",
     "ItemStore",
+    "OutcomeStore",
     "SettingsStore",
     "Store",
     "UnknownCaptureError",
+    "UnknownItemError",
 ]

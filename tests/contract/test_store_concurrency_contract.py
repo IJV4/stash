@@ -1,6 +1,8 @@
-from builders import a_capture, a_source
+from builders import LATER, a_capture, a_source, an_item_at, an_outcome
 from fakes.store_factories import StoreFactory, all_stores
 from threads import run_concurrently, run_in_thread
+
+from stash.domain import Stage
 
 
 @all_stores
@@ -70,3 +72,31 @@ def test_the_same_source_added_concurrently_is_accepted_exactly_once(
 
         # Assert
         assert (errors, sorted(outcomes)) == ([], [False] * (workers - 1) + [True])
+
+
+@all_stores
+def test_completions_recorded_concurrently_are_all_kept(open_store: StoreFactory) -> None:
+    # Setup
+    workers = 8
+    with open_store() as store:
+        store.add_capture(a_capture())
+        for worker in range(workers):
+            store.save_item(an_item_at(Stage.DOING, id=f"i{worker}"))
+
+        def complete(worker: int) -> None:
+            item = an_item_at(Stage.DOING, id=f"i{worker}")
+            outcome = an_outcome(id=f"o{worker}", item_id=item.id)
+            store.record_completion(item.completed(LATER), outcome)
+
+        # Execute
+        errors = run_concurrently(workers, complete)
+
+        # Assert
+        finished = [
+            (store.get_item(f"i{worker}"), len(store.outcomes_for(f"i{worker}")))
+            for worker in range(workers)
+        ]
+        assert (errors, [(item and item.stage, count) for item, count in finished]) == (
+            [],
+            [(Stage.DONE, 1)] * workers,
+        )

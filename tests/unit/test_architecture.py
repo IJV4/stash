@@ -16,9 +16,11 @@ SQLITE_USERS = (
     "stash.store.sqlite",
     "stash.store._rows",
     "stash.store._migrate",
+    "stash.store._transaction",
     "stash.app.database",
 )
 ADAPTER_ONLY_IMPORTERS = ("stash.store.sqlite",)
+TRANSACTION_IMPORTERS = ("stash.store.sqlite", "stash.store._migrate")
 LLM_ADAPTERS = tuple(module for module in ADAPTER_MODULES if is_within(module, "stash.llm"))
 ENTRY_POINTS = (
     "stash.app",
@@ -195,6 +197,8 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         ("sqlite3", SQLITE_USERS),
         ("stash.store._rows", ADAPTER_ONLY_IMPORTERS),
         ("stash.store._migrate", ADAPTER_ONLY_IMPORTERS),
+        ("stash.store._sql", ADAPTER_ONLY_IMPORTERS),
+        ("stash.store._transaction", TRANSACTION_IMPORTERS),
         (ADAPTER_MODULE, ADAPTER_IMPORTERS),
         ("stash.store.backup", ADAPTER_IMPORTERS),
         ("stash.http_client", ADAPTER_IMPORTERS),
@@ -213,6 +217,8 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         "sqlite3",
         "rows",
         "migrate",
+        "sql",
+        "transaction",
         "adapter",
         "store-backup",
         "http-client",

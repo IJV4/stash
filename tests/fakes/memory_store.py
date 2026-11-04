@@ -1,7 +1,24 @@
 import threading
+from dataclasses import replace
+from datetime import date, datetime
+from typing import NamedTuple
 
-from stash.domain import CaptureStatus, Item, ItemType, RawCapture, SourceRef, Stage
-from stash.store.port import DEFAULT_PAGE_SIZE, UnknownCaptureError, require_non_negative
+from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, SourceRef, Stage
+from stash.store.port import (
+    DEFAULT_PAGE_SIZE,
+    DuplicateOutcomeError,
+    UnknownCaptureError,
+    UnknownItemError,
+    require_date_range,
+    require_non_negative,
+    require_outcome_for_item,
+)
+
+
+class Recency(NamedTuple):
+    completed_on: date
+    recorded_at: datetime
+    outcome_id: str
 
 
 class MemoryStore:
@@ -10,6 +27,7 @@ class MemoryStore:
         self._captures: dict[str, RawCapture] = {}
         self._sources: set[SourceRef] = set()
         self._items: dict[str, Item] = {}
+        self._outcomes: dict[str, Outcome] = {}
         self._settings: dict[str, str] = {}
 
     def add_capture(self, capture: RawCapture) -> bool:
@@ -41,7 +59,7 @@ class MemoryStore:
 
     def save_item(self, item: Item) -> None:
         with self._lock:
-            self._known_capture(item.capture_id)
+            self._require_references(item)
             self._items[item.id] = item
 
     def get_item(self, item_id: str) -> Item | None:
@@ -51,6 +69,8 @@ class MemoryStore:
     def delete_item(self, item_id: str) -> None:
         with self._lock:
             self._items.pop(item_id, None)
+            self._ungroup_children_of(item_id)
+            self._drop_outcomes_of(item_id)
 
     def list_items(
         self,
@@ -77,6 +97,80 @@ class MemoryStore:
         matching = [item for item in self._newest_first() if _mentions(item, needle)]
         return matching[:limit]
 
+    def add_outcome(self, outcome: Outcome) -> None:
+        with self._lock:
+            self._require_stored_item(outcome.item_id)
+            self._require_unused_outcome_id(outcome)
+            self._outcomes[outcome.id] = outcome
+
+    def save_outcome(self, outcome: Outcome) -> None:
+        with self._lock:
+            self._require_stored_item(outcome.item_id)
+            self._outcomes[outcome.id] = outcome
+
+    def record_completion(self, item: Item, outcome: Outcome) -> None:
+        require_outcome_for_item(item, outcome)
+        with self._lock:
+            self._require_stored_item(item.id)
+            self._require_references(item)
+            self._require_unused_outcome_id(outcome)
+            self._items[item.id] = item
+            self._outcomes[outcome.id] = outcome
+
+    def outcomes_for(self, item_id: str) -> list[Outcome]:
+        with self._lock:
+            outcomes = [
+                outcome for outcome in self._outcomes.values() if outcome.item_id == item_id
+            ]
+        return sorted(outcomes, key=_recency)
+
+    def get_outcome(self, outcome_id: str) -> Outcome | None:
+        with self._lock:
+            return self._outcomes.get(outcome_id)
+
+    def library(
+        self,
+        item_type: ItemType | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+        offset: int = 0,
+    ) -> list[Item]:
+        require_non_negative("limit", limit)
+        require_non_negative("offset", offset)
+        with self._lock:
+            kept = [
+                item
+                for item in self._newest_first()
+                if item.in_library and (item_type is None or item.item_type is item_type)
+            ]
+            latest = self._latest_completions()
+        completed = sorted(
+            (item for item in kept if item.id in latest),
+            key=lambda item: latest[item.id],
+            reverse=True,
+        )
+        never_completed = [item for item in kept if item.id not in latest]
+        return (completed + never_completed)[offset : offset + limit]
+
+    def children_of(self, parent_id: str) -> list[Item]:
+        with self._lock:
+            children = [item for item in self._items.values() if item.parent_id == parent_id]
+        return sorted(children, key=lambda item: (item.created_at, item.id))
+
+    def done_between(self, start: date, end: date) -> list[Item]:
+        require_date_range(start, end)
+        with self._lock:
+            latest = self._latest_completions(start, end)
+            ranked = sorted(
+                latest,
+                key=lambda item_id: (
+                    latest[item_id].completed_on,
+                    latest[item_id].recorded_at,
+                    item_id,
+                ),
+                reverse=True,
+            )
+            return [self._items[item_id] for item_id in ranked]
+
     def get_setting(self, key: str) -> str | None:
         with self._lock:
             return self._settings.get(key)
@@ -91,10 +185,53 @@ class MemoryStore:
             raise UnknownCaptureError(capture_id)
         return capture
 
+    def _latest_completions(
+        self, start: date | None = None, end: date | None = None
+    ) -> dict[str, Recency]:
+        latest: dict[str, Recency] = {}
+        with self._lock:
+            for outcome in self._outcomes.values():
+                if _within(outcome.completed_on, start, end):
+                    rank = _recency(outcome)
+                    latest[outcome.item_id] = max(rank, latest.get(outcome.item_id, rank))
+        return latest
+
+    def _ungroup_children_of(self, parent_id: str) -> None:
+        for child in [item for item in self._items.values() if item.parent_id == parent_id]:
+            self._items[child.id] = replace(child, parent_id=None)
+
+    def _drop_outcomes_of(self, item_id: str) -> None:
+        self._outcomes = {
+            outcome_id: outcome
+            for outcome_id, outcome in self._outcomes.items()
+            if outcome.item_id != item_id
+        }
+
+    def _require_stored_item(self, item_id: str) -> None:
+        if item_id not in self._items:
+            raise UnknownItemError(item_id)
+
+    def _require_unused_outcome_id(self, outcome: Outcome) -> None:
+        if outcome.id in self._outcomes:
+            raise DuplicateOutcomeError(outcome.id)
+
+    def _require_references(self, item: Item) -> None:
+        self._known_capture(item.capture_id)
+        if item.parent_id is not None and item.parent_id not in self._items:
+            raise UnknownItemError(item.parent_id)
+
     def _newest_first(self) -> list[Item]:
         with self._lock:
             items = list(self._items.values())
         return sorted(items, key=lambda item: (item.created_at, item.id), reverse=True)
+
+
+def _recency(outcome: Outcome) -> Recency:
+    return Recency(outcome.completed_on, outcome.recorded_at, outcome.id)
+
+
+def _within(day: date, start: date | None, end: date | None) -> bool:
+    return (start is None or start <= day) and (end is None or day <= end)
 
 
 def _mentions(item: Item, needle: str) -> bool:

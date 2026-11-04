@@ -1,18 +1,35 @@
 import sqlite3
 import threading
 import time
+from collections.abc import Mapping
 from contextlib import closing
+from datetime import date
+from enum import StrEnum
 from importlib.resources.abc import Traversable
 from pathlib import Path
+from typing import NoReturn
 
-from stash.domain import CaptureStatus, Item, ItemType, RawCapture, Stage
+from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, Stage
+from stash.store import _sql as sql
 from stash.store._migrate import apply_migrations, packaged_migrations
-from stash.store._rows import capture_from_row, capture_values, item_from_row, item_values
+from stash.store._rows import (
+    capture_from_row,
+    capture_values,
+    item_from_row,
+    item_values,
+    outcome_from_row,
+    outcome_values,
+)
+from stash.store._transaction import immediate_transaction
 from stash.store.port import (
     DEFAULT_PAGE_SIZE,
     BackupError,
+    DuplicateOutcomeError,
     UnknownCaptureError,
+    UnknownItemError,
+    require_date_range,
     require_non_negative,
+    require_outcome_for_item,
 )
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
@@ -21,51 +38,9 @@ _BUSY = "SQLITE_BUSY"
 _WAL_SWITCH_DEADLINE_SECONDS = 5.0
 _WAL_SWITCH_RETRY_SECONDS = 0.01
 
-_INSERT_CAPTURE = """
-INSERT INTO captures (id, chat_id, message_id, received_at, text, media_paths, status)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (chat_id, message_id) DO NOTHING
-"""
 
-_UPSERT_ITEM = """
-INSERT INTO items (id, capture_id, item_type, title, stage, source_url, note, details,
-                   tags, people, date, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (id) DO UPDATE SET
-    capture_id = excluded.capture_id,
-    item_type = excluded.item_type,
-    title = excluded.title,
-    stage = excluded.stage,
-    source_url = excluded.source_url,
-    note = excluded.note,
-    details = excluded.details,
-    tags = excluded.tags,
-    people = excluded.people,
-    date = excluded.date,
-    created_at = excluded.created_at,
-    updated_at = excluded.updated_at
-"""
-
-_LIST_ITEMS = """
-SELECT * FROM items
-WHERE (:stage IS NULL OR stage = :stage) AND (:item_type IS NULL OR item_type = :item_type)
-ORDER BY created_at DESC, id DESC
-LIMIT :limit OFFSET :offset
-"""
-
-_SEARCH_ITEMS = """
-SELECT * FROM items
-WHERE instr(casefold(title), :needle) > 0
-   OR instr(casefold(note), :needle) > 0
-   OR EXISTS (SELECT 1 FROM json_each(items.tags) WHERE instr(casefold(value), :needle) > 0)
-ORDER BY created_at DESC, id DESC
-LIMIT :limit
-"""
-
-_UPSERT_SETTING = """
-INSERT INTO settings (key, value) VALUES (?, ?)
-ON CONFLICT (key) DO UPDATE SET value = excluded.value
-"""
+def _value_of(member: StrEnum | None) -> str | None:
+    return None if member is None else member.value
 
 
 def _enable_wal(connection: sqlite3.Connection) -> None:
@@ -104,7 +79,7 @@ class SqliteStore:
     def add_capture(self, capture: RawCapture) -> bool:
         with self._lock:
             try:
-                cursor = self._connection.execute(_INSERT_CAPTURE, capture_values(capture))
+                cursor = self._connection.execute(sql.INSERT_CAPTURE, capture_values(capture))
             except sqlite3.IntegrityError as error:
                 if error.sqlite_errorname != _PRIMARY_KEY_VIOLATION:
                     raise
@@ -137,11 +112,11 @@ class SqliteStore:
     def save_item(self, item: Item) -> None:
         with self._lock:
             try:
-                self._connection.execute(_UPSERT_ITEM, item_values(item))
+                self._connection.execute(sql.UPSERT_ITEM, item_values(item))
             except sqlite3.IntegrityError as error:
                 if error.sqlite_errorname != _FOREIGN_KEY_VIOLATION:
                     raise
-                raise UnknownCaptureError(item.capture_id) from error
+                self._refuse_item(item, error)
 
     def get_item(self, item_id: str) -> Item | None:
         with self._lock:
@@ -163,27 +138,73 @@ class SqliteStore:
     ) -> list[Item]:
         require_non_negative("limit", limit)
         require_non_negative("offset", offset)
-        with self._lock:
-            rows = self._connection.execute(
-                _LIST_ITEMS,
-                {
-                    "stage": None if stage is None else stage.value,
-                    "item_type": None if item_type is None else item_type.value,
-                    "limit": limit,
-                    "offset": offset,
-                },
-            ).fetchall()
-        return [item_from_row(row) for row in rows]
+        parameters = {
+            "stage": _value_of(stage),
+            "item_type": _value_of(item_type),
+            "limit": limit,
+            "offset": offset,
+        }
+        return self._items_from(sql.LIST_ITEMS, parameters)
 
     def search_items(self, query: str, limit: int = DEFAULT_PAGE_SIZE) -> list[Item]:
         require_non_negative("limit", limit)
         if not query.strip():
             return []
+        return self._items_from(sql.SEARCH_ITEMS, {"needle": query.casefold(), "limit": limit})
+
+    def library(
+        self,
+        item_type: ItemType | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+        offset: int = 0,
+    ) -> list[Item]:
+        require_non_negative("limit", limit)
+        require_non_negative("offset", offset)
+        parameters = {
+            "item_type": _value_of(item_type),
+            "dropped": Stage.DROPPED.value,
+            "limit": limit,
+            "offset": offset,
+        }
+        return self._items_from(sql.LIBRARY, parameters)
+
+    def children_of(self, parent_id: str) -> list[Item]:
+        return self._items_from(sql.CHILDREN_OF, (parent_id,))
+
+    def done_between(self, start: date, end: date) -> list[Item]:
+        require_date_range(start, end)
+        return self._items_from(
+            sql.DONE_BETWEEN, {"start": start.isoformat(), "end": end.isoformat()}
+        )
+
+    def add_outcome(self, outcome: Outcome) -> None:
         with self._lock:
-            rows = self._connection.execute(
-                _SEARCH_ITEMS, {"needle": query.casefold(), "limit": limit}
-            ).fetchall()
-        return [item_from_row(row) for row in rows]
+            self._insert_outcome(outcome)
+
+    def save_outcome(self, outcome: Outcome) -> None:
+        with self._lock:
+            try:
+                self._connection.execute(sql.UPSERT_OUTCOME, outcome_values(outcome))
+            except sqlite3.IntegrityError as error:
+                self._refuse_outcome(outcome, error)
+
+    def record_completion(self, item: Item, outcome: Outcome) -> None:
+        require_outcome_for_item(item, outcome)
+        with self._lock, immediate_transaction(self._connection):
+            if not self._exists(sql.ITEM_EXISTS, item.id):
+                raise UnknownItemError(item.id)
+            self.save_item(item)
+            self._insert_outcome(outcome)
+
+    def outcomes_for(self, item_id: str) -> list[Outcome]:
+        with self._lock:
+            rows = self._connection.execute(sql.OUTCOMES_FOR_ITEM, (item_id,)).fetchall()
+        return [outcome_from_row(row) for row in rows]
+
+    def get_outcome(self, outcome_id: str) -> Outcome | None:
+        with self._lock:
+            row = self._connection.execute(sql.OUTCOME_BY_ID, (outcome_id,)).fetchone()
+        return None if row is None else outcome_from_row(row)
 
     def get_setting(self, key: str) -> str | None:
         with self._lock:
@@ -194,7 +215,7 @@ class SqliteStore:
 
     def put_setting(self, key: str, value: str) -> None:
         with self._lock:
-            self._connection.execute(_UPSERT_SETTING, (key, value))
+            self._connection.execute(sql.UPSERT_SETTING, (key, value))
 
     def backup_to(self, target: Path) -> None:
         try:
@@ -206,3 +227,33 @@ class SqliteStore:
     def close(self) -> None:
         with self._lock:
             self._connection.close()
+
+    def _refuse_item(self, item: Item, error: sqlite3.IntegrityError) -> NoReturn:
+        if not self._exists(sql.CAPTURE_EXISTS, item.capture_id):
+            raise UnknownCaptureError(item.capture_id) from error
+        if item.parent_id is not None:
+            raise UnknownItemError(item.parent_id) from error
+        raise error
+
+    def _items_from(
+        self, query: str, parameters: Mapping[str, object] | tuple[str, ...]
+    ) -> list[Item]:
+        with self._lock:
+            rows = self._connection.execute(query, parameters).fetchall()
+        return [item_from_row(row) for row in rows]
+
+    def _exists(self, query: str, row_id: str) -> bool:
+        return self._connection.execute(query, (row_id,)).fetchone() is not None
+
+    def _insert_outcome(self, outcome: Outcome) -> None:
+        try:
+            self._connection.execute(sql.INSERT_OUTCOME, outcome_values(outcome))
+        except sqlite3.IntegrityError as error:
+            self._refuse_outcome(outcome, error)
+
+    def _refuse_outcome(self, outcome: Outcome, error: sqlite3.IntegrityError) -> NoReturn:
+        if error.sqlite_errorname == _PRIMARY_KEY_VIOLATION:
+            raise DuplicateOutcomeError(outcome.id) from error
+        if error.sqlite_errorname == _FOREIGN_KEY_VIOLATION:
+            raise UnknownItemError(outcome.item_id) from error
+        raise error

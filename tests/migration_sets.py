@@ -1,6 +1,9 @@
 from importlib.resources import files
 from pathlib import Path
 
+INIT_SCRIPT = "0001_init.sql"
+LIFECYCLE_SCRIPT = "0002_lifecycle.sql"
+
 
 def write_migrations(directory: Path, scripts: dict[str, str]) -> Path:
     directory.mkdir()
@@ -9,5 +12,10 @@ def write_migrations(directory: Path, scripts: dict[str, str]) -> Path:
     return directory
 
 
+def packaged_scripts(*names: str) -> dict[str, str]:
+    packaged = files("stash.store") / "migrations"
+    return {name: (packaged / name).read_text(encoding="utf-8") for name in names}
+
+
 def packaged_init_script() -> str:
-    return (files("stash.store") / "migrations" / "0001_init.sql").read_text(encoding="utf-8")
+    return packaged_scripts(INIT_SCRIPT)[INIT_SCRIPT]

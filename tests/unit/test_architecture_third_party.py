@@ -2,7 +2,7 @@ import pytest
 from architecture_guard import ADAPTER_MODULES, importers_outside, project_sources
 
 THIRD_PARTY_PACKAGES = ("httpx", "sqlite3", "subprocess", "yt_dlp", "PIL", "pytesseract")
-STORE_INTERNALS = ("stash.store._rows", "stash.store._migrate")
+STORE_INTERNALS = ("stash.store._rows", "stash.store._migrate", "stash.store._transaction")
 ALLOWED_IMPORTERS = (*ADAPTER_MODULES, *STORE_INTERNALS, "stash.app")
 
 

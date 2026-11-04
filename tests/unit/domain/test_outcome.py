@@ -25,7 +25,8 @@ def test_an_outcome_keeps_the_values_it_was_built_with() -> None:
         outcome.notes,
         outcome.takeaways,
         outcome.recorded_at,
-    ) == ("o1", "i1", COMPLETED_ON, 4, "Great", ("Salt early",), BASE)
+        outcome.edited_at,
+    ) == ("o1", "i1", COMPLETED_ON, 4, "Great", ("Salt early",), BASE, None)
 
 
 def test_an_outcome_without_a_rating_is_accepted() -> None:
@@ -178,7 +179,7 @@ def test_with_notes_replaces_the_notes_and_takeaways() -> None:
     assert (edited.notes, edited.takeaways) == ("Better the second time", ("Less salt",))
 
 
-def test_with_notes_stamps_recorded_at_with_now() -> None:
+def test_with_notes_stamps_edited_at_with_now() -> None:
     # Setup
     outcome = an_outcome()
 
@@ -186,10 +187,21 @@ def test_with_notes_stamps_recorded_at_with_now() -> None:
     edited = outcome.with_notes("Better", (), LATER)
 
     # Assert
-    assert edited.recorded_at == LATER
+    assert edited.edited_at == LATER
 
 
-def test_with_notes_changes_nothing_but_notes_takeaways_and_recorded_at() -> None:
+def test_with_notes_keeps_recorded_at() -> None:
+    # Setup
+    outcome = an_outcome()
+
+    # Execute
+    edited = outcome.with_notes("Better", (), LATER)
+
+    # Assert
+    assert edited.recorded_at == BASE
+
+
+def test_with_notes_changes_nothing_but_notes_takeaways_and_edited_at() -> None:
     # Setup
     outcome = an_outcome()
 
@@ -197,7 +209,7 @@ def test_with_notes_changes_nothing_but_notes_takeaways_and_recorded_at() -> Non
     edited = outcome.with_notes("Better", ("Less salt",), LATER)
 
     # Assert
-    assert edited == an_outcome(notes="Better", takeaways=("Less salt",), recorded_at=LATER)
+    assert edited == an_outcome(notes="Better", takeaways=("Less salt",), edited_at=LATER)
 
 
 def test_with_notes_keeps_id_item_id_completed_on_and_rating() -> None:
@@ -279,5 +291,42 @@ def test_with_notes_with_naive_now_raises_value_error() -> None:
     outcome = an_outcome()
 
     # Execute / Assert
-    with pytest.raises(ValueError, match="recorded_at"):
+    with pytest.raises(ValueError, match="edited_at"):
         outcome.with_notes("Better", (), NAIVE)
+
+
+def test_an_outcome_is_not_edited_until_it_is_given_an_edited_at() -> None:
+    # Execute
+    outcome = an_outcome()
+
+    # Assert
+    assert outcome.edited_at is None
+
+
+def test_an_outcome_with_naive_edited_at_raises_value_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="edited_at"):
+        an_outcome(edited_at=NAIVE)
+
+
+def test_an_outcome_edited_before_it_was_recorded_raises_value_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="edited_at must not be before recorded_at"):
+        an_outcome(recorded_at=LATER, edited_at=BASE)
+
+
+def test_an_outcome_edited_at_the_instant_it_was_recorded_is_accepted() -> None:
+    # Execute
+    outcome = an_outcome(recorded_at=BASE, edited_at=BASE)
+
+    # Assert
+    assert outcome.edited_at == BASE
+
+
+def test_with_notes_dated_before_the_outcome_was_recorded_raises_value_error() -> None:
+    # Setup
+    outcome = an_outcome(recorded_at=LATER)
+
+    # Execute / Assert
+    with pytest.raises(ValueError, match="edited_at must not be before recorded_at"):
+        outcome.with_notes("Better", (), BASE)
