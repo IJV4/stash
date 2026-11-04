@@ -1,7 +1,8 @@
 # stash Plan 3 — Planning and nudges (M3)
 
-> **For agentic workers:** Python only through
-> `python-development:python-coding-orchestrator`; the main loop commits.
+> **For agentic workers:** Python is written as `CLAUDE.md` § "Writing Python" says for the
+> machine you are on (Mac: the `python-development` orchestrator; PC/WSL: subagent-driven
+> development with TDD). The main loop commits.
 > Build **after** the M0 spike — spike check #2 decides the tick mechanism (Task 6).
 > Requires Plan 2. Steps use checkbox (`- [ ]`) syntax.
 

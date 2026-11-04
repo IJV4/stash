@@ -20,6 +20,39 @@ default tests, then `-m integration`). Green before every commit.
 - **Fake data only** in this repo — tests, evals, examples. The owner's real
   items never touch this machine.
 
+## Writing Python
+
+Who writes it depends on the machine. **Check what is installed; do not assume.**
+
+| Machine | Python source is written by | Review |
+|---|---|---|
+| **Mac** (main development) | The `python-development:python-coding-orchestrator` agent (owner's global rule): one orchestrator per task group, the main loop commits. Docs, TOML/YAML, SQL and this file may be written by the main loop. | Plan's own review step |
+| **PC / WSL** (live-service work, spike fixes) | That plugin is **not installed here**. Use `superpowers:subagent-driven-development` with the `general-purpose` agent as implementer and `superpowers:test-driven-development` for every task. Small spike fixes may be done inline only if they are test-first and listed in the commit message. | `branch-reviewer` agent on the branch before it goes to the Mac; `/simplify` and `/code-review` as needed |
+
+If the orchestrator plugin becomes available on a machine, use it there. Either way:
+the gate is `make check`, one task per commit, and work from the plan file.
+
+Conventions (matched to the existing code; follow them, the architecture tests enforce
+the layering):
+
+- **Tooling:** `ruff` (rules `E F I UP B SIM RUF`, line length 100), `mypy --strict` on
+  `src` and `tests/fakes`, Python ≥ 3.11, dependencies via `uv`. `# type: ignore` and
+  `noqa` are not used; fix the typing instead.
+- **Values:** all dataclasses are `frozen=True, slots=True`; closed sets are `StrEnum`;
+  ports are `Protocol`s in the feature package; validation happens at the boundary
+  (`stash.domain._validation`), not scattered.
+- **Names, not numbers:** magic values become `UPPER_SNAKE` module constants.
+- **Comments and docstrings:** almost none. Code is named so it reads on its own. A comment
+  is for an unverified assumption about a live service (state what must be checked) or a
+  non-obvious "why".
+- **Tests:** offline always (fakes, `httpx.MockTransport`). Test names are sentences
+  describing behaviour; bodies use `# Setup` / `# Execute` / `# Assert`. Shared helpers
+  are builders, rigs and fakes at the root of `tests/` (not per-test copies). Integration
+  tests are marked `integration` and still need no network.
+- **Optional dependencies** (`ocr`, `transcribe`) import lazily, inside the factory that
+  needs them, and fall back cleanly when absent (see `stash.app.ocr`).
+- **Fake data only**, including examples and eval cases.
+
 ## Architecture
 
 - Layers: `stash.domain` (shared kernel) → ports (`stash.store.port`, …) →

@@ -1,0 +1,40 @@
+# 0001 — Keep Hermes as the Telegram host (M0 go/no-go)
+
+**Status:** **Go (keep Hermes)** — gate checks #1 and #6 passed on 2026-11-04. Remaining spike checks are still open (below); they do not change this decision.
+
+## Context
+stash is a Hermes Agent plugin over a Hermes-free core (spec: "Approach 1"). The
+alternative is a custom bot on python-telegram-bot with stash's own LLM client and
+scheduler (spec: "Approach 2"). Only `src/stash/hermes_adapter/` differs between them.
+
+## Gate
+- **Go (keep Hermes)** only if spike #1 (inline buttons and callbacks) and #6 (raw save
+  before the LLM) both pass.
+- **No-go:** switch to the custom bot. #7 failing alone is not a no-go.
+
+## Spike results
+Hermes `b7736eca98`, gateway in polling mode, local `qwen3.5:latest` at 64k, fake messages only.
+
+| # | Result | Evidence |
+|---|---|---|
+| 1 | **Pass (gate)** | Shared a link; confirmation had a **Type** button; choosing "Plans" opened the menu and edited the item to `plan` (DB `item_type=plan`). |
+| 2 | **Pass (mechanism: Hermes cron `--no-agent`)** | `hermes cron create "every 2m" --no-agent --script stash_tick.py --deliver telegram:<owner id> --repeat 2`; script in `~/.hermes/scripts/`. The printed line arrived in Telegram at 13:04:41 as a "Cronjob Response" (Hermes adds a header and a "send me a message to stop this job" footer). Ollama got 0 requests during the run and the model stayed unloaded; `hermes cron runs` shows `completed`. `ctx.spawn_task` from the plugin was **not** tested (not needed). Plan 3 Task 6 can use this mechanism. `--deliver telegram` alone needs a home channel (none set), so use `telegram:<chat id>`. |
+| 6 | **Pass (gate)** | Ollama stopped; message saved as a pending capture (`status=pending`, no item), hook returned `skip`, bot replied "saved", log `deferred: ai_unavailable`. After restart, `/stash_retry` filed it (`media / want_to`). |
+| 13 | Pass | Plain message: `pre_gateway_dispatch skip`, no Hermes agent turn, item saved. |
+| 9 | Partial | A real article URL got its page title ("Masa Ramen Bistro") and source URL. YouTube, Instagram and the localhost refusal are untested. |
+| 15 | Resolved, with a bug fixed | Hermes refuses `/retry` (built-in). The alias was registered as `stash_retry`, but the gateway looks plugin commands up as `name.replace("_", "-")`, so Telegram's `/stash_retry` was "unknown command". Fixed by registering `stash-retry` (typed `/stash_retry`); test-first, `make check` green. Menu listing of `/list` and `/gpu` still to eyeball. |
+| – | Note | Spike #6's "`stash list --stage inbox` shows it" is wrong: a deferred message is a pending capture, not an item. Doc to be corrected. |
+| – | Finding | Filing latency 25–46 s warm/cold; thinking mode is the cost. See ADR 0004. |
+
+Hermes config changed from defaults to: local `qwen3.5:latest` at 64k, Telegram toolset
+`[web, stash]`, terminal/file/code/browser/delegation disabled. Backup of the original:
+`~/.hermes/backups/pre-stash-*`.
+
+Not yet run: #3, #4, #5, #7, #8, #10–#12, #14, #16–#18.
+
+## Notes before the spike
+- The installed Hermes checkout (`b7736eca98`, 2026-11-03) is 412 commits past the pin
+  `43a35e8`. Its source has `inject_message(origin=…)`, `spawn_task`, hooks,
+  `register_command` and `pre_gateway_dispatch`. The `--version` label (v0.21.0 /
+  `git.b7736ec`) does not match the "v0.22.6" in the spec; trust the commit hash.
+- Decide at the end of the spike whether to pin the tested commit or `43a35e8`.

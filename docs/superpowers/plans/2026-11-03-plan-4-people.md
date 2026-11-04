@@ -1,7 +1,8 @@
 # stash Plan 4 — People and key dates (M4)
 
-> **For agentic workers:** Python only through
-> `python-development:python-coding-orchestrator`; the main loop commits.
+> **For agentic workers:** Python is written as `CLAUDE.md` § "Writing Python" says for the
+> machine you are on (Mac: the `python-development` orchestrator; PC/WSL: subagent-driven
+> development with TDD). The main loop commits.
 > Requires Plans 2 and 3. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** A small list of people with yearly key dates. Items such as gifts

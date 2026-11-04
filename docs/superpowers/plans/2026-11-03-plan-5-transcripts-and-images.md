@@ -1,7 +1,8 @@
 # stash Plan 5 — Transcripts, summaries and image reading (M5)
 
-> **For agentic workers:** Python only through
-> `python-development:python-coding-orchestrator`; the main loop commits.
+> **For agentic workers:** Python is written as `CLAUDE.md` § "Writing Python" says for the
+> machine you are on (Mac: the `python-development` orchestrator; PC/WSL: subagent-driven
+> development with TDD). The main loop commits.
 > Requires Plans 2–3. Build after the M0 spike and the M1 eval, which picks the
 > image reader and confirms Whisper VRAM. Steps use checkbox (`- [ ]`) syntax.
 

@@ -1,10 +1,10 @@
 # stash Plan 1 — Core, providers, AI filing, Hermes adapter (M0 + M1)
 
-> **For agentic workers:** Python source is written only through
-> `python-development:python-coding-orchestrator` (owner's global rule). The
-> main loop dispatches one orchestrator per task group, then commits. Non-Python
-> files (docs, TOML/YAML examples, SQL, CLAUDE.md) may be written by the main
-> loop. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Plan 1 was written on the Mac through
+> `python-development:python-coding-orchestrator` (owner's global rule): one orchestrator per
+> task group, then the main loop commits. For any later work follow `CLAUDE.md` § "Writing
+> Python" (the PC has no orchestrator). Non-Python files (docs, TOML/YAML examples, SQL,
+> CLAUDE.md) may be written by the main loop. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A Hermes-free `stash` core that saves every message raw, files it
 with an LLM (Ollama or OpenRouter, switchable by config), replies with fix

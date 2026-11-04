@@ -36,14 +36,15 @@ curl -fsSL https://ollama.com/install.sh | sh
 sudo systemctl edit ollama        # paste deploy/systemd/ollama.override.conf
 sudo systemctl restart ollama
 ```
-Pull candidate models for the eval **(model names unverified — check the Ollama
-library first)**:
+Baseline model is `qwen3.5:latest` (text, tools and vision; see
+`docs/adr/0004-local-model.md`). Candidates to compare with `stash eval`:
 ```bash
-ollama pull hermes3:8b
-ollama pull qwen3:8b
-ollama pull qwen2.5vl:7b          # vision candidate for the image eval
+ollama pull qwen3.5               # baseline, 6.6 GB
+ollama pull gemma4:12b            # tag exists in the Ollama library; check size vs 64k context
+# qwen3:8b: tested, rejected (context cap 40960 < 64k, spills to CPU), see ADR 0004
 ```
-**Check:** `curl -s localhost:11434/api/tags` lists the models.
+**Check:** `curl -s localhost:11434/api/tags` lists the models, and after a request
+`ollama ps` shows `CONTEXT 65536` (if it shows 4096, the override above was not applied).
 
 ## 4. System tools stash uses
 
@@ -52,6 +53,8 @@ sudo apt update && sudo apt install -y tesseract-ocr cifs-utils git
 curl -fsSL https://deno.land/install.sh | sh     # yt-dlp needs a JS runtime for YouTube
 ```
 **Check:** `tesseract --version`, `deno --version`.
+`tesseract-ocr` is only for the eval's OCR arm and is optional until it beats the vision
+model (`docs/adr/0003-ocr-optional.md`); install the Python side with `uv sync --extra ocr`.
 
 ## 5. Get the code and install stash
 

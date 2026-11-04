@@ -1,7 +1,8 @@
 # stash Plan 6 — HTML library (M6)
 
-> **For agentic workers:** Python only through
-> `python-development:python-coding-orchestrator`; the main loop commits.
+> **For agentic workers:** Python is written as `CLAUDE.md` § "Writing Python" says for the
+> machine you are on (Mac: the `python-development` orchestrator; PC/WSL: subagent-driven
+> development with TDD). The main loop commits.
 > Requires Plan 2 (library and outcomes); uses Plan 5 summaries if present.
 > Steps use checkbox (`- [ ]`) syntax.
 

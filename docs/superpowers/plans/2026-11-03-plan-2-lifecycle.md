@@ -1,7 +1,8 @@
 # stash Plan 2 — Lifecycle: outcomes, library, repeats, groups (M2)
 
-> **For agentic workers:** Python only through
-> `python-development:python-coding-orchestrator`; the main loop commits.
+> **For agentic workers:** Python is written as `CLAUDE.md` § "Writing Python" says for the
+> machine you are on (Mac: the `python-development` orchestrator; PC/WSL: subagent-driven
+> development with TDD). The main loop commits.
 > Build **after** the M0 spike (`docs/spike-m0.md`) unless the owner says otherwise.
 > Steps use checkbox (`- [ ]`) syntax.
 
