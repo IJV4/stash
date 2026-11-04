@@ -36,6 +36,22 @@ every filing answer. Measured on a small classify prompt, warm, via Ollama `/v1`
 per-task setting (filing off by default) and let `stash eval` score thinking on vs off for
 quality before it becomes the default. Not changed on the PC.
 
+## Eval baseline: qwen3.5 (2026-11-04, fake cases, thinking on)
+`stash eval --providers ollama --arms text,ocr` on `evals/cases.jsonl` (25 cases):
+
+| arm | route | type | stage | date | details | p50 latency | errors |
+|---|---|---|---|---|---|---|---|
+| text (22) | 91% | 100% | 94% | **0%** | 100% | 31.7 s | 0 |
+| ocr (3) | 67% | 67% | 100% | 0% | n/a | 17.9 s | 1 |
+
+Single-case reruns: the two cases that expect a **date** both fail. `t10` ("Date night at the Harbor
+Jazz Club on 2027-03-14 at 8pm", expects stage `planned`, date `2027-03-14`) routes correctly but gets
+the stage and the date wrong. The OCR arm case `i02` (event poster) errors; Tesseract itself read the
+poster text correctly ("Saturday 22 May 2027"), so the failure is after OCR (not isolated further;
+the report shows only aggregates). `i01` and `i03` pass. Date handling is the weak spot to
+investigate on the Mac: print per-case model output in the eval report, reproduce `t10`, and rerun
+with thinking off (see the latency finding above). Vision arm and gemma4:12b not run yet.
+
 ## Decision
 Use `qwen3.5:latest` for filing and for the vision arm as the baseline. Compare against
 `gemma4:12b` with `stash eval` (`qwen3:8b` was rejected, see above); adopt the winner on score and latency.
