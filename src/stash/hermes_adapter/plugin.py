@@ -47,7 +47,7 @@ def _register_commands(ctx: Any, commands: Mapping[str, Command]) -> None:
             name, command.run, description=description, args_hint=args_hint
         )
         if registered is None:
-            alias = f"stash_{name}"
+            alias = f"stash-{name}"
             logger.warning("Hermes refused /%s; registering it as /%s", name, alias)
             ctx.register_command(alias, command.run, description=description, args_hint=args_hint)
 

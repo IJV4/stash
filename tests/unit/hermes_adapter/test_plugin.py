@@ -311,7 +311,7 @@ def test_a_refused_command_keeps_its_argument_hint_and_description_under_the_pre
     register_plugin(ctx)
 
     # Assert
-    [gpu] = [c for c in ctx.command_registrations if c.name == "stash_gpu"]
+    [gpu] = [c for c in ctx.command_registrations if c.name == "stash-gpu"]
     assert (gpu.args_hint, gpu.description) == ("on|off|status", "Switch stash's use of the GPU")
 
 
@@ -321,10 +321,23 @@ def test_a_refused_command_runs_the_same_command_under_the_prefixed_name() -> No
     register_plugin(ctx)
 
     # Execute
-    answer = asyncio.run(called(ctx.commands["stash_retry"], ""))
+    answer = asyncio.run(called(ctx.commands["stash-retry"], ""))
 
     # Assert
     assert answer == "Nothing pending."
+
+
+def test_a_refused_command_is_found_by_the_gateways_underscore_to_hyphen_lookup() -> None:
+    # Setup
+    ctx = FakeHermesContext(reserved={"retry"})
+    register_plugin(ctx)
+    typed_in_telegram = "stash_retry"
+
+    # Execute
+    found = ctx.commands.get(typed_in_telegram.replace("_", "-"))
+
+    # Assert
+    assert found is not None
 
 
 def test_a_refused_command_is_logged_as_one_warning() -> None:

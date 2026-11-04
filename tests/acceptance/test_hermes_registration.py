@@ -58,7 +58,7 @@ def test_a_command_name_that_hermes_refuses_is_registered_with_a_stash_prefix_in
     register_stash(a_plain_app(), ctx)
 
     # Assert
-    assert sorted(ctx.commands) == ["gpu", "list", "stash_retry"]
+    assert sorted(ctx.commands) == ["gpu", "list", "stash-retry"]
 
 
 def test_an_invalid_configuration_makes_register_raise_the_config_error() -> None:

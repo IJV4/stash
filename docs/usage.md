@@ -76,8 +76,10 @@ Each statement below has one acceptance test, in
 1. `register(ctx)` registers the `pre_gateway_dispatch` hook, a handler for the
    `telegram` platform, the commands `/list`, `/gpu` and `/retry`, and the tools
    `stash_search` and `stash_list` in the toolset `stash`. A command name that
-   Hermes refuses because a built-in owns it (`/retry` is one) is registered as
-   `/stash_retry` instead, and the log says so.
+   Hermes refuses because a built-in owns it (`/retry` is one) is registered with a
+   hyphenated prefix, `stash-retry`, and the log says so. In Telegram you type
+   `/stash_retry`: the gateway turns underscores into hyphens before looking a plugin
+   command up, so an underscore in the registered name would never be found.
 2. An unreadable or invalid configuration makes `register` raise the
    `ConfigError`, so the failure shows in Hermes' log instead of messages being
    silently left to the agent.
