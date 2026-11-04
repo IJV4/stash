@@ -20,6 +20,15 @@ default tests, then `-m integration`). Green before every commit.
 - **Fake data only** in this repo — tests, evals, examples. The owner's real
   items never touch this machine.
 
+## PC updates (Mac sessions)
+
+The PC runs the live-service checks and pushes what it learns to the branch `pc-m0`. Before
+starting each plan task: `git fetch`, then `git log --oneline main..pc-m0`. If there are new
+commits, finish or commit your current task, confirm `git status` is clean, `git merge pc-m0`,
+run `make check`, and read the "Updates since your last merge" list at the top of
+`docs/superpowers/notes/2026-11-04-mac-handoff.md`. Adjust the plan you are on if an update
+says to. Do not push to `pc-m0`; only the PC does.
+
 ## Writing Python
 
 Who writes it depends on the machine. **Check what is installed; do not assume.**
