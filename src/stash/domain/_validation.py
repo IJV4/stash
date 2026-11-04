@@ -18,6 +18,16 @@ def require_text(name: str, value: str) -> None:
         raise ValueError(f"{name} must not be blank")
 
 
+def require_max_length(name: str, value: str, limit: int) -> None:
+    if len(value) > limit:
+        raise ValueError(f"{name} must be at most {limit} characters")
+
+
+def require_plain_date(name: str, value: dt.date) -> None:
+    if isinstance(value, dt.datetime):
+        raise ValueError(f"{name} must be a date, not a datetime")
+
+
 def frozen_strings(name: str, values: Iterable[str]) -> tuple[str, ...]:
     if isinstance(values, str):
         raise TypeError(f"{name} must be a collection of strings, not a single string")
