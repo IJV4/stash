@@ -39,9 +39,9 @@
 
 **Interfaces:** Produces: Ollama serving 64k context; `deno` on PATH.
 
-- [ ] **Step 1 (owner):** `sudo systemctl edit ollama`, paste `deploy/systemd/ollama.override.conf`, then `sudo systemctl restart ollama`.
-- [ ] **Step 2:** Add `export PATH="$HOME/.deno/bin:$PATH"` to `~/.zshrc`; open a new shell.
-- [ ] **Step 3: Verify.** Send one chat request to `qwen3.5:latest`; run `ollama ps`. Expected: `CONTEXT 65536`, `100% GPU`. Run `stash doctor`. Expected: `✔ deno`, `✔ tesseract`, `✔ ollama`.
+- [x] **Step 1 (owner):** `sudo systemctl edit ollama`, paste `deploy/systemd/ollama.override.conf`, then `sudo systemctl restart ollama`.
+- [x] **Step 2:** Add `export PATH="$HOME/.deno/bin:$PATH"` to `~/.zshrc`; open a new shell.
+- [x] **Step 3: Verify.** Send one chat request to `qwen3.5:latest`; run `ollama ps`. Expected: `CONTEXT 65536`, `100% GPU`. Run `stash doctor`. Expected: `✔ deno`, `✔ tesseract`, `✔ ollama`.
 
 ### Task 2: Candidate models
 
@@ -49,8 +49,8 @@
 
 **Interfaces:** Produces: `gemma4:12b` (fits) and `qwen3:8b` (rejected: context cap 40960, CPU spill) pulled; results in ADR 0004.
 
-- [ ] **Step 1 (owner or assistant):** `ollama pull gemma4:12b` and `ollama pull qwen3:8b`.
-- [ ] **Step 2:** For each, request with `num_ctx=65536` and read `ollama ps`. Expected: fits fully on GPU. If `gemma4:12b` spills to CPU, mark it "does not fit 64k" in ADR 0004 and skip it in Task 6.
+- [x] **Step 1 (owner or assistant):** `ollama pull gemma4:12b` and `ollama pull qwen3:8b`.
+- [x] **Step 2:** For each, request with `num_ctx=65536` and read `ollama ps`. Expected: fits fully on GPU. If `gemma4:12b` spills to CPU, mark it "does not fit 64k" in ADR 0004 and skip it in Task 6.
 
 ### Task 3: Telegram bot and Hermes gateway (owner)
 
@@ -58,10 +58,10 @@
 
 **Interfaces:** Produces: a running Hermes gateway that answers the owner's account only.
 
-- [ ] **Step 1 (owner):** Create the bot with @BotFather; get your numeric Telegram user id.
-- [ ] **Step 2 (owner):** `hermes gateway setup` → Telegram, paste token and user id, accept the systemd user unit.
-- [ ] **Step 3:** Merge the example config; keep the existing `model:` block unless it conflicts, and set Hermes' provider to local Ollama at the same model as `stash.toml`.
-- [ ] **Step 4: Verify.** Send "hello" from the owner account. Expected: a reply. From a second account: no reply.
+- [x] **Step 1 (owner):** Create the bot with @BotFather; get your numeric Telegram user id.
+- [x] **Step 2 (owner):** `hermes gateway setup` → Telegram, paste token and user id, accept the systemd user unit.
+- [x] **Step 3:** Merge the example config; keep the existing `model:` block unless it conflicts, and set Hermes' provider to local Ollama at the same model as `stash.toml`.
+- [x] **Step 4: Verify.** Send "hello" from the owner account. Expected: a reply. From a second account: no reply.
 
 ### Task 4: Plugin install and the go/no-go checks
 
@@ -69,10 +69,10 @@
 
 **Interfaces:** Consumes: Task 3 gateway. Produces: ADR 0001 with a Go or No-go decision.
 
-- [ ] **Step 1:** `ln -s ~/projects/stash/deploy/hermes-plugin/stash ~/.hermes/plugins/stash`; `hermes plugins validate ~/.hermes/plugins/stash`; `hermes plugins enable stash`; `hermes gateway restart`. Expected: `hermes plugins` lists stash enabled.
-- [ ] **Step 2: Check #6 first.** `sudo systemctl stop ollama`; send a fake message. Expected: `stash list --stage inbox` shows it and the bot replies "📥 Saved — I'll file it once the AI is reachable." Then `sudo systemctl start ollama`.
-- [ ] **Step 3: Check #1.** Share a fake link; tap **Type**. Expected: type menu appears and the message edits.
-- [ ] **Step 4:** If both pass, write **Go** in ADR 0001 with the Hermes commit hash. If either fails, write **No-go** and stop this plan: the Mac replaces only `src/stash/hermes_adapter/` with a python-telegram-bot bot.
+- [x] **Step 1:** `ln -s ~/projects/stash/deploy/hermes-plugin/stash ~/.hermes/plugins/stash`; `hermes plugins validate ~/.hermes/plugins/stash`; `hermes plugins enable stash`; `hermes gateway restart`. Expected: `hermes plugins` lists stash enabled.
+- [x] **Step 2: Check #6 first.** `sudo systemctl stop ollama`; send a fake message. Expected: the message is a pending capture (`status=pending`, no item; `stash list` will not show it) and the bot replies "📥 Saved — I'll file it once the AI is reachable." Then `sudo systemctl start ollama`.
+- [x] **Step 3: Check #1.** Share a fake link; tap **Type**. Expected: type menu appears and the message edits.
+- [x] **Step 4:** If both pass, write **Go** in ADR 0001 with the Hermes commit hash. If either fails, write **No-go** and stop this plan: the Mac replaces only `src/stash/hermes_adapter/` with a python-telegram-bot bot.
 
 ### Task 5: Remaining spike checks
 
@@ -107,10 +107,17 @@
 
 **Interfaces:** Produces: branch `pc-m0` on the Mac's repo containing ADRs, notes, doc fixes, the `ocr` extra and its test. `uv.lock` is **excluded**.
 
-- [ ] **Step 1:** `git switch -c pc-m0`; run `make check` with the local `uv.lock` in place. Expected: green. Keep `uv.lock` in the working tree but never `git add` it, because it only works on this PC. `pyproject.toml` changes (the `ocr` extra) do need the Mac to re-lock.
-- [ ] **Step 2:** Commit in small commits (ADRs and notes, ocr extra with test, doc fixes), each staged by explicit path so `uv.lock` stays out. Verify with `git show --stat HEAD` per commit.
+- [x] **Step 1:** `git switch -c pc-m0`; run `make check` with the local `uv.lock` in place. Expected: green. Keep `uv.lock` in the working tree but never `git add` it, because it only works on this PC. `pyproject.toml` changes (the `ocr` extra) do need the Mac to re-lock.
+- [x] **Step 2:** Commit in small commits (ADRs and notes, ocr extra with test, doc fixes), each staged by explicit path so `uv.lock` stays out. Verify with `git show --stat HEAD` per commit.
 - [ ] **Step 3 (owner approves):** `git push origin pc-m0`. This creates a branch on the Mac's repo; it does not touch `main`.
-- [ ] **Step 4 (Mac):** merge `pc-m0` into `main`, regenerate `uv.lock` against public PyPI, run `make check`, then start Plan 2 (Plan 3 once ADR 0001 records the scheduler mechanism; Plan 5 once the eval is done).
+- [ ] **Step 4 (Mac):** merge `pc-m0` into `main`, regenerate `uv.lock` with `uv lock --default-index https://pypi.org/simple` (confirm the Mac can reach public PyPI), run `make check`, then start Plan 2 (Plan 3 once ADR 0001 records the scheduler mechanism; Plan 5 once the eval is done).
+
+### Follow-ups from the branch review (for the Mac, not done here)
+- `make_ocr` falls back to `NoOcr` silently; log a warning, or have `stash doctor` mention the `ocr` extra (a present binary with a missing extra shows ✔ tesseract but every OCR-arm case fails).
+- `tests/unit/app/test_ocr.py` and `test_build_app.py` import `TesseractOcr` at module level and `tests/integration/test_tesseract_ocr.py` has no `importorskip`; without the extra they fail at collection.
+- `plugin.py` ignores the result of registering the `stash-<name>` alias; check it and log the name the user types.
+- `docs/usage.md` (OCR arm) should say the arm needs the `ocr` extra.
+- Add a per-task thinking setting for filing (ADR 0004) and have `stash eval` score it.
 
 ---
 

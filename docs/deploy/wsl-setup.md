@@ -76,7 +76,7 @@ local Ollama traffic must not go through a proxy.
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-hermes --version          # expect 0.22.6; source lives in ~/.hermes/hermes-agent/
+hermes --version          # expect 0.22.6, or a git.<hash> label on a git checkout (the PC runs b7736eca98, ADR 0001); source lives in ~/.hermes/hermes-agent/
 ```
 Hermes updates itself only when you run `hermes update`; don't run it casually.
 Record any version change in `docs/adr/`.
@@ -97,7 +97,7 @@ hermes plugins enable stash      # consents to stash's Python deps (pyproject.to
 hermes gateway restart
 ```
 **Check:** `hermes plugins` lists stash as enabled; in Telegram the menu shows
-`/list`, `/gpu`, `/retry`.
+`/list`, `/gpu`, `/stash_retry` (`/retry` is a Hermes built-in).
 
 ## 8. Doctor and eval
 

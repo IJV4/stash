@@ -13,16 +13,16 @@ scheduler (spec: "Approach 2"). Only `src/stash/hermes_adapter/` differs between
 - **No-go:** switch to the custom bot. #7 failing alone is not a no-go.
 
 ## Spike results
-Hermes `b7736eca98`, gateway in polling mode, local `qwen3.5:latest` at 64k, fake messages only.
+Hermes `b7736eca98`, gateway in polling mode, local `qwen3.5:latest` at 64k, test messages (one public web-page link).
 
 | # | Result | Evidence |
 |---|---|---|
-| 1 | **Pass (gate)** | Shared a link; confirmation had a **Type** button; choosing "Plans" opened the menu and edited the item to `plan` (DB `item_type=plan`). |
-| 2 | **Pass (mechanism: Hermes cron `--no-agent`)** | `hermes cron create "every 2m" --no-agent --script stash_tick.py --deliver telegram:<owner id> --repeat 2`; script in `~/.hermes/scripts/`. The printed line arrived in Telegram at 13:04:41 as a "Cronjob Response" (Hermes adds a header and a "send me a message to stop this job" footer). Ollama got 0 requests during the run and the model stayed unloaded; `hermes cron runs` shows `completed`. `ctx.spawn_task` from the plugin was **not** tested (not needed). Plan 3 Task 6 can use this mechanism. `--deliver telegram` alone needs a home channel (none set), so use `telegram:<chat id>`. |
-| 6 | **Pass (gate)** | Ollama stopped; message saved as a pending capture (`status=pending`, no item), hook returned `skip`, bot replied "saved", log `deferred: ai_unavailable`. After restart, `/stash_retry` filed it (`media / want_to`). |
-| 13 | Pass | Plain message: `pre_gateway_dispatch skip`, no Hermes agent turn, item saved. |
-| 9 | Partial | A real article URL got its page title ("Masa Ramen Bistro") and source URL. YouTube, Instagram and the localhost refusal are untested. |
-| 15 | Resolved, with a bug fixed | Hermes refuses `/retry` (built-in). The alias was registered as `stash_retry`, but the gateway looks plugin commands up as `name.replace("_", "-")`, so Telegram's `/stash_retry` was "unknown command". Fixed by registering `stash-retry` (typed `/stash_retry`); test-first, `make check` green. Menu listing of `/list` and `/gpu` still to eyeball. |
+| 1 | **Pass (gate)** | Shared a link; the confirmation had a **Type** button; the menu opened and, per the owner, choosing "Plans" changed the message. DB confirms `item_type=plan`. **Not tested:** that Hermes's own buttons (e.g. approvals) still work. |
+| 2 | **Pass (mechanism: Hermes cron `--no-agent`)** | `hermes cron create "every 2m" --no-agent --script stash_tick.py --deliver telegram:<owner id> --repeat 2`; script in `~/.hermes/scripts/`. The printed line arrived in Telegram at 13:04:41 as a "Cronjob Response" (Hermes adds a header and a "send me a message to stop this job" footer). Ollama got 0 requests during the run and the model stayed unloaded; `hermes cron runs` shows `completed`. The script (`~/.hermes/scripts/stash_tick.py`, not in the repo) only printed `stash spike #2: scheduled script ran at HH:MM:SS - no agent turn`. `ctx.spawn_task` from the plugin was **not** tested (not needed). Plan 3 Task 6 can use this mechanism. `--deliver telegram` alone needs a home channel (none set), so use `telegram:<chat id>`. |
+| 6 | **Pass (gate)** | Ollama stopped; message saved as a pending capture (`status=pending`, no item), gateway log shows `pre_gateway_dispatch skip`, bot replied "saved", log `deferred: ai_unavailable`. After restart, `/stash_retry` filed it (`media / want_to`). |
+| 13 | Pass (plain-message half) | Plain message: the Hermes gateway log shows `pre_gateway_dispatch skip` (stash itself does not log the verdict), no agent turn, item saved. `/list` → allow and the fail-open case are not yet checked. |
+| 9 | Partial | A public web page's title and URL were captured on the item. YouTube, Instagram and the localhost refusal are untested. |
+| 15 | Resolved, with a bug fixed | Hermes refuses `/retry` (built-in). The alias was registered as `stash_retry`, but the gateway looks plugin commands up as `name.replace("_", "-")`, so Telegram's `/stash_retry` was "unknown command". Fixed by registering `stash-retry` (typed `/stash_retry`); test-first, `make check` green. `set_my_commands` succeeded with the hyphenated alias (60 commands; Hermes hides 66 more over Telegram's 60-command limit, so whether stash's commands are in the visible menu is still to eyeball; they work when typed). |
 | – | Note | Spike #6's "`stash list --stage inbox` shows it" is wrong: a deferred message is a pending capture, not an item. Doc to be corrected. |
 | – | Finding | Filing latency 25–46 s warm/cold; thinking mode is the cost. See ADR 0004. |
 

@@ -2,8 +2,8 @@
 
 Personal Telegram organizer: a Hermes Agent plugin over a Hermes-free core.
 The **spec** (`docs/superpowers/specs/2026-11-02-stash-design.md`) is the
-source of truth for behaviour; the current **plan** is the newest file in
-`docs/superpowers/plans/`. Read both before changing behaviour.
+source of truth for behaviour; the current **plan** is the newest `plan-N` file in
+`docs/superpowers/plans/` (other files there, like the M0 PC bring-up ops plan, are not code plans). Read both before changing behaviour.
 
 ## Gate
 
@@ -37,7 +37,7 @@ the layering):
 
 - **Tooling:** `ruff` (rules `E F I UP B SIM RUF`, line length 100), `mypy --strict` on
   `src` and `tests/fakes`, Python ≥ 3.11, dependencies via `uv`. `# type: ignore` and
-  `noqa` are not used; fix the typing instead.
+  `noqa` are not used in `src` (a few test helpers have them); fix the typing instead.
 - **Values:** all dataclasses are `frozen=True, slots=True`; closed sets are `StrEnum`;
   ports are `Protocol`s in the feature package; validation happens at the boundary
   (`stash.domain._validation`), not scattered.
@@ -49,7 +49,7 @@ the layering):
   describing behaviour; bodies use `# Setup` / `# Execute` / `# Assert`. Shared helpers
   are builders, rigs and fakes at the root of `tests/` (not per-test copies). Integration
   tests are marked `integration` and still need no network.
-- **Optional dependencies** (`ocr`, `transcribe`) import lazily, inside the factory that
+- **Optional dependencies** (`ocr` now; `transcribe` is planned in Plan 5) import lazily, inside the factory that
   needs them, and fall back cleanly when absent (see `stash.app.ocr`).
 - **Fake data only**, including examples and eval cases.
 
@@ -74,4 +74,4 @@ the layering):
 - Telegram `callback_data` ≤ 64 bytes; message text ≤ 4096 chars.
 - LLM output and link metadata are untrusted: validate and clamp at the boundary.
 - Hermes facts (plugin API, hooks, buttons, cron) are from source @ 43a35e8,
-  pinned v0.22.6; the PyPI `hermes-agent` (0.19) is stale — never depend on it.
+  pinned v0.22.6 (the PC tested b7736eca98, 412 commits later; ADR 0001); the PyPI `hermes-agent` (0.19) is stale — never depend on it.

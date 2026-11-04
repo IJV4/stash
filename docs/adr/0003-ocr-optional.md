@@ -17,6 +17,6 @@ the job without a second system dependency (`tesseract` binary plus `pytesseract
   or is much faster on the 12 GB card. Otherwise drop the extra.
 
 ## Consequences
-- A base install needs no apt package for images. The eval's OCR arm still needs both
+- The extra is installed with the dev group (`make install`); a runtime-only install can skip it and the apt package. The eval's OCR arm still needs both
   `tesseract-ocr` and the extra.
 - Record the eval result here when spike #12 runs.

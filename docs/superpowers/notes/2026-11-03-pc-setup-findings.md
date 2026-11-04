@@ -1,5 +1,7 @@
 # PC bring-up findings (2026-11-03)
 
+> Snapshot from the start of the session. Where it differs from the ADRs (`docs/adr/`), the ADRs are current.
+
 Session on the Windows PC (WSL2 Ubuntu, RTX 3080 Ti 12 GB). Sources are noted; web
 claims come from third-party pages unless marked official, and free-tier numbers move.
 
@@ -7,32 +9,31 @@ claims come from third-party pages unless marked official, and free-tier numbers
 
 | Item | State |
 |---|---|
-| Repo | cloned from `stash.bundle` (HEAD `3d969d8`); `origin` = `ismael@192.168.10.119:QA/projects/stash` |
+| Repo | cloned from `stash.bundle` (HEAD `3d969d8`); `origin` = the Mac's repo over SSH |
 | `make install` / `make check` | pass: 3035 unit, 60 integration (after `uv.lock` host fix, below) |
 | systemd, GPU | on; RTX 3080 Ti 12288 MiB |
-| Ollama 0.33.2 | running, **no `OLLAMA_CONTEXT_LENGTH` override applied** (no `ollama.service.d/`) |
+| Ollama 0.33.2 | running; the 64k override was **applied later the same day** (ADR 0004) |
 | Hermes | git checkout `b7736eca98` (2026-11-03), 412 commits past pin `43a35e8`; `--version` label is stale |
 | tesseract 5.3.4, deno 2.9.8, cifs-utils | installed; deno is in `~/.deno/bin`, **not on PATH** |
-| Telegram bot, `~/.hermes` plugin, NAS mount | not done |
+| Telegram bot, stash plugin | **done 2026-11-04** (ADR 0001); NAS mount not done |
 | `~/.config/stash/stash.toml` | created; model and vision model = `qwen3.5:latest` |
 
 ## Findings
 
 1. **`uv.lock` points at the Mac's mirror.** All 902 URLs are on `pypi.apple.com`, which does
    not resolve here. Locally rewritten to `pypi.org` / `files.pythonhosted.org` (same
-   versions and hashes) and re-locked after the OCR extra. **Uncommitted. Regenerate on the
-   Mac against public PyPI; do not commit this PC's lock blindly.**
+   versions and hashes) and re-locked after the OCR extra. **Uncommitted. Regenerate on the Mac with `uv lock --default-index https://pypi.org/simple` (a plain `uv lock` would re-pin the mirror); do not commit this PC's lock blindly.**
 2. **Hermes version is not a blocker.** The installed source already has `inject_message`
    (with `origin`), `spawn_task`, `register_hook`, `register_command` and
    `pre_gateway_dispatch`. A web mirror said `inject_message` returns False in gateway mode;
    the installed source contradicts that. Spike #14 confirms. Do not run `hermes update`.
-3. **Ollama context is not 64k yet.** Apply `deploy/systemd/ollama.override.conf` (needs
+3. **Ollama context was not 64k (fixed 2026-11-04).** Apply `deploy/systemd/ollama.override.conf` (needs
    sudo). Hermes needs ≥ 64k and `/v1` cannot set it per request.
 4. **Model fit (measured).** `qwen3.5:latest` (9.7B Q4_K_M; text, vision, tools, thinking) at
    `num_ctx=65536`: 7.6 GB, 100% GPU, 9.4 GB total in use, ~40 s cold load.
    `qwen3.8` (17 GB) and `glm-4.7-flash` (19 GB) are too big for 64k here. Candidate tags
    confirmed in the Ollama library: `gemma4:12b`, `qwen3:14b` (too big with 64k), `qwen3-vl`;
-   `qwen3:8b` is the sane size to compare.
+   `qwen3:8b` was later tested and rejected (ADR 0004).
 5. **OCR may be redundant.** The vision-capable local model may make Tesseract unnecessary.
    Done: `ocr` optional extra, `make_ocr` falls back to `NoOcr` if the package is missing
    (new test). Decision rule in ADR 0003.
@@ -64,7 +65,7 @@ claims come from third-party pages unless marked official, and free-tier numbers
 
 ## Open
 
-- Spike M0 (18 checks), go/no-go (ADR 0001).
+- Remaining spike M0 checks (the go/no-go is decided: Go, ADR 0001).
 - Pin policy for Hermes; whether to build the Gemini provider later (video).
 - Whether the Mac starts Plan 2 before the spike ends (see the plan).
 
