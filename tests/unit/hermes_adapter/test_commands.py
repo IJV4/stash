@@ -429,7 +429,10 @@ def test_retry_prints_a_request_and_a_duplicate() -> None:
     text = run(RetryCommand(retrier))
 
     # Assert
-    assert text == "request — What is a ramen?\nduplicate — already saved"
+    assert text == (
+        "request — What is a ramen? — send it again starting with ? to ask\n"
+        "duplicate — already saved"
+    )
 
 
 def test_retry_ignores_its_arguments() -> None:

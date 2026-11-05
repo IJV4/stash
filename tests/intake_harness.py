@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from collections.abc import Callable
 
 from builders import BASE
@@ -9,6 +10,7 @@ from fakes.recording_sender import RecordingSender
 from fakes.scripted_sender import ScriptedSender
 from fakes.scripted_steps import ScriptedSteps
 from hermes_events import CHAT_ID, OWNER_ID, FakeEvent, an_event
+from hermes_rig import until
 
 from stash.capture import BurstCoalescer, ProcessResult
 from stash.hermes_adapter.bursts import Bursts
@@ -26,6 +28,7 @@ class IntakeHarness:
         receive_failure: Exception | None = None,
         process_failure: Exception | None = None,
         process_result: ProcessResult | None = None,
+        process_gate: threading.Event | None = None,
         burst_failure: Exception | None = None,
         apology_sender: ReplySender | None = None,
     ) -> None:
@@ -35,6 +38,7 @@ class IntakeHarness:
             receive_failure=receive_failure,
             process_failure=process_failure,
             process_result=process_result,
+            process_gate=process_gate,
         )
         self.scheduler = PausingScheduler()
         self.reply_sender = ScriptedSender()
@@ -66,3 +70,15 @@ class IntakeHarness:
             return verdict
 
         return asyncio.run(scenario())
+
+    async def cancel_mid_classification(
+        self, gate: threading.Event
+    ) -> asyncio.Task[dict[str, str]]:
+        task = asyncio.create_task(self.intake.on_dispatch(an_event(chat_id=CHAT_ID)))
+        await until(lambda: self.steps.processed)
+        task.cancel()
+        gate.set()
+        await asyncio.wait([task])
+        await until(lambda: self.scheduler.spawned)
+        await self.scheduler.drain()
+        return task

@@ -4,6 +4,8 @@ from stash.capture import IncomingMessage, ProcessResult
 from stash.domain import RawCapture
 from stash.hermes_adapter.ports import IntakeSteps
 
+HOLD_LIMIT_SECONDS = 5.0
+
 
 class ScriptedSteps:
     def __init__(
@@ -13,11 +15,13 @@ class ScriptedSteps:
         receive_failure: Exception | None = None,
         process_failure: Exception | None = None,
         process_result: ProcessResult | None = None,
+        process_gate: threading.Event | None = None,
     ) -> None:
         self._inner = inner
         self._receive_failure = receive_failure
         self._process_failure = process_failure
         self._process_result = process_result
+        self._process_gate = process_gate
         self.calls: list[tuple[str, str]] = []
         self.received: list[IncomingMessage] = []
         self.processed: list[RawCapture] = []
@@ -36,6 +40,8 @@ class ScriptedSteps:
         self.calls.append(("process", capture.text))
         self.processed.append(capture)
         self.process_threads.append(threading.get_ident())
+        if self._process_gate is not None:
+            self._process_gate.wait(HOLD_LIMIT_SECONDS)
         if self._process_failure is not None:
             raise self._process_failure
         if self._process_result is not None:

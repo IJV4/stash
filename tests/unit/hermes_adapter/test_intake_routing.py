@@ -94,6 +94,38 @@ def test_a_failure_while_scheduling_the_confirmation_is_logged_with_the_capture_
     assert logs.entries() == [(logging.ERROR, f"processing capture {1:032x} failed")]
 
 
+def test_a_processing_failure_whose_saved_reply_cannot_be_queued_is_still_skipped() -> None:
+    # Setup
+    harness = IntakeHarness(
+        process_failure=RuntimeError("model exploded"),
+        burst_failure=RuntimeError("scheduler is closed"),
+    )
+
+    # Execute
+    verdict = harness.dispatch()
+
+    # Assert
+    assert verdict == SKIP
+
+
+def test_a_processing_failure_whose_saved_reply_cannot_be_queued_logs_both_failures() -> None:
+    # Setup
+    harness = IntakeHarness(
+        process_failure=RuntimeError("model exploded"),
+        burst_failure=RuntimeError("scheduler is closed"),
+    )
+
+    # Execute
+    with recording_logs(LOGGER) as logs:
+        harness.dispatch()
+
+    # Assert
+    assert logs.entries() == [
+        (logging.ERROR, f"processing capture {1:032x} failed"),
+        (logging.ERROR, f"could not queue the saved reply for capture {1:032x}"),
+    ]
+
+
 def test_a_forced_question_is_allowed_through_to_hermes() -> None:
     # Setup
     harness = IntakeHarness()

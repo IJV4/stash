@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import assert_never
+from collections.abc import Coroutine
+from typing import Final, assert_never
 
 from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult, Reply
 from stash.domain import RawCapture
@@ -19,6 +20,9 @@ from stash.hermes_adapter.ports import IntakeSteps
 logger = logging.getLogger(__name__)
 
 SAVE_FAILED = Reply("⚠️ I could not save that message — please send it again.")
+PROCESSING_FAILED_LOG = "processing capture %s failed"
+QUEUE_FAILED_LOG = "could not queue the saved reply for capture %s"
+UNEXPECTED_FAILURE_REASON: Final = "ai_unavailable"
 
 
 class MessageIntake:
@@ -33,6 +37,7 @@ class MessageIntake:
         self._steps = steps
         self._bursts = bursts
         self._sender = sender
+        self._in_flight: set[asyncio.Task[Verdict]] = set()
 
     async def on_dispatch(
         self,
@@ -47,7 +52,7 @@ class MessageIntake:
         capture = await self._received(read)
         if capture is None:
             return Verdict.SKIP.hook_result()
-        return (await self._verdict(capture, read)).hook_result()
+        return (await self._shielded(self._classified(capture, read))).hook_result()
 
     def _read(self, event: HermesEvent) -> Inbound | Passthrough:
         try:
@@ -74,13 +79,35 @@ class MessageIntake:
         except Exception:
             logger.exception("could not apologise to chat %s", chat.chat_id)
 
-    async def _verdict(self, capture: RawCapture, inbound: Inbound) -> Verdict:
+    async def _shielded(self, work: Coroutine[None, None, Verdict]) -> Verdict:
+        task = asyncio.create_task(work)
+        self._in_flight.add(task)
+        task.add_done_callback(self._in_flight.discard)
+        return await asyncio.shield(task)
+
+    async def _classified(self, capture: RawCapture, inbound: Inbound) -> Verdict:
         try:
-            # Unverified, PC must check spike-m0 #23: a 25-45 s hook may time out or delay others.
+            # Unverified, PC check spike-m0 #23: a ~100 s hook (shared link) may time out or delay.
             result = await asyncio.to_thread(self._steps.process, capture)
+        except Exception:
+            logger.exception(PROCESSING_FAILED_LOG, capture.id)
+            self._queue_deferred_reply(capture, inbound.chat)
+            return inbound.failure_verdict
+        return self._settle_or_fail(result, capture, inbound)
+
+    def _queue_deferred_reply(self, capture: RawCapture, chat: Chat) -> None:
+        try:
+            self._bursts.add(chat.chat_id, Deferred(capture, UNEXPECTED_FAILURE_REASON))
+        except Exception:
+            logger.exception(QUEUE_FAILED_LOG, capture.id)
+
+    def _settle_or_fail(
+        self, result: ProcessResult, capture: RawCapture, inbound: Inbound
+    ) -> Verdict:
+        try:
             return self._settle(result, inbound.chat)
         except Exception:
-            logger.exception("processing capture %s failed", capture.id)
+            logger.exception(PROCESSING_FAILED_LOG, capture.id)
             return inbound.failure_verdict
 
     def _settle(self, result: ProcessResult, chat: Chat) -> Verdict:

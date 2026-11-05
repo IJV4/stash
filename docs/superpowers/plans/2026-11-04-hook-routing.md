@@ -13,9 +13,10 @@ It answers `skip` for everything else. Nothing is injected on the normal path.
 
 **Architecture:** `MessageIntake.on_dispatch` stops spawning `_process` in the background. It
 awaits `steps.process(capture)` (in a thread) and turns the result into the verdict. The
-`inject_message` path stays only for the "That was a question →" button and for questions filed
-late by `/stash_retry`. Hermes refuses those when no human message has been admitted, so the
-apology tells the owner how to re-ask. A message starting with `?` is a forced question: it is
+`inject_message` path stays only for the "That was a question →" button. Hermes refuses it when
+no human message has been admitted, so the apology tells the owner how to re-ask. A question
+found late by `/stash_retry` is not injected: its `request` line tells the owner to send it again
+starting with `?`. A message starting with `?` is a forced question: it is
 saved raw and answered `allow` with no LLM call.
 
 **Tech Stack:** unchanged.
@@ -41,7 +42,7 @@ saved raw and answered `allow` with no LLM call.
 - New apology text, for both refused injections: the constant
   `APOLOGY = Reply("I couldn't pass that on to the assistant. Send it again starting with ? and I'll hand it over.")`.
 - **Unverified, PC must check (spike-m0 #23):**
-  - Whether Hermes times out a `pre_gateway_dispatch` hook that takes 25–45 s (thinking on).
+  - Whether Hermes times out a `pre_gateway_dispatch` hook that takes up to ~100 s for a shared link (inspection ≤ 25 s + filing 62–82 s with thinking on, ADR 0001 #9).
   - Whether a slow hook delays other messages.
   - Whether `inject_message` is accepted once the chat has had any admitted human message.
   
@@ -82,7 +83,8 @@ saved raw and answered `allow` with no LLM call.
   **Superseded by the controller's follow-up rulings (2026-11-04):** the `?` rule is core
   pipeline routing (`stash.capture.forces_request`; `process()` returns `IsRequest` for it,
   first time or on retry), so there is no `mark_request`. A forced question whose
-  processing fails answers `allow`. See `task-1-report.md`, "Follow-up".
+  processing fails answers `allow`. In short, the `?` rule moved from the adapter into the core
+  pipeline and `mark_request` was removed.
 - [ ] **Step 1: Failing tests:**
   - Acceptance:
     - "What can I do this Saturday?" classified as a request → the hook answers `allow`, nothing

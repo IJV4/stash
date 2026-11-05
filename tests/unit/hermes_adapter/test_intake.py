@@ -3,7 +3,7 @@ import logging
 import threading
 
 import pytest
-from capture_builders import SAMPLE_TEXT, a_request_answer, sequential_ids
+from capture_builders import FORCED_QUESTION, SAMPLE_TEXT, a_request_answer, sequential_ids
 from capture_rig import build_rig
 from fakes.recording_sender import RecordingSender
 from fakes.scripted_sender import ScriptedSender
@@ -11,7 +11,7 @@ from hermes_events import ALLOW, CHAT_ID, SKIP, STRANGER_ID, FakeEvent, an_event
 from intake_harness import IntakeHarness
 from log_records import recording_logs
 
-from stash.capture import Duplicate, Reply, deferred
+from stash.capture import Duplicate, Reply, confirmation, deferred
 from stash.llm import LlmError
 
 LOGGER = "stash.hermes_adapter.intake"
@@ -217,7 +217,7 @@ def test_a_processing_failure_is_logged_with_the_capture_id_only() -> None:
     assert logs.entries() == [(logging.ERROR, f"processing capture {sequential_ids()()} failed")]
 
 
-def test_a_processing_failure_sends_the_chat_nothing() -> None:
+def test_a_processing_failure_tells_the_chat_the_message_was_saved() -> None:
     # Setup
     harness = IntakeHarness(process_failure=RuntimeError("model exploded"))
 
@@ -225,7 +225,55 @@ def test_a_processing_failure_sends_the_chat_nothing() -> None:
     harness.dispatch_and_drain()
 
     # Assert
-    assert harness.reply_sender.sent == []
+    assert harness.reply_sender.sent == [(CHAT_ID, deferred("ai_unavailable"))]
+
+
+def test_a_processing_failure_of_a_forced_question_also_tells_the_chat_it_was_saved() -> None:
+    # Setup
+    harness = IntakeHarness(process_failure=RuntimeError("model exploded"))
+
+    # Execute
+    harness.dispatch_and_drain(an_event(text=FORCED_QUESTION, chat_id=CHAT_ID))
+
+    # Assert
+    assert harness.reply_sender.sent == [(CHAT_ID, deferred("ai_unavailable"))]
+
+
+def test_a_hook_cancelled_mid_classification_still_queues_the_confirmation() -> None:
+    # Setup
+    gate = threading.Event()
+    harness = IntakeHarness(process_gate=gate)
+
+    # Execute
+    asyncio.run(harness.cancel_mid_classification(gate))
+
+    # Assert
+    [item] = harness.rig.store.list_items()
+    assert harness.reply_sender.sent == [(CHAT_ID, confirmation(item, unsure=False))]
+
+
+def test_a_hook_cancelled_mid_classification_still_raises_the_cancellation() -> None:
+    # Setup
+    gate = threading.Event()
+    harness = IntakeHarness(process_gate=gate)
+
+    # Execute
+    task = asyncio.run(harness.cancel_mid_classification(gate))
+
+    # Assert
+    assert task.cancelled()
+
+
+def test_a_hook_cancelled_mid_classification_then_failing_still_queues_the_saved_reply() -> None:
+    # Setup
+    gate = threading.Event()
+    harness = IntakeHarness(process_gate=gate, process_failure=RuntimeError("model exploded"))
+
+    # Execute
+    asyncio.run(harness.cancel_mid_classification(gate))
+
+    # Assert
+    assert harness.reply_sender.sent == [(CHAT_ID, deferred("ai_unavailable"))]
 
 
 @pytest.mark.parametrize(

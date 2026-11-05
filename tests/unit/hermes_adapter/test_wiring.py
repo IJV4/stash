@@ -3,14 +3,16 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from app_builders import NOON, an_app
-from capture_builders import sequential_ids
+from capture_builders import a_filing_answer, sequential_ids
+from capture_rig import build_rig
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
 from fakes.recording_outbox import RecordingOutbox
 from fakes.scripted_steps import ScriptedSteps
 from hermes_events import OWNER_ID, an_event
+from hermes_rig import app_over, instant_bursts
 
-from stash.capture import IncomingMessage
+from stash.capture import IncomingMessage, confirmation
 from stash.hermes_adapter.commands import GpuCommand, ListCommand, RetryCommand
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.wiring import build_commands, build_intake, build_scheduler
@@ -88,6 +90,32 @@ def test_the_id_source_is_not_used_for_events_that_carry_a_message_id() -> None:
 
     # Assert
     assert [message.source.message_id for message in messages] == ["m1", f"{1:032x}"]
+
+
+def test_intakes_built_by_two_registrations_confirm_their_messages_separately() -> None:
+    # Setup
+    rig = build_rig(outcomes=[a_filing_answer(), a_filing_answer()])
+    app = app_over(rig, burst_factory=instant_bursts)
+    scheduler = PausingScheduler()
+    outbox = RecordingOutbox()
+    owners = Owners.parse(OWNER_ID)
+    first_intake = build_intake(app, owners, outbox, scheduler, sequential_ids())
+    second_intake = build_intake(app, owners, outbox, scheduler, sequential_ids())
+
+    async def scenario() -> None:
+        await first_intake.on_dispatch(an_event(message_id="m1"))
+        await second_intake.on_dispatch(an_event(message_id="m2"))
+        await scheduler.drain()
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    [first, second] = rig.store.list_items()
+    assert outbox.sent_texts() == [
+        confirmation(first, unsure=False).text,
+        confirmation(second, unsure=False).text,
+    ]
 
 
 def test_the_commands_are_list_gpu_and_retry() -> None:

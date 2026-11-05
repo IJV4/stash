@@ -106,13 +106,19 @@ the PC, ADR 0001). stash keeps the Telegram connection, the button handler and t
 open app in one process-wide `AdapterState`, so the second `register` reuses them.
 The configuration file is read once per process (a changed `stash.toml` still
 needs a gateway restart); the owner list (`TELEGRAM_ALLOWED_USERS`) is read again
-on every `register`.
+on every `register`. Each `register` has its own burst window, so a burst of
+messages that spans a reload is confirmed in two parts
+(`test_intakes_built_by_two_registrations_confirm_their_messages_separately`,
+a unit test in `tests/unit/hermes_adapter/test_wiring.py`).
 
 Assumed until `docs/spike-m0.md` #24 is run, and modelled that way by the offline
 fake (`FakeHermesContext.reloaded()`): `AdapterState` outlives the reload; the
 second `register` gets a new context; the Telegram handler factories and chat
 admission carry over from before the reload; the hook, commands and tools are
-replaced, not duplicated.
+replaced, not duplicated. If Hermes stacked the old hook instead, a question
+after a reload could be dropped, not only answered twice: one hook saves it and
+answers `allow`, the other sees a duplicate and answers `skip`. #24 therefore
+checks that a question gets exactly one agent answer.
 
 6. After a second `register`, the owner's message is still confirmed through
    Telegram.
@@ -131,6 +137,9 @@ replaced, not duplicated.
 11. A second `register` before Telegram first connects still leaves the owner's
     message confirmed once Telegram connects.
     (`test_a_second_register_before_telegram_first_connects_still_confirms_the_owners_message`)
+12. After a second `register`, an owner question answers `allow` and reaches
+    the agent once: nothing is injected.
+    (`test_after_a_second_register_a_question_is_allowed_and_reaches_the_agent_once`)
 
 Pinned by unit tests: the Telegram handler is safe to call again (Hermes also
 calls it on every reconnect). `TelegramAttachment` adds no second button handler
@@ -198,13 +207,15 @@ acceptance test, in `tests/acceptance/test_hermes_capture.py` except statements
     message — please send it again.` and the hook answers `skip`.
     (`test_when_the_raw_save_fails_the_owner_is_told_to_send_it_again_and_the_hook_skips`)
 14. If processing a capture raises unexpectedly (the log names the capture id,
-    never its text) the hook answers `skip`, nothing is sent, and the capture
-    stays pending for `/retry`.
-    (`test_when_filing_raises_nothing_is_sent_and_the_capture_stays_pending`)
+    never its text) the hook answers `skip`, the capture stays pending for
+    `/retry`, and after the burst window the owner gets the deferred reply
+    `📥 Saved — I'll file it once the AI is reachable.`
+    (`test_when_filing_raises_the_owner_is_told_it_is_saved_and_the_capture_stays_pending`)
 15. If processing a forced question raises, the hook answers `allow` (the
     raw copy is saved and Hermes still gets the owner's message), the failure
-    is logged by capture id only, nothing is sent and the capture stays pending;
-    a later retry marks it as a request and files nothing.
+    is logged by capture id only, the owner gets the same deferred reply after
+    the burst window and the capture stays pending; a later retry marks it as
+    a request and files nothing.
     (`test_a_forced_question_whose_processing_raises_is_allowed_and_retried_as_a_request`)
 16. If a retry processes a pending `?` capture between the hook's raw save and
     the hook's own processing, the retry marks it as a request and files
@@ -222,11 +233,17 @@ first); the `SerializedPipeline` does not make a `?` capture wait for another
 message's classification; a message with an unusable media path (for example containing
 `..`) is still saved, without the media; a message without a user id, without
 text and media, or with a missing message id is handled as above (passed
-through, or given a generated id).
+through, or given a generated id); if Hermes cancels the hook (a timeout) while
+the message is being classified, the cancellation still reaches Hermes
+(`test_a_hook_cancelled_mid_classification_still_raises_the_cancellation`), but the
+classification finishes and its confirmation is still queued for the burst
+reply (`test_a_hook_cancelled_mid_classification_still_queues_the_confirmation`),
+the deferred reply too if the classification then raises
+(`test_a_hook_cancelled_mid_classification_then_failing_still_queues_the_saved_reply`).
 
 Unverified until the PC checks it (`docs/spike-m0.md` #23): whether Hermes
-times out a hook that waits 25-45 s for classification, and whether a slow hook
-delays other messages.
+times out a hook that waits up to ~100 s for a shared link (inspection ≤ 25 s +
+filing 62–82 s, ADR 0001 #9), and whether a slow hook delays other messages.
 
 ### Buttons
 
@@ -262,8 +279,11 @@ Replies are plain text, at most 4096 characters.
 2. `/gpu status`, `/gpu off` and `/gpu on` answer as `stash gpu` does (see
    *stash gpu*); `/gpu` alone is `status`; anything else prints the usage.
 3. `/retry` files the pending captures and prints one line each, or
-   `Nothing pending.` A pending capture starting with `?` prints a `request`
-   line, files nothing and asks the AI nothing
+   `Nothing pending.` A capture that turns out to be a question is not handed to
+   the agent; its line reads `request — <text> — send it again starting with ?
+   to ask` (`stash retry` on the command line prints only `request — <text>`).
+   A pending capture starting with `?` prints that `request` line, files nothing
+   and asks the AI nothing
    (`test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_nothing`).
 
 ### Agent tools

@@ -181,6 +181,20 @@ def test_after_a_second_register_the_owners_message_is_still_confirmed_through_t
     assert [sent.text for sent in plugin.bot.sent] == ["✅ Places · Tokyo · Want to"]
 
 
+def test_after_a_second_register_a_question_is_allowed_and_reaches_the_agent_once() -> None:
+    # Setup
+    rig = build_rig(answer=a_request_answer())
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
+    plugin.connect_telegram()
+    reloaded = plugin.reloaded()
+
+    # Execute
+    verdict = asyncio.run(reloaded.dispatch(an_event(text=QUESTION)))
+
+    # Assert
+    assert (verdict, reloaded.ctx.injected, reloaded.ctx.refused) == (ALLOW, [], [])
+
+
 def test_after_a_second_register_a_button_press_edits_its_confirmation() -> None:
     # Setup
     rig = build_rig(answer=a_filing_answer())

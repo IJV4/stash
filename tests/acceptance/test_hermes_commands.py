@@ -89,7 +89,7 @@ def test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_n
 
     # Assert
     assert (answers, rig.model.calls, rig.store.list_items()) == (
-        [f"request — {FORCED_QUESTION}", "Nothing pending."],
+        [f"request — {FORCED_QUESTION} — send it again starting with ? to ask", "Nothing pending."],
         [],
         [],
     )

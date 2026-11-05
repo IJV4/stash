@@ -2,7 +2,16 @@ import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import datetime, tzinfo
+from typing import assert_never
 
+from stash.capture import (
+    QUESTION_PREFIX,
+    Deferred,
+    Duplicate,
+    Filed,
+    IsRequest,
+    ProcessResult,
+)
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
 from stash.hermes_adapter.ports import GpuControl, ItemReader, Retrier
 from stash.hermes_adapter.queries import MAX_LIMIT, ItemQuery
@@ -18,6 +27,7 @@ from stash.rendering import (
 
 GPU_USAGE = "Usage: /gpu on|off|status"
 LINE_CAP = 20
+ASK_AGAIN = f" — send it again starting with {QUESTION_PREFIX} to ask"
 
 
 def _footer(hidden: int, exact: bool) -> str:
@@ -41,6 +51,16 @@ def _zone(moment: datetime) -> tzinfo:
     if moment.tzinfo is None:
         raise ValueError("local_now must be timezone-aware")
     return moment.tzinfo
+
+
+def _retry_line(result: ProcessResult) -> str:
+    match result:
+        case IsRequest():
+            return result_line(result) + ASK_AGAIN
+        case Filed() | Deferred() | Duplicate():
+            return result_line(result)
+        case _:
+            assert_never(result)
 
 
 class ListCommand:
@@ -92,5 +112,5 @@ class RetryCommand:
 
     async def run(self, raw_args: str) -> str:
         results = await asyncio.to_thread(self._steps.retry_pending)
-        lines = [result_line(result) for result in results]
+        lines = [_retry_line(result) for result in results]
         return _bounded(lines) if lines else NOTHING_PENDING

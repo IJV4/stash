@@ -145,7 +145,7 @@ def test_when_the_raw_save_fails_the_owner_is_told_to_send_it_again_and_the_hook
     )
 
 
-def test_when_filing_raises_nothing_is_sent_and_the_capture_stays_pending() -> None:
+def test_when_filing_raises_the_owner_is_told_it_is_saved_and_the_capture_stays_pending() -> None:
     # Setup
     rig = build_hermes_rig(
         answer=a_filing_answer(),
@@ -156,7 +156,11 @@ def test_when_filing_raises_nothing_is_sent_and_the_capture_stays_pending() -> N
     [verdict] = asyncio.run(rig.deliver(an_event()))
 
     # Assert
-    assert (verdict, rig.outbox.sent, len(rig.capture.store.pending_captures())) == (SKIP, [], 1)
+    assert (verdict, rig.outbox.sent_texts(), len(rig.capture.store.pending_captures())) == (
+        SKIP,
+        ["📥 Saved — I'll file it once the AI is reachable."],
+        1,
+    )
 
 
 def test_a_question_is_allowed_through_to_the_agent_and_creates_no_item_and_no_reply() -> None:

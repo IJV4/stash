@@ -81,14 +81,14 @@ def test_a_forced_question_whose_processing_raises_is_allowed_and_retried_as_a_r
     assert {
         "verdict": verdict,
         "logs": logs.entries(),
-        "sent": rig.outbox.sent,
+        "sent": rig.outbox.sent_texts(),
         "pending": pending,
         "retried": [type(result) for result in retried],
         "items": rig.capture.store.list_items(),
     } == {
         "verdict": ALLOW,
         "logs": [(logging.ERROR, f"processing capture {1:032x} failed")],
-        "sent": [],
+        "sent": ["📥 Saved — I'll file it once the AI is reachable."],
         "pending": 1,
         "retried": [IsRequest],
         "items": [],
