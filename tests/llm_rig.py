@@ -111,13 +111,20 @@ class Rig:
         return {"models": [{"size_vram": self._own_mib * BYTES_PER_MIB}]}
 
 
-def llm_toml(provider: str, busy_fallback: str = "wait", suggestions: str | None = None) -> str:
+def llm_toml(
+    provider: str,
+    busy_fallback: str = "wait",
+    suggestions: str | None = None,
+    filing_thinking: str | None = None,
+) -> str:
     tasks = f'[llm.tasks]\nsuggestions = "{suggestions}"\n' if suggestions else ""
+    thinking = f'[llm.thinking]\nfiling = "{filing_thinking}"\n' if filing_thinking else ""
     return (
         f'[llm]\nprovider = "{provider}"\nbusy_fallback = "{busy_fallback}"\n'
         '[llm.ollama]\nmodel = "local-model"\n'
         '[llm.openrouter]\nmodel = "cloud/model"\n'
         f"{tasks}"
+        f"{thinking}"
     )
 
 

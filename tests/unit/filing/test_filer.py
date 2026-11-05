@@ -8,6 +8,7 @@ from fakes.busy import BusyUntil, FakeBusy
 from fakes.chat_model import FakeChatModel
 from filing_rig import LOS_ANGELES, NOON_UTC, build_filer
 from link_builders import a_link_info
+from router_builders import default_thinking_models
 
 from stash.config import LlmTask, ProviderName
 from stash.domain import ItemType, Route
@@ -122,7 +123,9 @@ def test_the_model_routed_for_the_filing_task_is_the_one_asked() -> None:
         tasks={LlmTask.FILING: ProviderName.OPENROUTER},
     )
     router = ModelRouter(
-        config, {ProviderName.OLLAMA: local, ProviderName.OPENROUTER: cloud}, FakeBusy()
+        config,
+        default_thinking_models({ProviderName.OLLAMA: local, ProviderName.OPENROUTER: cloud}),
+        FakeBusy(),
     )
 
     # Execute

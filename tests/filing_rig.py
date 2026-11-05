@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from config_builders import an_llm_config
 from fakes.busy import FakeBusy
 from fakes.chat_model import FakeChatModel
+from router_builders import default_thinking_models
 
 from stash.config import ProviderName
 from stash.filing import Filer
@@ -21,7 +22,7 @@ def build_filer(
 ) -> Filer:
     router = ModelRouter(
         an_llm_config(),
-        {ProviderName.OLLAMA: model},
+        default_thinking_models({ProviderName.OLLAMA: model}),
         FakeBusy() if busy is None else busy,
     )
     return Filer(router, (lambda: NOON_UTC) if clock is None else clock, LOS_ANGELES)

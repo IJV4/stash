@@ -12,6 +12,7 @@ from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.recording_unloader import RecordingUnloader
 from gate_rig import a_gate, a_sample
+from router_builders import default_thinking_models
 
 from stash.app import StashApp
 from stash.capture import BurstCoalescer, FixHandler
@@ -44,7 +45,11 @@ def an_app(**overrides: Any) -> StashApp:
         "fixes": FixHandler(store, lambda: NOON),
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),
-        "router": ModelRouter(config.llm, {ProviderName.OLLAMA: FakeChatModel()}, FakeBusy()),
+        "router": ModelRouter(
+            config.llm,
+            default_thinking_models({ProviderName.OLLAMA: FakeChatModel()}),
+            FakeBusy(),
+        ),
         "doctor": Doctor([]),
         "burst_factory": lambda: BurstCoalescer(config.burst_window_seconds),
         "clock": lambda: NOON,

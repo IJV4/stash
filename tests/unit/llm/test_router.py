@@ -1,15 +1,17 @@
 from datetime import datetime
 
 import pytest
-from builders import BASE, LATER, an_ollama_settings, an_openrouter_settings
+from builders import BASE, LATER
 from fakes.busy import FakeBusy
 from fakes.chat_model import FakeChatModel
+from router_builders import a_router_config, default_thinking_models
 
 from stash.config import (
     BusyFallback,
-    LlmConfig,
     LlmTask,
+    ModelChoice,
     ProviderName,
+    Thinking,
 )
 from stash.llm import (
     ChatMessage,
@@ -24,22 +26,6 @@ OLLAMA = ProviderName.OLLAMA
 OPENROUTER = ProviderName.OPENROUTER
 SCHEMA: dict[str, object] = {"type": "object"}
 HELLO = [ChatMessage.text("user", "hello")]
-
-
-def a_config(
-    provider: ProviderName,
-    busy_fallback: BusyFallback = "wait",
-    tasks: dict[LlmTask, ProviderName] | None = None,
-) -> LlmConfig:
-    return LlmConfig(
-        provider=provider,
-        busy_fallback=busy_fallback,
-        providers={
-            OLLAMA: an_ollama_settings(),
-            OPENROUTER: an_openrouter_settings(),
-        },
-        tasks=tasks or {},
-    )
 
 
 class Models:
@@ -61,7 +47,9 @@ def routed(
 ) -> tuple[ChatModel, Models]:
     models = Models()
     router = ModelRouter(
-        a_config(provider, busy_fallback, tasks), models.by_provider(), FakeBusy(busy)
+        a_router_config(provider, busy_fallback, tasks),
+        default_thinking_models(models.by_provider()),
+        FakeBusy(busy),
     )
     return router.model_for(task, BASE), models
 
@@ -206,7 +194,9 @@ def test_the_busy_check_is_asked_about_the_moment_given_to_model_for() -> None:
         def is_busy(self, now: datetime) -> bool:
             return now >= LATER
 
-    router = ModelRouter(a_config(OLLAMA), Models().by_provider(), BusyAfter())
+    router = ModelRouter(
+        a_router_config(OLLAMA), default_thinking_models(Models().by_provider()), BusyAfter()
+    )
 
     # Execute
     model = router.model_for(LlmTask.FILING, LATER)
@@ -221,17 +211,17 @@ def test_a_router_without_a_model_for_every_configured_provider_raises_value_err
 
     # Execute / Assert
     with pytest.raises(ValueError, match="openrouter"):
-        ModelRouter(a_config(OLLAMA), only_ollama, FakeBusy())
+        ModelRouter(a_router_config(OLLAMA), default_thinking_models(only_ollama), FakeBusy())
 
 
 def test_a_router_ignores_later_changes_to_the_models_it_was_built_from() -> None:
     # Setup
     models = Models()
-    by_provider = models.by_provider()
-    router = ModelRouter(a_config(OLLAMA), by_provider, FakeBusy())
+    by_choice = default_thinking_models(models.by_provider())
+    router = ModelRouter(a_router_config(OLLAMA), by_choice, FakeBusy())
 
     # Execute
-    by_provider[OLLAMA] = FakeChatModel()
+    by_choice[ModelChoice(OLLAMA, Thinking.DEFAULT)] = FakeChatModel()
 
     # Assert
     assert router.model_for(LlmTask.FILING, BASE) is models.ollama

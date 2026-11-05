@@ -1,11 +1,12 @@
 import json
 
+import httpx
 from builders import an_ollama_settings, an_openrouter_settings
 from config_builders import an_llm_config
 from fakes.fake_providers import FakeProviders
 
 from stash.app.providers import chat_models, eval_targets, model_unloader, own_vram_usage
-from stash.config import LlmConfig, ProviderName
+from stash.config import LlmConfig, LlmTask, ModelChoice, ProviderName, Thinking
 from stash.llm import ChatMessage, ChatModel
 
 SCHEMA = {"type": "object"}
@@ -15,16 +16,32 @@ BOTH = an_llm_config(
         ProviderName.OPENROUTER: an_openrouter_settings(),
     }
 )
+OLLAMA = ProviderName.OLLAMA
+OPENROUTER = ProviderName.OPENROUTER
+THINKING_FIELDS = {"reasoning_effort", "reasoning"}
+FILING_OFF = an_llm_config(providers=BOTH.providers, thinking={LlmTask.FILING: Thinking.OFF})
+VISION_OFF = an_llm_config(providers=BOTH.providers, thinking={LlmTask.VISION: Thinking.OFF})
 OPENROUTER_ONLY = an_llm_config(
     provider=ProviderName.OPENROUTER, providers={ProviderName.OPENROUTER: an_openrouter_settings()}
 )
+
+
+def first_request_json(providers: FakeProviders) -> dict[str, object]:
+    body: dict[str, object] = json.loads(providers.requests[0].content)
+    return body
+
+
+def vision_model_of(llm: LlmConfig, client: httpx.Client) -> ChatModel:
+    vision_model = eval_targets(llm, client, chat_models(llm, client))[OLLAMA].vision_model
+    assert vision_model is not None
+    return vision_model
 
 
 def ask(model: ChatModel) -> None:
     model.complete_json([ChatMessage.text("user", "hello")], SCHEMA, "probe")
 
 
-def models_in(providers: FakeProviders, llm: LlmConfig) -> dict[ProviderName, ChatModel]:
+def models_in(providers: FakeProviders, llm: LlmConfig) -> dict[ModelChoice, ChatModel]:
     return chat_models(llm, providers.client())
 
 
@@ -33,7 +50,10 @@ def test_there_is_a_chat_model_for_each_configured_provider() -> None:
     models = models_in(FakeProviders(), BOTH)
 
     # Assert
-    assert set(models) == {ProviderName.OLLAMA, ProviderName.OPENROUTER}
+    assert set(models) == {
+        ModelChoice(ProviderName.OLLAMA, Thinking.DEFAULT),
+        ModelChoice(ProviderName.OPENROUTER, Thinking.DEFAULT),
+    }
 
 
 def test_each_chat_model_talks_to_its_own_providers_endpoint() -> None:
@@ -42,8 +62,8 @@ def test_each_chat_model_talks_to_its_own_providers_endpoint() -> None:
     models = models_in(providers, BOTH)
 
     # Execute
-    ask(models[ProviderName.OPENROUTER])
-    ask(models[ProviderName.OLLAMA])
+    ask(models[ModelChoice(ProviderName.OPENROUTER, Thinking.DEFAULT)])
+    ask(models[ModelChoice(ProviderName.OLLAMA, Thinking.DEFAULT)])
 
     # Assert
     assert [str(request.url) for request in providers.requests] == [
@@ -121,16 +141,17 @@ def test_an_eval_target_uses_the_providers_own_chat_model() -> None:
     targets = eval_targets(BOTH, client, models)
 
     # Assert
-    assert targets[ProviderName.OLLAMA].model is models[ProviderName.OLLAMA]
+    assert (
+        targets[ProviderName.OLLAMA].model
+        is models[ModelChoice(ProviderName.OLLAMA, Thinking.DEFAULT)]
+    )
 
 
 def test_an_eval_target_sends_images_to_the_configured_vision_model() -> None:
     # Setup
     providers = FakeProviders()
     client = providers.client()
-    targets = eval_targets(BOTH, client, chat_models(BOTH, client))
-    vision_model = targets[ProviderName.OLLAMA].vision_model
-    assert vision_model is not None
+    vision_model = vision_model_of(BOTH, client)
 
     # Execute
     ask(vision_model)
@@ -159,3 +180,85 @@ def test_only_configured_providers_get_an_eval_target() -> None:
 
     # Assert
     assert set(targets) == {ProviderName.OPENROUTER}
+
+
+def test_chat_models_are_built_for_exactly_the_choices_the_config_needs() -> None:
+    # Execute
+    models = models_in(FakeProviders(), FILING_OFF)
+
+    # Assert
+    assert set(models) == FILING_OFF.model_choices()
+
+
+def test_the_openrouter_off_model_sends_openrouters_thinking_field() -> None:
+    # Setup
+    providers = FakeProviders()
+    models = models_in(providers, FILING_OFF)
+
+    # Execute
+    ask(models[ModelChoice(OPENROUTER, Thinking.OFF)])
+
+    # Assert
+    assert first_request_json(providers)["reasoning"] == {"effort": "none"}
+
+
+def test_the_ollama_off_model_sends_ollamas_thinking_field() -> None:
+    # Setup
+    providers = FakeProviders()
+    models = models_in(providers, FILING_OFF)
+
+    # Execute
+    ask(models[ModelChoice(OLLAMA, Thinking.OFF)])
+
+    # Assert
+    assert first_request_json(providers)["reasoning_effort"] == "none"
+
+
+def test_a_default_model_sends_no_thinking_field_even_when_another_task_is_off() -> None:
+    # Setup
+    providers = FakeProviders()
+    models = models_in(providers, FILING_OFF)
+
+    # Execute
+    ask(models[ModelChoice(OLLAMA, Thinking.DEFAULT)])
+
+    # Assert
+    assert THINKING_FIELDS & set(first_request_json(providers)) == set()
+
+
+def test_an_eval_targets_text_model_follows_the_filing_thinking_setting() -> None:
+    # Setup
+    client = FakeProviders().client()
+    models = chat_models(FILING_OFF, client)
+
+    # Execute
+    targets = eval_targets(FILING_OFF, client, models)
+
+    # Assert
+    assert targets[OLLAMA].model is models[ModelChoice(OLLAMA, Thinking.OFF)]
+
+
+def test_an_eval_targets_vision_model_follows_the_vision_thinking_setting() -> None:
+    # Setup
+    providers = FakeProviders()
+    client = providers.client()
+    vision_model = vision_model_of(VISION_OFF, client)
+
+    # Execute
+    ask(vision_model)
+
+    # Assert
+    assert first_request_json(providers)["reasoning_effort"] == "none"
+
+
+def test_an_eval_targets_vision_model_does_not_inherit_the_filing_thinking_setting() -> None:
+    # Setup
+    providers = FakeProviders()
+    client = providers.client()
+    vision_model = vision_model_of(FILING_OFF, client)
+
+    # Execute
+    ask(vision_model)
+
+    # Assert
+    assert THINKING_FIELDS & set(first_request_json(providers)) == set()

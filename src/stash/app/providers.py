@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 import httpx
 
-from stash.config import LlmConfig, ProviderName
+from stash.config import LlmConfig, LlmTask, ModelChoice, ProviderName
 from stash.evaluation import EvalTarget
 from stash.gpu import NoOwnVram, OwnVramUsage
 from stash.llm import ChatModel, ModelUnloader, NoModelToUnload
@@ -10,9 +10,12 @@ from stash.llm.openai_compat import OpenAICompatibleChat
 from stash.llm.probes import OllamaControl, OllamaVramUsage
 
 
-def chat_models(llm: LlmConfig, client: httpx.Client) -> dict[ProviderName, ChatModel]:
+def chat_models(llm: LlmConfig, client: httpx.Client) -> dict[ModelChoice, ChatModel]:
     return {
-        name: OpenAICompatibleChat(settings, client) for name, settings in llm.providers.items()
+        choice: OpenAICompatibleChat(
+            llm.providers[choice.provider], client, thinking=choice.thinking
+        )
+        for choice in llm.model_choices()
     }
 
 
@@ -27,16 +30,21 @@ def model_unloader(llm: LlmConfig, client: httpx.Client) -> ModelUnloader:
 
 
 def eval_targets(
-    llm: LlmConfig, client: httpx.Client, models: Mapping[ProviderName, ChatModel]
+    llm: LlmConfig, client: httpx.Client, models: Mapping[ModelChoice, ChatModel]
 ) -> dict[ProviderName, EvalTarget]:
     return {
         name: EvalTarget(
             label=f"{name}:{settings.model}",
-            model=models[name],
+            model=models[llm.choice_for(LlmTask.FILING).with_provider(name)],
             vision_model=(
                 None
                 if settings.vision_model is None
-                else OpenAICompatibleChat(settings, client, model=settings.vision_model)
+                else OpenAICompatibleChat(
+                    settings,
+                    client,
+                    model=settings.vision_model,
+                    thinking=llm.thinking_for(LlmTask.VISION),
+                )
             ),
         )
         for name, settings in llm.providers.items()

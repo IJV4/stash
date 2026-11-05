@@ -352,6 +352,15 @@ as acceptance tests.
 - An unknown key anywhere is a `ConfigError` naming its path (typos fail loudly).
 - A `base_url` must be an http(s) URL with a host and no credentials; OpenRouter
   must use https.
+- `[llm.thinking]` sets model thinking per task. Keys are the tasks (`filing`,
+  `suggestions`, `vision`); values are `default` or `off`. With no table, or for
+  an unlisted task, `LlmConfig.thinking_for(task)` is `Thinking.DEFAULT`.
+- `[llm.thinking] filing = "off"` gives `thinking_for(LlmTask.FILING) == Thinking.OFF`.
+- Any other value (`filing = "maybe"`) is a `ConfigError` naming
+  `llm.thinking.filing`; an unknown key (`chat = "off"`) is a `ConfigError`
+  like any unknown key.
+- The setting covers stash's own LLM calls only; Hermes agent turns use Hermes's
+  provider config.
 
 ## Switching the AI provider  [Tasks 4-5]
 
@@ -374,6 +383,17 @@ OpenRouter. Each statement below has one acceptance test in
 7. A rejected request (HTTP 400) raises `LlmError` that is not `LlmUnavailable`.
 8. The Ollama doctor probe reports a configured model that is not pulled.
 9. The OpenRouter doctor probe reads "invalid key" for a rejected key.
+10. With `[llm.thinking] filing = "off"`, the model the app routes filing to
+    sends Ollama a request carrying `"reasoning_effort": "none"`.
+
+How `off` reaches each provider is pinned by contract tests
+(`tests/contract/test_openai_compat_thinking.py`), not acceptance tests:
+`OpenAICompatibleChat(settings, client, model=None, thinking=Thinking.OFF)` adds
+`"reasoning_effort": "none"` for Ollama and `"reasoning": {"effort": "none"}`
+for OpenRouter. `Thinking.DEFAULT` (the default) adds nothing: the request keys
+are exactly `model`, `messages`, `temperature`, `response_format`. The router
+(unit-tested) hands each task a model carrying that task's setting, including
+after a busy fallback to OpenRouter, and `vision` never inherits `filing`.
 
 ## GPU sharing  [Tasks 5-6]
 

@@ -1,7 +1,8 @@
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
+from typing import TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from stash.config._section import Section
@@ -16,6 +17,7 @@ from stash.config.model import (
     ProviderName,
     ProviderSettings,
     StashConfig,
+    Thinking,
 )
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"
@@ -31,6 +33,8 @@ XDG_DATA_HOME_VAR = "XDG_DATA_HOME"
 HOME_PREFIX = "~"
 DEFAULT_DATA_SUBPATH = Path(".local/share/stash")
 APP_DIR_NAME = "stash"
+
+_PerTask = TypeVar("_PerTask", bound=str)
 
 
 def load_config(path: Path, env: Mapping[str, str]) -> StashConfig:
@@ -105,9 +109,10 @@ def _llm_config(section: Section, env: Mapping[str, str]) -> LlmConfig:
     provider = section.take_required_choice("provider", tuple(ProviderName))
     busy_fallback = section.take_choice("busy_fallback", BUSY_FALLBACKS, "wait")
     providers = _provider_tables(section, env)
-    tasks = _task_overrides(section.take_table_or_empty("tasks"))
+    tasks = _per_task(section.take_table_or_empty("tasks"), tuple(ProviderName))
+    thinking = _per_task(section.take_table_or_empty("thinking"), tuple(Thinking))
     section.finish()
-    return LlmConfig(provider, busy_fallback, providers, tasks)
+    return LlmConfig(provider, busy_fallback, providers, tasks, thinking)
 
 
 def _provider_tables(
@@ -142,11 +147,11 @@ def _api_key(name: ProviderName, env: Mapping[str, str]) -> str | None:
     return env.get(OPENROUTER_API_KEY_VAR, "").strip() or None
 
 
-def _task_overrides(section: Section) -> dict[LlmTask, ProviderName]:
-    overrides: dict[LlmTask, ProviderName] = {}
+def _per_task(section: Section, choices: Sequence[_PerTask]) -> dict[LlmTask, _PerTask]:
+    chosen: dict[LlmTask, _PerTask] = {}
     for task in LlmTask:
-        provider = section.take_optional_choice(task.value, tuple(ProviderName))
-        if provider is not None:
-            overrides[task] = provider
+        choice = section.take_optional_choice(task.value, choices)
+        if choice is not None:
+            chosen[task] = choice
     section.finish()
-    return overrides
+    return chosen

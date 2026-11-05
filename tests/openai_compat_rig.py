@@ -6,7 +6,7 @@ import httpx
 import pytest
 from builders import an_ollama_settings, an_openrouter_settings, chat_body
 
-from stash.config import ProviderSettings
+from stash.config import ProviderSettings, Thinking
 from stash.llm import ChatMessage, LlmError
 from stash.llm.openai_compat import OpenAICompatibleChat
 
@@ -37,10 +37,13 @@ def raising(error: Exception) -> Handler:
 
 
 def chat_over(
-    settings: ProviderSettings, handler: Handler, model: str | None = None
+    settings: ProviderSettings,
+    handler: Handler,
+    model: str | None = None,
+    thinking: Thinking = Thinking.DEFAULT,
 ) -> OpenAICompatibleChat:
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    return OpenAICompatibleChat(settings, client, model)
+    return OpenAICompatibleChat(settings, client, model, thinking)
 
 
 def ask(
@@ -48,14 +51,17 @@ def ask(
     handler: Handler,
     messages: list[ChatMessage] | None = None,
     model: str | None = None,
+    thinking: Thinking = Thinking.DEFAULT,
 ) -> dict[str, object]:
-    return chat_over(settings, handler, model).complete_json(messages or HELLO, SCHEMA, SCHEMA_NAME)
+    chat = chat_over(settings, handler, model, thinking)
+    return chat.complete_json(messages or HELLO, SCHEMA, SCHEMA_NAME)
 
 
 def sent_request(
     settings: ProviderSettings,
     messages: list[ChatMessage] | None = None,
     model: str | None = None,
+    thinking: Thinking = Thinking.DEFAULT,
 ) -> httpx.Request:
     seen: list[httpx.Request] = []
 
@@ -63,7 +69,7 @@ def sent_request(
         seen.append(request)
         return completion("{}")
 
-    ask(settings, handler, messages, model)
+    ask(settings, handler, messages, model, thinking)
     return seen[0]
 
 
@@ -71,8 +77,9 @@ def sent_body(
     settings: ProviderSettings,
     messages: list[ChatMessage] | None = None,
     model: str | None = None,
+    thinking: Thinking = Thinking.DEFAULT,
 ) -> dict[str, Any]:
-    body: dict[str, Any] = json.loads(sent_request(settings, messages, model).content)
+    body: dict[str, Any] = json.loads(sent_request(settings, messages, model, thinking).content)
     return body
 
 

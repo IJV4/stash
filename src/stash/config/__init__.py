@@ -5,9 +5,11 @@ from stash.config.model import (
     GpuConfig,
     LlmConfig,
     LlmTask,
+    ModelChoice,
     ProviderName,
     ProviderSettings,
     StashConfig,
+    Thinking,
 )
 
 __all__ = [
@@ -17,7 +19,9 @@ __all__ = [
     "GpuConfig",
     "LlmConfig",
     "LlmTask",
+    "ModelChoice",
     "ProviderName",
     "ProviderSettings",
     "StashConfig",
+    "Thinking",
 ]

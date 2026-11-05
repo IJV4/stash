@@ -6,6 +6,7 @@ import httpx
 from builders import an_ollama_settings, chat_body
 from config_builders import an_llm_config
 from fakes.busy import FakeBusy
+from router_builders import default_thinking_models
 
 from stash.config import ProviderName
 from stash.filing import Filer
@@ -49,7 +50,9 @@ def filer_over_http(seen: list[httpx.Request]) -> Filer:
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
     chat = OpenAICompatibleChat(an_ollama_settings(), client)
-    router = ModelRouter(an_llm_config(), {ProviderName.OLLAMA: chat}, FakeBusy())
+    router = ModelRouter(
+        an_llm_config(), default_thinking_models({ProviderName.OLLAMA: chat}), FakeBusy()
+    )
     return Filer(router, lambda: NOON_UTC, ZoneInfo("UTC"))
 
 

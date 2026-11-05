@@ -1,10 +1,11 @@
 import json
 from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 from typing import Any, TypeGuard
 
 import httpx
 
-from stash.config import ProviderName, ProviderSettings
+from stash.config import ProviderName, ProviderSettings, Thinking
 from stash.llm._auth import bearer_headers
 from stash.llm.errors import LlmBadOutput, LlmError, LlmUnavailable
 from stash.llm.messages import ChatMessage, ImagePart, Part
@@ -15,6 +16,14 @@ RETRYABLE_REJECTIONS = frozenset({402, 408, 429})
 SERVER_ERROR_FLOOR = 500
 ATTRIBUTION_TITLE = "stash"
 UNPARSEABLE_JSON = (ValueError, RecursionError)
+THINKING_OFF_FIELDS: Mapping[ProviderName, Mapping[str, object]] = MappingProxyType(
+    {
+        # Verified only on Ollama 0.33.2 + qwen3.5 (ADR 0004: 4.7->0.2 s); PC: check any other model
+        ProviderName.OLLAMA: {"reasoning_effort": "none"},
+        # openrouter SDK 1.3.121 schema, not sent live; PC: check per model (no 400, tokens drop)
+        ProviderName.OPENROUTER: {"reasoning": {"effort": "none"}},
+    }
+)
 
 
 def _plain_json(value: object) -> object:
@@ -89,7 +98,11 @@ class _Failures:
 
 class OpenAICompatibleChat:
     def __init__(
-        self, settings: ProviderSettings, client: httpx.Client, model: str | None = None
+        self,
+        settings: ProviderSettings,
+        client: httpx.Client,
+        model: str | None = None,
+        thinking: Thinking = Thinking.DEFAULT,
     ) -> None:
         if model is not None and not model.strip():
             raise ValueError("model override must not be blank")
@@ -98,6 +111,7 @@ class OpenAICompatibleChat:
         self._url = settings.endpoint("chat/completions")
         self._headers = _request_headers(settings)
         self._failures = _Failures(settings)
+        self._thinking_fields = _thinking_fields(settings.name, thinking)
 
     def complete_json(
         self,
@@ -119,6 +133,7 @@ class OpenAICompatibleChat:
                 "type": "json_schema",
                 "json_schema": {"name": schema_name, "strict": True, "schema": _plain_json(schema)},
             },
+            **self._thinking_fields,
         }
 
     def _send(self, payload: dict[str, Any]) -> httpx.Response:
@@ -129,6 +144,14 @@ class OpenAICompatibleChat:
         if not response.is_success:
             raise self._failures.from_status(response)
         return response
+
+
+def _thinking_fields(name: ProviderName, thinking: Thinking) -> dict[str, Any]:
+    match thinking:
+        case Thinking.DEFAULT:
+            return {}
+        case Thinking.OFF:
+            return {key: _plain_json(value) for key, value in THINKING_OFF_FIELDS[name].items()}
 
 
 def _request_headers(settings: ProviderSettings) -> dict[str, str]:

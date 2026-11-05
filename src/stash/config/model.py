@@ -30,6 +30,23 @@ class LlmTask(StrEnum):
     VISION = "vision"
 
 
+class Thinking(StrEnum):
+    DEFAULT = "default"
+    OFF = "off"
+
+
+@dataclass(frozen=True, slots=True)
+class ModelChoice:
+    provider: ProviderName
+    thinking: Thinking
+
+    def with_provider(self, provider: ProviderName) -> "ModelChoice":
+        return ModelChoice(provider, self.thinking)
+
+    def __str__(self) -> str:
+        return f"{self.provider} thinking={self.thinking}"
+
+
 def _is_unprintable_or_space(character: str) -> bool:
     return character.isspace() or not character.isprintable()
 
@@ -87,18 +104,32 @@ class LlmConfig:
     busy_fallback: BusyFallback
     providers: Mapping[ProviderName, ProviderSettings]
     tasks: Mapping[LlmTask, ProviderName]
+    thinking: Mapping[LlmTask, Thinking] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.busy_fallback not in BUSY_FALLBACKS:
             raise ConfigError(f"llm.busy_fallback must be one of {', '.join(BUSY_FALLBACKS)}")
         object.__setattr__(self, "providers", MappingProxyType(dict(self.providers)))
         object.__setattr__(self, "tasks", MappingProxyType(dict(self.tasks)))
+        object.__setattr__(self, "thinking", MappingProxyType(dict(self.thinking)))
         for name in ProviderName:
             if self.uses(name):
                 self._require_usable(name)
 
     def provider_for(self, task: LlmTask) -> ProviderName:
         return self.tasks.get(task, self.provider)
+
+    def thinking_for(self, task: LlmTask) -> Thinking:
+        return self.thinking.get(task, Thinking.DEFAULT)
+
+    def choice_for(self, task: LlmTask) -> ModelChoice:
+        return ModelChoice(self.provider_for(task), self.thinking_for(task))
+
+    def model_choices(self) -> frozenset[ModelChoice]:
+        used = {self.thinking_for(task) for task in LlmTask}
+        return frozenset(
+            ModelChoice(name, thinking) for name in self.providers for thinking in used
+        )
 
     def uses(self, name: ProviderName) -> bool:
         if name is ProviderName.OPENROUTER and self.busy_fallback == "openrouter":

@@ -139,3 +139,16 @@ def test_the_openrouter_doctor_probe_reads_invalid_key_for_a_rejected_key(
 
     # Assert
     assert result == ProbeResult(False, "invalid key")
+
+
+def test_with_filing_thinking_off_the_filing_request_to_ollama_carries_reasoning_effort_none(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_rig(tmp_path, llm_toml("ollama", filing_thinking="off"), FREE_GPU)
+
+    # Execute
+    ask(rig.router.model_for(LlmTask.FILING, BASE))
+
+    # Assert
+    assert rig.sent_json()["reasoning_effort"] == "none"
