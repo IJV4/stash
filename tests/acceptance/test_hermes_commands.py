@@ -4,7 +4,8 @@ from app_builders import an_app, stored
 from builders import BASE, a_capture, an_item, minutes_after
 from capture_builders import FORCED_QUESTION, a_filing_answer, a_message
 from capture_rig import build_rig
-from hermes_rig import app_over, called, register_stash
+from hermes_registration_rig import register_stash
+from hermes_rig import app_over, called
 
 from stash.domain import ItemType, Stage
 

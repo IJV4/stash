@@ -9,10 +9,8 @@ from app_builders import an_app
 from capture_builders import SAMPLE_TEXT, sequential_ids
 from capture_rig import CaptureRig, build_rig
 from config_builders import a_stash_config
-from fakes.fake_telegram_bot import FakeTelegramApplication, FakeTelegramBot
 from fakes.hermes_ctx import FakeHermesContext
 from fakes.pausing_scheduler import PausingScheduler
-from fakes.ptb_callback_updates import AnsweringBot, callback_update
 from fakes.recording_outbox import RecordingOutbox
 from hermes_ctx_builders import a_hermes_context
 from hermes_events import OWNER_ID, FakeEvent, an_event
@@ -27,7 +25,6 @@ from stash.hermes_adapter.callbacks import CallbackPress, FixCallbacks
 from stash.hermes_adapter.events import DISPATCH_HOOK, Chat
 from stash.hermes_adapter.intake import MessageIntake
 from stash.hermes_adapter.owners import Owners
-from stash.hermes_adapter.plugin import register
 from stash.hermes_adapter.wiring import build_callbacks, build_intake
 from stash.llm import LlmError
 
@@ -134,58 +131,3 @@ def a_press(
     message_id: str = CONFIRMATION_MESSAGE_ID,
 ) -> CallbackPress:
     return CallbackPress(Chat(chat_id=OWNER_ID, user_id=user_id), message_id, data)
-
-
-@dataclass(frozen=True, slots=True)
-class RegisteredStash:
-    ctx: FakeHermesContext
-    application: FakeTelegramApplication
-    exits: list[Callable[[], None]]
-
-    @property
-    def bot(self) -> FakeTelegramBot:
-        return self.application.bot
-
-    def connect_telegram(self) -> None:
-        self.ctx.platform_handlers["telegram"](self.application, None)
-
-    async def dispatch(self, event: FakeEvent) -> dict[str, str]:
-        return await self.ctx.dispatch(event)
-
-    def sent_button_data(self, label: str) -> str:
-        [sent, *_] = self.bot.sent
-        return next(
-            button.callback_data
-            for row in sent.reply_markup.inline_keyboard
-            for button in row
-            if button.text == label
-        )
-
-    async def press(self, data: str, message_id: int = int(CONFIRMATION_MESSAGE_ID)) -> None:
-        update = callback_update(
-            AnsweringBot([]),
-            data=data,
-            chat_id=int(OWNER_ID),
-            user_id=int(OWNER_ID),
-            message_id=message_id,
-        )
-        await self.application.handlers[0].callback(update, None)
-
-
-def register_stash(
-    app: StashApp,
-    ctx: FakeHermesContext | None = None,
-    load: LoadConfig = instant_config,
-    owner_ids: str = OWNER_ID,
-) -> RegisteredStash:
-    context = a_hermes_context(owners=Owners.parse(owner_ids)) if ctx is None else ctx
-    exits: list[Callable[[], None]] = []
-    register(
-        context,
-        env={"TELEGRAM_ALLOWED_USERS": owner_ids, "HOME": "/home/owner"},
-        read_secret=lambda name: None,
-        build=lambda config: app,
-        load=load,
-        at_exit=exits.append,
-    )
-    return RegisteredStash(context, FakeTelegramApplication(), exits)

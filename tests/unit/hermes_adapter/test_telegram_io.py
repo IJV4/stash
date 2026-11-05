@@ -8,6 +8,7 @@ import pytest
 from fakes.fake_telegram_bot import FakeTelegramApplication, FakeTelegramBot
 from fakes.keyword_only_telegram_bot import KeywordOnlyTelegramBot
 from fakes.ptb_callback_updates import AnsweringBot, callback_update
+from fakes.recording_presses import PressLog
 from log_records import recording_logs
 from telegram import Bot, InlineKeyboardMarkup
 from telegram.error import NetworkError
@@ -28,19 +29,6 @@ WITH_BUTTONS = Reply(
         (Button("Undo", "stash:u:abc"),),
     ),
 )
-
-
-class PressLog:
-    def __init__(self, log: list[str], failure: Exception | None = None) -> None:
-        self.presses: list[CallbackPress] = []
-        self._log = log
-        self._failure = failure
-
-    async def __call__(self, press: CallbackPress) -> None:
-        self._log.append("press")
-        self.presses.append(press)
-        if self._failure is not None:
-            raise self._failure
 
 
 def attached_handler(
@@ -457,3 +445,59 @@ def test_the_keywords_of_an_edit_are_accepted_by_the_real_telegram_bot() -> None
 
     # Assert
     assert bound == {"self", "chat_id", "text", "message_id", "reply_markup"}
+
+
+def test_attaching_the_same_application_again_adds_no_second_callback_query_handler() -> None:
+    # Setup
+    application = FakeTelegramApplication()
+    attachment = TelegramAttachment(LateBoundOutbox(), PressLog([]))
+    attachment.attach(application)
+
+    # Execute
+    attachment.attach(application)
+
+    # Assert
+    assert [type(handler) for handler in application.handlers] == [CallbackQueryHandler]
+
+
+def test_attaching_a_new_application_adds_a_callback_query_handler_to_it() -> None:
+    # Setup
+    attachment = TelegramAttachment(LateBoundOutbox(), PressLog([]))
+    attachment.attach(FakeTelegramApplication())
+    reconnected = FakeTelegramApplication()
+
+    # Execute
+    attachment.attach(reconnected)
+
+    # Assert
+    assert [type(handler) for handler in reconnected.handlers] == [CallbackQueryHandler]
+
+
+def test_sending_after_attaching_a_new_application_reaches_the_new_bot() -> None:
+    # Setup
+    outbox = LateBoundOutbox()
+    attachment = TelegramAttachment(outbox, PressLog([]))
+    attachment.attach(FakeTelegramApplication())
+    reconnected = FakeTelegramApplication()
+    attachment.attach(reconnected)
+
+    # Execute
+    asyncio.run(outbox.send("1001", PLAIN))
+
+    # Assert
+    assert [sent.text for sent in reconnected.bot.sent] == ["Saved"]
+
+
+def test_sending_after_attaching_a_new_application_no_longer_reaches_the_old_bot() -> None:
+    # Setup
+    outbox = LateBoundOutbox()
+    attachment = TelegramAttachment(outbox, PressLog([]))
+    original = FakeTelegramApplication()
+    attachment.attach(original)
+    attachment.attach(FakeTelegramApplication())
+
+    # Execute
+    asyncio.run(outbox.send("1001", PLAIN))
+
+    # Assert
+    assert original.bot.sent == []

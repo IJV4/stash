@@ -7,6 +7,8 @@ from stash.hermes_adapter.owners import Owners
 
 Handler = Callable[..., Any]
 
+_PLUGIN_NAME = "stash"
+
 
 @dataclass(frozen=True, slots=True)
 class RegisteredCommand:
@@ -44,6 +46,33 @@ class _AdmittedChats:
         return origin is not None and origin.get("chat_id") in self._chat_ids
 
 
+class _PlatformFactories:
+    def __init__(self) -> None:
+        self._by_platform: dict[str, list[Handler]] = {}
+        self._keys: set[tuple[str, str]] = set()
+
+    @property
+    def by_platform(self) -> dict[str, list[Handler]]:
+        return {platform: list(factories) for platform, factories in self._by_platform.items()}
+
+    def register(self, platform: str, factory: Handler) -> None:
+        key = (_PLUGIN_NAME, factory.__qualname__)
+        if key in self._keys:
+            return
+        self._keys.add(key)
+        self._by_platform.setdefault(platform, []).append(factory)
+
+    def connect(self, platform: str, application: Any) -> None:
+        for factory in self._by_platform.get(platform, []):
+            factory(application, None)
+
+
+class _Gateway:
+    def __init__(self) -> None:
+        self.factories = _PlatformFactories()
+        self.admitted = _AdmittedChats()
+
+
 class FakeHermesContext:
     def __init__(
         self,
@@ -51,18 +80,30 @@ class FakeHermesContext:
         owners: Owners,
         config: Mapping[str, Any] | None = None,
         reserved: Collection[str] = (),
+        gateway: _Gateway | None = None,
     ) -> None:
         self._owners = owners
-        self._admitted = _AdmittedChats()
         self._config = dict(config or {})
         self._reserved = frozenset(reserved)
+        self._gateway = _Gateway() if gateway is None else gateway
         self.hooks: dict[str, Handler] = {}
-        self.platform_handlers: dict[str, Handler] = {}
         self.commands: dict[str, Handler] = {}
         self.command_registrations: list[RegisteredCommand] = []
         self.tools: dict[str, RegisteredTool] = {}
         self.injected: list[InjectedMessage] = []
         self.refused: list[InjectedMessage] = []
+
+    @property
+    def platform_handlers(self) -> dict[str, list[Handler]]:
+        return self._gateway.factories.by_platform
+
+    def reloaded(self, owners: Owners | None = None) -> "FakeHermesContext":
+        return FakeHermesContext(
+            owners=self._owners if owners is None else owners,
+            config=self._config,
+            reserved=self._reserved,
+            gateway=self._gateway,
+        )
 
     def get_config(self, key: str, default: Any = None) -> Any:
         return self._config.get(key, default)
@@ -73,7 +114,10 @@ class FakeHermesContext:
         self.hooks[hook_name] = callback
 
     def register_platform_handler(self, platform: str, factory: Handler) -> None:
-        self.platform_handlers[platform] = factory
+        self._gateway.factories.register(platform, factory)
+
+    def connect(self, platform: str, application: Any) -> None:
+        self._gateway.factories.connect(platform, application)
 
     def register_command(
         self,
@@ -111,7 +155,7 @@ class FakeHermesContext:
     async def dispatch(self, event: HermesEvent) -> dict[str, str]:
         verdict: dict[str, str] = await self.hooks[DISPATCH_HOOK](event)
         if verdict == Verdict.ALLOW.hook_result() and self._is_owner_prose(event):
-            self._admitted.admit(event.source.chat_id)
+            self._gateway.admitted.admit(event.source.chat_id)
         return verdict
 
     def _is_owner_prose(self, event: HermesEvent) -> bool:
@@ -128,7 +172,7 @@ class FakeHermesContext:
         origin: Mapping[str, Any] | None = None,
     ) -> bool:
         message = InjectedMessage(content, role, session_key, origin)
-        if not self._admitted.admits(origin):
+        if not self._gateway.admitted.admits(origin):
             self.refused.append(message)
             return False
         self.injected.append(message)

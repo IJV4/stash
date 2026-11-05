@@ -6,8 +6,9 @@ import pytest
 from capture_builders import QUESTION, a_filing_answer, a_request_answer, an_unsure_answer
 from capture_rig import build_rig
 from hermes_ctx_builders import a_hermes_context
-from hermes_events import ALLOW, SKIP, an_event
-from hermes_rig import app_over, called, instant_bursts, register_stash, until
+from hermes_events import ALLOW, OWNER_ID, SKIP, an_event
+from hermes_registration_rig import OpenedApps, register_stash, register_stash_over
+from hermes_rig import CONFIRMATION_MESSAGE_ID, app_over, called, instant_bursts, until
 from telegram import InlineKeyboardMarkup
 
 from stash.app import StashApp
@@ -160,3 +161,111 @@ def test_that_was_a_question_pressed_through_telegram_injects_the_text_after_a_q
         plugin.ctx.refused,
         len(plugin.bot.sent),
     ) == ([QUESTION], [], 1)
+
+
+def test_after_a_second_register_the_owners_message_is_still_confirmed_through_telegram() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
+    plugin.connect_telegram()
+    plugin.register_again()
+
+    async def scenario() -> None:
+        await plugin.dispatch(an_event())
+        await until(lambda: plugin.bot.sent)
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert [sent.text for sent in plugin.bot.sent] == ["✅ Places · Tokyo · Want to"]
+
+
+def test_after_a_second_register_a_button_press_edits_its_confirmation() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
+    plugin.connect_telegram()
+    plugin.register_again()
+
+    async def scenario() -> None:
+        await plugin.dispatch(an_event())
+        await until(lambda: plugin.bot.sent)
+        await plugin.press(plugin.sent_button_data("Type"))
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert [(edited.chat_id, edited.message_id) for edited in plugin.bot.edited] == [
+        (OWNER_ID, int(CONFIRMATION_MESSAGE_ID))
+    ]
+
+
+def test_after_a_second_register_the_commands_answer_in_the_reloaded_context() -> None:
+    # Setup
+    plugin = register_stash(a_plain_app())
+    plugin.connect_telegram()
+    reloaded = plugin.reloaded()
+
+    # Execute
+    answer = asyncio.run(called(reloaded.ctx.commands["retry"], ""))
+
+    # Assert
+    assert answer == "Nothing pending."
+
+
+def test_after_a_second_register_a_new_telegram_application_confirms_and_edits_through_it() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
+    plugin.connect_telegram()
+    reconnected = plugin.reloaded().reconnected()
+
+    async def scenario() -> None:
+        await reconnected.dispatch(an_event())
+        await until(lambda: reconnected.bot.sent)
+        await reconnected.press(reconnected.sent_button_data("Type"))
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert [(edited.chat_id, edited.message_id) for edited in reconnected.bot.edited] == [
+        (OWNER_ID, int(CONFIRMATION_MESSAGE_ID))
+    ]
+
+
+def test_a_second_register_before_telegram_first_connects_still_confirms_the_owners_message() -> (
+    None
+):
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
+    reloaded = plugin.reloaded()
+    reloaded.connect_telegram()
+
+    async def scenario() -> None:
+        await reloaded.dispatch(an_event())
+        await until(lambda: reloaded.bot.sent)
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert [sent.text for sent in reloaded.bot.sent] == ["✅ Places · Tokyo · Want to"]
+
+
+def test_after_a_second_register_one_app_stays_open() -> None:
+    # Setup
+    apps = OpenedApps(build_rig(), burst_factory=instant_bursts)
+    plugin = register_stash_over(apps)
+    plugin.register_again()
+    open_before_exit = apps.still_open()
+
+    # Execute
+    for close in plugin.exits:
+        close()
+
+    # Assert
+    assert (open_before_exit, len(plugin.exits), apps.still_open()) == (1, 1, 0)

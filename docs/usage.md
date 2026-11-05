@@ -98,6 +98,48 @@ context, except in the two button tests that record what was asked).
    registered handler, is injected into Hermes and no apology is sent.
    (`test_that_was_a_question_pressed_through_telegram_injects_the_text_after_a_question`)
 
+Re-registration is safe. A plugin hot-reload (any `hermes plugins enable/disable`
+on a running gateway) makes Hermes call `register(ctx)` again in the same process,
+but Hermes keeps the Telegram handler factory it already has and does not call the
+new one: factories are deduplicated by plugin and function qualname (observed on
+the PC, ADR 0001). stash keeps the Telegram connection, the button handler and the
+open app in one process-wide `AdapterState`, so the second `register` reuses them.
+The configuration file is read once per process (a changed `stash.toml` still
+needs a gateway restart); the owner list (`TELEGRAM_ALLOWED_USERS`) is read again
+on every `register`.
+
+Assumed until `docs/spike-m0.md` #24 is run, and modelled that way by the offline
+fake (`FakeHermesContext.reloaded()`): `AdapterState` outlives the reload; the
+second `register` gets a new context; the Telegram handler factories and chat
+admission carry over from before the reload; the hook, commands and tools are
+replaced, not duplicated.
+
+6. After a second `register`, the owner's message is still confirmed through
+   Telegram.
+   (`test_after_a_second_register_the_owners_message_is_still_confirmed_through_telegram`)
+7. After a second `register`, pressing a button on that confirmation edits the
+   message. (`test_after_a_second_register_a_button_press_edits_its_confirmation`)
+8. After a second `register`, the commands answer in the reloaded context.
+   (`test_after_a_second_register_the_commands_answer_in_the_reloaded_context`)
+9. A second `register` opens no second app: one app (one database connection)
+   stays open, and the one exit hook closes it.
+   (`test_after_a_second_register_one_app_stays_open`)
+10. After a second `register`, when Telegram reconnects with a new application,
+    pressing a button on the confirmation that application delivered edits it
+    through the same application.
+    (`test_after_a_second_register_a_new_telegram_application_confirms_and_edits_through_it`)
+11. A second `register` before Telegram first connects still leaves the owner's
+    message confirmed once Telegram connects.
+    (`test_a_second_register_before_telegram_first_connects_still_confirms_the_owners_message`)
+
+Pinned by unit tests: the Telegram handler is safe to call again (Hermes also
+calls it on every reconnect). `TelegramAttachment` adds no second button handler
+when called again with the same Telegram application, and attaches to a new one,
+with replies going to the new bot. A button press after a re-registration is
+answered by the newest registration. A second `register` with a new
+`TELEGRAM_ALLOWED_USERS` answers the new owner, and does not read the
+configuration file again.
+
 ### Messages (the hook)
 
 The hook runs before Hermes authorises the sender, so stash checks the owner
@@ -252,7 +294,7 @@ anything else.
 Deferred: nothing retries pending captures on a timer yet (Plan 3's scheduler);
 `/retry` does it by hand. The raw copy of a question is marked `request` rather
 than deleted. Everything Hermes-specific that the code assumes and the suite
-cannot check is listed in `docs/spike-m0.md` (items 13-21).
+cannot check is listed in `docs/spike-m0.md` (items 13-24).
 
 ## Link details  [Task 7]
 

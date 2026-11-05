@@ -3,7 +3,7 @@ import json
 from app_builders import an_app, stored
 from builders import BASE, an_item, minutes_after
 from fakes.failing_list_store import FailingListStore
-from hermes_rig import register_stash
+from hermes_registration_rig import register_stash
 
 from stash.domain import ItemType, Stage
 

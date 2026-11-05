@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pytest
+from adapter_state_builders import an_adapter_state
 from app_builders import an_app
 from capture_builders import sequential_ids
 from config_builders import a_stash_config
@@ -61,6 +62,7 @@ def register_plugin(
         build=lambda config: built,
         load=load or RecordingLoader(a_stash_config()),
         at_exit=(exits if exits is not None else []).append,
+        state=an_adapter_state(),
     )
     return context
 
@@ -411,6 +413,7 @@ def message_ids_with_the_default_id_source() -> list[str]:
         build=lambda config: an_app(pipeline=steps),
         load=RecordingLoader(a_stash_config()),
         at_exit=[].append,
+        state=an_adapter_state(),
     )
 
     async def scenario() -> None:

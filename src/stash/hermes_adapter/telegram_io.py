@@ -1,9 +1,8 @@
 import logging
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Protocol
 
 from stash.capture import Reply
-from stash.hermes_adapter.callbacks import CallbackPress
+from stash.hermes_adapter.callbacks import CallbackPress, PressHandler
 from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.outbox import LateBoundOutbox
 
@@ -64,17 +63,19 @@ class TelegramOutbox:
 
 
 class TelegramAttachment:
-    def __init__(
-        self, outbox: LateBoundOutbox, on_press: Callable[[CallbackPress], Awaitable[None]]
-    ) -> None:
+    def __init__(self, outbox: LateBoundOutbox, on_press: PressHandler) -> None:
         self._outbox = outbox
         self._on_press = on_press
+        self._attached_to: TelegramApplication | None = None
 
     def attach(self, application: TelegramApplication) -> None:
         from telegram.ext import CallbackQueryHandler
 
         self._outbox.bind(TelegramOutbox(application.bot))
+        if application is self._attached_to:
+            return
         application.add_handler(CallbackQueryHandler(self._on_update, pattern=STASH_BUTTON_PATTERN))
+        self._attached_to = application
 
     async def _acknowledge(self, query: "CallbackQuery") -> None:
         try:

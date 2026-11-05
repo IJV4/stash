@@ -2,6 +2,7 @@ import atexit
 import logging
 import os
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -12,9 +13,8 @@ from stash.config.loader import expand_home, load_config
 from stash.hermes_adapter.assistant import GatewayAssistant
 from stash.hermes_adapter.events import DISPATCH_HOOK
 from stash.hermes_adapter.host import hermes_secret, resolved_environment
-from stash.hermes_adapter.outbox import LateBoundOutbox
 from stash.hermes_adapter.owners import Owners
-from stash.hermes_adapter.telegram_io import TelegramAttachment
+from stash.hermes_adapter.telegram_link import TelegramLink
 from stash.hermes_adapter.tools import LIST_SCHEMA, SEARCH_SCHEMA, TOOLSET, StashTools
 from stash.hermes_adapter.wiring import (
     Command,
@@ -63,6 +63,43 @@ def _register_tools(ctx: Any, tools: StashTools) -> None:
         )
 
 
+class SharedApp:
+    def __init__(self) -> None:
+        self._app: StashApp | None = None
+
+    def open_once(
+        self, opener: Callable[[], StashApp], at_exit: Callable[[Callable[[], None]], object]
+    ) -> StashApp:
+        if self._app is None:
+            app = opener()
+            at_exit(app.close)
+            self._app = app
+        else:
+            logger.info("reusing the open stash app; restart the gateway to reload stash.toml")
+        return self._app
+
+
+@dataclass(frozen=True, slots=True)
+class AdapterState:
+    app: SharedApp
+    telegram: TelegramLink
+
+
+# Unverified (spike-m0 #24): outlives a hot-reload; Hermes re-imports only the shim, not stash.*
+PROCESS_STATE = AdapterState(SharedApp(), TelegramLink())
+
+
+def _wire_chat(
+    ctx: Any, app: StashApp, owners: Owners, link: TelegramLink, new_id: Callable[[], str]
+) -> None:
+    assistant = GatewayAssistant(ctx.inject_message, link.outbox)
+    intake = build_intake(app, owners, link.outbox, build_scheduler(app), new_id)
+    callbacks = build_callbacks(app, owners, link.outbox, assistant)
+    link.route_presses_to(callbacks.on_press)
+    ctx.register_hook(DISPATCH_HOOK, intake.on_dispatch)
+    ctx.register_platform_handler("telegram", link.on_connect)
+
+
 def register(
     ctx: Any,
     *,
@@ -72,24 +109,16 @@ def register(
     load: Callable[[Path, Mapping[str, str]], StashConfig] = load_config,
     at_exit: Callable[[Callable[[], None]], object] = atexit.register,
     new_id: Callable[[], str] = _new_message_id,
+    state: AdapterState = PROCESS_STATE,
 ) -> None:
     environment = resolved_environment(
         os.environ if env is None else env, read_secret, HERMES_SECRETS
     )
     path = expand_home(str(ctx.get_config("config_path", DEFAULT_CONFIG_PATH)), environment)
-    app = build(load(path, environment))
-    at_exit(app.close)
+    app = state.app.open_once(lambda: build(load(path, environment)), at_exit)
     owners = Owners.parse(environment.get("TELEGRAM_ALLOWED_USERS"))
     if owners.admits_nobody():
         logger.warning("TELEGRAM_ALLOWED_USERS is empty: stash will ignore every message")
-    outbox = LateBoundOutbox()
-    assistant = GatewayAssistant(ctx.inject_message, outbox)
-    intake = build_intake(app, owners, outbox, build_scheduler(app), new_id)
-    callbacks = build_callbacks(app, owners, outbox, assistant)
-    attachment = TelegramAttachment(outbox, callbacks.on_press)
-    ctx.register_hook(DISPATCH_HOOK, intake.on_dispatch)
-    ctx.register_platform_handler(
-        "telegram", lambda application, adapter: attachment.attach(application)
-    )
+    _wire_chat(ctx, app, owners, state.telegram, new_id)
     _register_commands(ctx, build_commands(app))
     _register_tools(ctx, build_tools(app))

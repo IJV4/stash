@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from stash.capture import Reply, Reroute
@@ -17,6 +18,9 @@ class CallbackPress:
     chat: Chat
     message_id: str
     data: str
+
+
+PressHandler = Callable[[CallbackPress], Awaitable[None]]
 
 
 class FixCallbacks:
