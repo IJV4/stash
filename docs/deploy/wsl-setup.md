@@ -78,6 +78,11 @@ local Ollama traffic must not go through a proxy.
 > `hermes -p stash gateway install` and add `deploy/systemd/hermes-gateway-stash.hardening.conf`
 > as a drop-in under `~/.config/systemd/user/hermes-gateway-stash.service.d/`. Sections 6-7 below
 > describe the original default-profile setup.
+>
+> **Restart the stash gateway after any `hermes -p stash plugins enable/disable`** (for example
+> `systemctl --user restart hermes-gateway-stash`). A plugin hot-reload leaves stash unable to
+> send replies until a restart (ADR 0001, "stash breaks after a plugin hot-reload"). Drop this
+> step once spike-m0 #24 passes.
 
 ## 6. Hermes Agent (pinned v0.22.6)
 
