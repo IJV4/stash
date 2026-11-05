@@ -2,7 +2,7 @@ import statistics
 from dataclasses import dataclass
 from enum import StrEnum
 
-from stash.domain import collapse_and_clip, require_text
+from stash.domain import printable_and_clip, require_text
 from stash.evaluation.expectation import EvalField, FieldMismatch
 
 ERROR_LIMIT = 200
@@ -38,7 +38,7 @@ class CaseResult:
             if self._mismatched_fields() != self.failed_fields:
                 raise ValueError(MISMATCHES_DISAGREE_WITH_FAILURES)
         else:
-            object.__setattr__(self, "error", collapse_and_clip(self.error, ERROR_LIMIT))
+            object.__setattr__(self, "error", printable_and_clip(self.error, ERROR_LIMIT))
             if self.mismatches:
                 raise ValueError(ERROR_HAS_NO_MISMATCHES)
 

@@ -28,6 +28,8 @@ model = "nousresearch/hermes-4-70b" # example id, unverified — use one from th
 # Model thinking per task. "default" (unlisted tasks) sends no thinking field; "off" asks the provider to skip thinking.
 # [llm.thinking]
 # filing = "off"   # stash's own calls only; Hermes agent turns are configured in Hermes
+# Today only filing has a production LLM call, so vision and suggestions have no effect yet outside
+# the eval; the eval's runs follow --thinking (default: the filing setting).
 
 [gpu]
 min_free_vram_mib = 9000            # below this much VRAM free for stash => busy

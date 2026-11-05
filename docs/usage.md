@@ -554,29 +554,38 @@ only the configured `[llm.thinking] filing` value (`default` when unset). The
 flag wins over the config: `--thinking off` with no `[llm.thinking]` table
 sends the off field. One run uses one thinking value for its text model, its
 `vision_model` and the image arm's fallback to the text model.
+Today only filing has a production LLM call, so the `vision` and `suggestions`
+settings have no effect yet outside the eval; the eval's runs follow
+`--thinking` (default: the filing setting).
 
 Each column is labelled `<provider>:<model> thinking=<value>`, for example
-`ollama:qwen3.5 thinking=off`. When the provider has a `vision_model`, the
+`ollama:qwen3.5:latest thinking=off`. When the provider has a `vision_model`, the
 label names it too, because the vision arm runs it:
 `<provider>:<model> vision=<vision model> thinking=<value>`, for example
-`ollama:qwen3.5 vision=llava thinking=off`. A comparison holds only for those
+`ollama:qwen3.5:latest vision=qwen2.5vl:7b thinking=off`. A comparison holds only for those
 models: re-run it when a model changes (ADR 0004).
 
-After the arm tables, the report has one section per run:
+After the arm tables, the report has one section per run, its case lines in a
+fenced code block so Markdown viewers show them line by line:
 
-    ### cases — ollama:qwen3.5 thinking=off
+    ### cases — ollama:qwen3.5:latest thinking=off
+    ```
     t01 text ok (0.4 s)
     t10 text FAIL stage: want planned got want_to; date: want 2027-03-14 got none (0.3 s)
     i02 vision ERROR LlmUnavailable: ollama unreachable: ConnectError (0.0 s)
+    ```
 
 Cases are listed by arm, in the `--arms` order (text, vision, ocr by
 default), and in file order within each arm. Each case is one line that names
 only the scored fields that failed. A missing value shows as `none`. Details
 show as `key=value` pairs for the expected keys only. Each want/got value is
-collapsed onto one line and clipped to 80 characters. Error text is clipped to
-200. When the model returns unusable JSON, the filer falls back to route
-`unsure` and stage `inbox`. A FAIL line showing `got unsure` together with
-`got inbox` most likely means bad model output, not a wrong answer.
+collapsed onto one line with every non-printable character (such as the escape
+and bell characters that start terminal control sequences, or a bidi override)
+replaced by a space, then clipped to 80 characters. Error text gets the same
+treatment and is clipped to 200. When the model returns unusable JSON, the
+filer falls back to route `unsure` and stage `inbox`. A FAIL line showing
+`got unsure` together with `got inbox` most likely means bad model output, not
+a wrong answer.
 
 Statements, each with one test:
 
@@ -589,9 +598,9 @@ Statements, each with one test:
 3. With no flag, the run uses the configured filing value, and the flag
    overrides the config (acceptance: `tests/acceptance/test_cli_eval.py`;
    unit: `tests/unit/cli/`, `tests/unit/evaluation/test_eval_targets.py`).
-4. Pass, fail and error lines have the formats shown above, and long or
-   multi-line model output is clipped and collapsed (unit:
-   `tests/unit/evaluation/test_report_cases.py`,
+4. Pass, fail and error lines have the formats shown above, inside a fenced
+   code block, and long or multi-line model output is clipped and collapsed
+   (unit: `tests/unit/evaluation/test_report_cases.py`,
    `tests/unit/evaluation/test_expectation_mismatches.py`).
 5. When no vision model is configured, the vision arm uses the text model and
    the chosen thinking value still applies (acceptance:
@@ -600,6 +609,11 @@ Statements, each with one test:
    `vision=` part when it does not (unit: `tests/unit/evaluation/test_target.py`,
    `tests/unit/app/test_eval_provider_targets.py`; acceptance:
    `tests/acceptance/test_cli_eval.py`).
+7. Want/got values and error text carry no non-printable characters: the
+   escape, bell and bidi-override characters a model or provider sends become
+   spaces, so what remains is inert text (unit: `tests/unit/domain/test_printable_and_clip.py`,
+   `tests/unit/evaluation/test_expectation_mismatches.py`,
+   `tests/unit/evaluation/test_case_result.py`).
 
 ## stash backup  [Task 11]
 

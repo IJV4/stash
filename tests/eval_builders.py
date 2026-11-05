@@ -1,7 +1,9 @@
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pytest
 from fakes.chat_model import FakeChatModel
 from fakes.fake_providers import FILING_ANSWER
 
@@ -24,6 +26,28 @@ from stash.llm import ChatModel
 LONG_MULTILINE_VALUE = ("line one of the model output\n" * 70)[:2048]
 LOCAL_MODEL_NAME = "local"
 LOCAL_VISION_MODEL_NAME = "local-vision"
+PADDING_CHARACTER = "z"
+PADDING_FACTOR = 2
+
+
+@dataclass(frozen=True, slots=True)
+class HostileText:
+    raw: str
+    sanitised: str
+
+    def padded_beyond(self, limit: int) -> str:
+        return self.raw + PADDING_CHARACTER * (PADDING_FACTOR * limit)
+
+    def sanitised_and_clipped_to(self, limit: int) -> str:
+        return (self.sanitised + PADDING_CHARACTER * (PADDING_FACTOR * limit))[:limit]
+
+
+TERMINAL_ESCAPES = HostileText("\x1b]52;c;ZmFrZQ==\x07\x1b[2J", "]52;c;ZmFrZQ== [2J")
+BIDI_OVERRIDE = HostileText("left\u202eright", "left right")
+HOSTILE_TEXTS = [
+    pytest.param(TERMINAL_ESCAPES, id="terminal-escapes"),
+    pytest.param(BIDI_OVERRIDE, id="bidi-override"),
+]
 
 
 def an_expectation(**overrides: Any) -> Expectation:

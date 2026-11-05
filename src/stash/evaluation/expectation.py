@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
-from stash.domain import Filing, ItemType, Route, Stage, collapse_and_clip
+from stash.domain import Filing, ItemType, Route, Stage, printable_and_clip
 
 MISSING = "none"
 MISMATCH_TEXT_LIMIT = 80
@@ -41,8 +41,8 @@ class FieldMismatch:
     got: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "expected", collapse_and_clip(self.expected, MISMATCH_TEXT_LIMIT))
-        object.__setattr__(self, "got", collapse_and_clip(self.got, MISMATCH_TEXT_LIMIT))
+        object.__setattr__(self, "expected", printable_and_clip(self.expected, MISMATCH_TEXT_LIMIT))
+        object.__setattr__(self, "got", printable_and_clip(self.got, MISMATCH_TEXT_LIMIT))
 
 
 @dataclass(frozen=True, slots=True)

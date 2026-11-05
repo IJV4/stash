@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from urllib.parse import SplitResult, urlsplit
 
 HTTP_SCHEMES = frozenset({"http", "https"})
+NON_PRINTABLE_PLACEHOLDER = " "
 _HOST_NAME = re.compile(r"[a-z0-9_.-]+")
 _IPV6_LITERAL = re.compile(r"[0-9a-f:.]+")
 
@@ -81,3 +82,10 @@ def require_http_url(name: str, value: str) -> None:
 
 def collapse_and_clip(text: str, limit: int) -> str:
     return " ".join(text.split())[:limit].rstrip()
+
+
+def printable_and_clip(text: str, limit: int) -> str:
+    replaced = "".join(
+        character if character.isprintable() else NON_PRINTABLE_PLACEHOLDER for character in text
+    )
+    return collapse_and_clip(replaced, limit)

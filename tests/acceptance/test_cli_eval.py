@@ -175,7 +175,12 @@ def test_eval_with_thinking_default_and_off_sends_the_off_field_only_on_the_off_
     thinking_comparison(rig)
 
     # Assert
-    assert reasoning_efforts_sent(rig) == [None, None, "none", "none"]
+    assert thinking_fields_sent(rig) == [
+        {},
+        {},
+        {"reasoning_effort": "none"},
+        {"reasoning_effort": "none"},
+    ]
 
 
 def test_eval_lists_a_failing_case_with_its_wanted_and_got_values(tmp_path: Path) -> None:

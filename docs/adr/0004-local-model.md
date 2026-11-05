@@ -74,6 +74,9 @@ with thinking off (see the latency finding above). Vision arm and gemma4:12b not
   the image arm's fallback to the text model.
 - The setting covers stash's own LLM calls only (filing, suggestions, vision). Hermes agent
   turns (questions handed to the agent) use Hermes's own provider config and are not affected.
+  Today only filing has a production LLM call, so the `vision` and `suggestions` settings
+  have no effect yet outside the eval; the eval's runs follow `--thinking` (default: the
+  filing setting).
 
 Reading the cases section: when the model returns unusable JSON the filer falls back to route
 `unsure` and stage `inbox`, so a FAIL line showing `got unsure` together with `got inbox` most

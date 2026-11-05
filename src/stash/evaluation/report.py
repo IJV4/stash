@@ -6,6 +6,7 @@ from stash.evaluation.results import CaseOutcome, CaseResult, EvalArm, EvalRun
 NO_RESULTS = "No eval results to report."
 NOT_AVAILABLE = "n/a"
 CASES_HEADING = "### cases —"
+CODE_FENCE = "```"
 OK_WORD = "ok"
 FAIL_WORD = "FAIL"
 ERROR_WORD = "ERROR"
@@ -42,7 +43,12 @@ def _section(arm: EvalArm, runs: Sequence[EvalRun]) -> str:
 
 def _cases_section(run: EvalRun) -> str:
     return "\n".join(
-        [f"{CASES_HEADING} {run.label}", *(_case_line(result) for result in run.results)]
+        [
+            f"{CASES_HEADING} {run.label}",
+            CODE_FENCE,
+            *(_case_line(result) for result in run.results),
+            CODE_FENCE,
+        ]
     )
 
 

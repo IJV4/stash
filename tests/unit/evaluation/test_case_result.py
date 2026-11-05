@@ -1,7 +1,8 @@
 import pytest
-from eval_builders import a_mismatch, a_result
+from eval_builders import HOSTILE_TEXTS, HostileText, a_mismatch, a_result
 
 from stash.evaluation import CaseOutcome, CaseResult, EvalArm, EvalField
+from stash.evaluation.results import ERROR_LIMIT
 
 FAIL_STAGE = {"passed_fields": frozenset(), "failed_fields": frozenset({EvalField.STAGE})}
 
@@ -99,3 +100,14 @@ def test_a_long_multi_line_error_becomes_one_line_of_two_hundred_characters() ->
 
     # Assert
     assert result.error == ("boom with detail " * 12)[:200]
+
+
+@pytest.mark.parametrize("hostile", HOSTILE_TEXTS)
+def test_an_error_with_unprintable_characters_is_stored_with_them_replaced_and_clipped(
+    hostile: HostileText,
+) -> None:
+    # Execute
+    result = a_result(error=hostile.padded_beyond(ERROR_LIMIT), **FAIL_STAGE)
+
+    # Assert
+    assert result.error == hostile.sanitised_and_clipped_to(ERROR_LIMIT)
