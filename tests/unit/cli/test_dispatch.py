@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -7,21 +6,20 @@ import pytest
 from app_builders import NOON, an_app, stored
 from builders import BASE, an_item
 from cli_session import Session
+from eval_builders import an_eval_targets
+from eval_files import write_cases
 from fakes.backup_source import FakeBackupSource
-from fakes.chat_model import FakeChatModel
 from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.provider_probe import FakeProviderProbe
 
-from stash.config import ProviderName
+from stash.config import Thinking
 from stash.doctor import Doctor, DoctorCheck
 from stash.domain import ItemType, Stage
-from stash.evaluation import EvalTarget
 from stash.llm import ProbeResult
 from stash.store.backup import Backups
 
 LATE_EVENING_IN_LOS_ANGELES = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
-ANSWER = {"route": "capture", "item_type": "place", "title": "Ramen", "stage": "want_to"}
 IMAGE_CASE = {
     "id": "i01",
     "arm": "image",
@@ -147,20 +145,45 @@ def test_backup_names_the_file_for_the_date_in_the_configured_timezone(tmp_path:
     assert [path.name for path in target.iterdir()] == ["stash-20261102.db"]
 
 
+def eval_header(session: Session, *flags: str) -> str:
+    cases = write_cases(session.directory, IMAGE_CASE)
+    output = at(session, "eval", "--arms", "ocr", "--cases", str(cases), *flags)
+    return next(line for line in output.splitlines() if line.startswith("| metric"))
+
+
+def test_eval_passes_the_thinking_flag_to_the_target_selection(tmp_path: Path) -> None:
+    # Setup
+    session = Session(tmp_path, an_app(eval_targets=an_eval_targets()))
+
+    # Execute
+    header = eval_header(session, "--thinking", "default,off")
+
+    # Assert
+    assert header == "| metric | ollama:local thinking=default | ollama:local thinking=off |"
+
+
+def test_eval_without_the_thinking_flag_runs_the_apps_configured_thinking(tmp_path: Path) -> None:
+    # Setup
+    session = Session(tmp_path, an_app(eval_targets=an_eval_targets(configured=Thinking.OFF)))
+
+    # Execute
+    header = eval_header(session)
+
+    # Assert
+    assert header == "| metric | ollama:local thinking=off |"
+
+
 def test_eval_uses_the_apps_targets_and_ocr_and_prints_the_report(tmp_path: Path) -> None:
     # Setup
     ocr = FakeOcr("Lemon chicken")
-    targets = {ProviderName.OLLAMA: EvalTarget("local", FakeChatModel(ANSWER))}
-    session = Session(tmp_path, an_app(eval_targets=targets, ocr=ocr))
-    cases = tmp_path / "cases.jsonl"
-    cases.write_text(json.dumps(IMAGE_CASE) + "\n")
-    (tmp_path / "card.png").write_bytes(b"fake png bytes")
+    session = Session(tmp_path, an_app(eval_targets=an_eval_targets(), ocr=ocr))
+    cases = write_cases(tmp_path, IMAGE_CASE)
 
     # Execute
     output = at(session, "eval", "--arms", "ocr", "--cases", str(cases))
 
     # Assert
-    assert (ocr.paths, "| metric | local |" in output.splitlines()) == (
+    assert (ocr.paths, "| metric | ollama:local thinking=default |" in output.splitlines()) == (
         [tmp_path / "card.png"],
         True,
     )

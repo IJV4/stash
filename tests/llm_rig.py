@@ -116,12 +116,14 @@ def llm_toml(
     busy_fallback: str = "wait",
     suggestions: str | None = None,
     filing_thinking: str | None = None,
+    vision_model: str | None = None,
 ) -> str:
     tasks = f'[llm.tasks]\nsuggestions = "{suggestions}"\n' if suggestions else ""
     thinking = f'[llm.thinking]\nfiling = "{filing_thinking}"\n' if filing_thinking else ""
+    vision = f'vision_model = "{vision_model}"\n' if vision_model else ""
     return (
         f'[llm]\nprovider = "{provider}"\nbusy_fallback = "{busy_fallback}"\n'
-        '[llm.ollama]\nmodel = "local-model"\n'
+        f'[llm.ollama]\nmodel = "local-model"\n{vision}'
         '[llm.openrouter]\nmodel = "cloud/model"\n'
         f"{tasks}"
         f"{thinking}"

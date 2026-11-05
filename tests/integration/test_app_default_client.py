@@ -20,7 +20,10 @@ def test_an_app_built_without_a_client_makes_its_own_and_still_wires_every_provi
     app = build_app(config, run=rig.smi, which=rig.search_path, clock=lambda: rig.now)
 
     # Assert
-    assert set(app.eval_targets) == {ProviderName.OLLAMA, ProviderName.OPENROUTER}
+    assert {target.choice.provider for target in app.eval_targets.targets} == {
+        ProviderName.OLLAMA,
+        ProviderName.OPENROUTER,
+    }
     app.close()
 
 

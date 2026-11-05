@@ -1,12 +1,15 @@
 import json
 from collections.abc import Mapping
+from typing import Any
 
 import httpx
 
 OLLAMA_HOST = "localhost"
 OPENROUTER_HOST = "openrouter.ai"
+OLLAMA_CHAT_PATH = "/v1/chat/completions"
 UNKNOWN = httpx.Response(404, json={"error": "unknown endpoint"})
 HTML = {"content-type": "text/html; charset=utf-8"}
+THINKING_FIELDS = frozenset({"reasoning_effort", "reasoning"})
 
 FILING_ANSWER: Mapping[str, object] = {
     "route": "capture",
@@ -18,6 +21,10 @@ FILING_ANSWER: Mapping[str, object] = {
     "people": [],
     "date": None,
 }
+
+
+def thinking_fields(body: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: body[key] for key in THINKING_FIELDS & body.keys()}
 
 
 def _chat_reply(answer: Mapping[str, object]) -> httpx.Response:
@@ -39,6 +46,9 @@ class FakeProviders:
 
     def sent_to(self, path: str) -> list[httpx.Request]:
         return [request for request in self.requests if request.url.path == path]
+
+    def chat_bodies(self, path: str) -> list[dict[str, Any]]:
+        return [json.loads(request.content) for request in self.sent_to(path)]
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)

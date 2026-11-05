@@ -16,6 +16,39 @@ def test_provider_settings_with_blank_model_raises_config_error() -> None:
         an_ollama_settings(model="")
 
 
+def test_provider_settings_with_blank_vision_model_raises_config_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ConfigError, match=r"llm\.ollama\.vision_model must not be blank"):
+        an_ollama_settings(vision_model="  ")
+
+
+def test_provider_settings_with_a_space_in_the_model_raises_config_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ConfigError, match=r"llm\.ollama\.model must be a model id"):
+        an_ollama_settings(model="llama3 8b")
+
+
+def test_provider_settings_with_a_newline_in_the_vision_model_raises_config_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ConfigError, match=r"llm\.ollama\.vision_model must be a model id"):
+        an_ollama_settings(vision_model="qwen2.5vl\n7b")
+
+
+def test_provider_settings_with_a_pipe_in_the_model_raises_config_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ConfigError, match=r"llm\.ollama\.model must be a model id"):
+        an_ollama_settings(model="llama3|8b")
+
+
+@pytest.mark.parametrize("key", ["model", "vision_model"])
+def test_provider_settings_accept_a_model_id_with_colon_dot_slash_and_dash(key: str) -> None:
+    # Execute
+    settings = an_ollama_settings(**{key: "vendor/model-1.5:latest"})
+
+    # Assert
+    assert getattr(settings, key) == "vendor/model-1.5:latest"
+
+
 REJECTED_BASE_URLS = {
     "ftp-scheme": ("ftp://host/v1", "must start with http:// or https://"),
     "file-scheme": ("file:///etc/passwd", "must start with http:// or https://"),

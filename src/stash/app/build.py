@@ -12,7 +12,14 @@ from stash.app.database import open_database
 from stash.app.doctor_checks import build_doctor
 from stash.app.inspection import INSPECTION_DEADLINE_SECONDS, build_inspector
 from stash.app.ocr import make_ocr
-from stash.app.providers import chat_models, eval_targets, model_unloader, own_vram_usage
+from stash.app.providers import (
+    chat_models,
+    eval_chat_models,
+    eval_targets,
+    model_unloader,
+    own_vram_usage,
+    vision_models,
+)
 from stash.capture import BurstCoalescer, CapturePipeline, FixHandler, SerializedPipeline
 from stash.config import StashConfig
 from stash.enrich.ytdlp import default_ytdlp_extract
@@ -70,7 +77,9 @@ def build_app(
             doctor=build_doctor(config, sqlite, http, gpu_probe, which, find_spec),
             burst_factory=lambda: BurstCoalescer(config.burst_window_seconds),
             clock=clock,
-            eval_targets=eval_targets(config.llm, http, models),
+            eval_targets=eval_targets(
+                config.llm, eval_chat_models(config.llm, http), vision_models(config.llm, http)
+            ),
             ocr=make_ocr(which),
             backups=Backups(sqlite),
             resources=resources,

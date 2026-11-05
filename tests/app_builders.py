@@ -16,9 +16,10 @@ from router_builders import default_thinking_models
 
 from stash.app import StashApp
 from stash.capture import BurstCoalescer, FixHandler
-from stash.config import ProviderName
+from stash.config import ProviderName, Thinking
 from stash.doctor import Doctor
 from stash.domain import Item
+from stash.evaluation import EvalTargets
 from stash.gpu_switch import GpuSwitch
 from stash.llm import ModelRouter
 from stash.store.backup import Backups
@@ -53,7 +54,7 @@ def an_app(**overrides: Any) -> StashApp:
         "doctor": Doctor([]),
         "burst_factory": lambda: BurstCoalescer(config.burst_window_seconds),
         "clock": lambda: NOON,
-        "eval_targets": {},
+        "eval_targets": EvalTargets((), Thinking.DEFAULT),
         "ocr": FakeOcr(),
         "backups": Backups(FakeBackupSource()),
         "resources": CloseCounter(),

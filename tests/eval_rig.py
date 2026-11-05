@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from eval_builders import a_named_model, a_named_vision_model, a_target
 from fakes.chat_model import FakeChatModel
 from fakes.ocr import FakeOcr
 
-from stash.evaluation import EvalArm, EvalCase, EvalRun, EvalTarget, Ocr, run_eval
+from stash.evaluation import EvalArm, EvalCase, EvalRun, Ocr, run_eval
 from stash.llm import ChatModel
 
 NOON_UTC = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
@@ -40,8 +41,9 @@ def run_cases(
     vision_model: ChatModel | None = None,
     **options: Any,
 ) -> EvalRun:
-    target = EvalTarget(
-        "local", FakeChatModel(an_answer()) if model is None else model, vision_model
+    target = a_target(
+        text=a_named_model(chat=FakeChatModel(an_answer()) if model is None else model),
+        vision=None if vision_model is None else a_named_vision_model(vision_model),
     )
     clock: Callable[[], datetime] = options.pop("clock", lambda: NOON_UTC)
     return run_eval(

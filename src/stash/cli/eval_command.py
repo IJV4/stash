@@ -1,6 +1,6 @@
 import os
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -8,8 +8,18 @@ from typing import TextIO
 from zoneinfo import ZoneInfo
 
 from stash.cli.failure import FAILURE, USAGE_ERROR, CommandFailed
-from stash.config import ProviderName
-from stash.evaluation import EvalArm, EvalCase, EvalTarget, Ocr, evaluate, load_cases, render_report
+from stash.config import Thinking
+from stash.evaluation import (
+    EvalArm,
+    EvalCase,
+    EvalTarget,
+    EvalTargets,
+    Ocr,
+    UnconfiguredProviderError,
+    evaluate,
+    load_cases,
+    render_report,
+)
 
 PROTECTED_SUFFIXES = frozenset({".jsonl", ".json", ".png", ".jpg", ".jpeg", ".webp", ".gif"})
 
@@ -17,6 +27,7 @@ PROTECTED_SUFFIXES = frozenset({".jsonl", ".json", ".png", ".jpg", ".jpeg", ".we
 @dataclass(frozen=True, slots=True)
 class EvalRequest:
     providers: tuple[str, ...] | None
+    thinking: tuple[Thinking, ...] | None
     arms: tuple[EvalArm, ...]
     cases: Path
     out: Path | None
@@ -24,14 +35,14 @@ class EvalRequest:
 
 def run_eval_command(
     request: EvalRequest,
-    targets: Mapping[ProviderName, EvalTarget],
+    targets: EvalTargets,
     ocr: Ocr,
     clock: Callable[[], datetime],
     timezone: ZoneInfo,
     out: TextIO,
 ) -> int:
     _check_out(request)
-    chosen = _chosen(request.providers, targets)
+    chosen = _chosen(request, targets)
     cases = _load(request.cases)
     runs = evaluate(cases, chosen, request.arms, ocr, clock, timezone=timezone)
     report = render_report(runs)
@@ -51,17 +62,11 @@ def _check_out(request: EvalRequest) -> None:
         raise CommandFailed(f"--out {path} would overwrite a cases or image file", USAGE_ERROR)
 
 
-def _chosen(
-    providers: tuple[str, ...] | None, targets: Mapping[ProviderName, EvalTarget]
-) -> list[EvalTarget]:
-    names = (
-        [name.value for name in ProviderName if name in targets] if providers is None else providers
-    )
-    by_name = {name.value: target for name, target in targets.items()}
-    for name in names:
-        if name not in by_name:
-            raise CommandFailed(f"provider {name} is not configured", USAGE_ERROR)
-    return [by_name[name] for name in dict.fromkeys(names)]
+def _chosen(request: EvalRequest, targets: EvalTargets) -> tuple[EvalTarget, ...]:
+    try:
+        return targets.select(request.providers, request.thinking)
+    except UnconfiguredProviderError as error:
+        raise CommandFailed(str(error), USAGE_ERROR) from error
 
 
 def _load(path: Path) -> list[EvalCase]:

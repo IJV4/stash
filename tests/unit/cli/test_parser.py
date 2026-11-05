@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from stash.cli.parser import MAX_LIMIT, Command, GpuAction, build_parser
+from stash.config import Thinking
 from stash.domain import ItemType, Stage
 from stash.evaluation import EvalArm
 
@@ -139,6 +140,50 @@ def test_eval_refuses_an_empty_provider_name(providers: str) -> None:
     # Execute / Assert
     with pytest.raises(SystemExit) as stop:
         parse("eval", "--providers", providers)
+    assert stop.value.code == 2
+
+
+def test_eval_defaults_to_no_thinking_choice() -> None:
+    # Execute
+    arguments = parse("eval")
+
+    # Assert
+    assert arguments.thinking is None
+
+
+def test_eval_reads_comma_separated_thinking_values_in_the_order_given() -> None:
+    # Execute
+    arguments = parse("eval", "--thinking", "off, default")
+
+    # Assert
+    assert arguments.thinking == (Thinking.OFF, Thinking.DEFAULT)
+
+
+def test_eval_refuses_an_unknown_thinking_value_naming_it(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Execute
+    with pytest.raises(SystemExit):
+        parse("eval", "--thinking", "default,deep")
+
+    # Assert
+    assert "unknown thinking deep (choose from default, off)" in capsys.readouterr().err
+
+
+def test_eval_refuses_an_unknown_arm_with_the_choices(capsys: pytest.CaptureFixture[str]) -> None:
+    # Execute
+    with pytest.raises(SystemExit):
+        parse("eval", "--arms", "telepathy")
+
+    # Assert
+    assert "unknown arm telepathy (choose from text, vision, ocr)" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("thinking", ["", "off,,default"])
+def test_eval_refuses_an_empty_thinking_value(thinking: str) -> None:
+    # Execute / Assert
+    with pytest.raises(SystemExit) as stop:
+        parse("eval", "--thinking", thinking)
     assert stop.value.code == 2
 
 

@@ -127,3 +127,14 @@ def test_a_plain_http_openrouter_base_url_is_rejected_naming_the_key(tmp_path: P
 
     # Assert
     assert "llm.openrouter.base_url" in message
+
+
+def test_blank_vision_model_in_the_file_is_a_config_error_naming_the_key(tmp_path: Path) -> None:
+    # Setup
+    tables = '[llm.ollama]\nmodel = "m"\nvision_model = ""\n'
+
+    # Execute
+    message = load_message(tmp_path, a_toml(tables=tables))
+
+    # Assert
+    assert "llm.ollama.vision_model" in message

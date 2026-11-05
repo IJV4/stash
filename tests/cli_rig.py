@@ -74,7 +74,14 @@ class CliRig:
             app.close()
 
 
-def build_cli_rig(directory: Path, provider: str = "ollama", busy_fallback: str = "wait") -> CliRig:
-    return CliRig(
-        directory, 'timezone = "America/Los_Angeles"\n' + llm_toml(provider, busy_fallback)
+def build_cli_rig(
+    directory: Path,
+    provider: str = "ollama",
+    busy_fallback: str = "wait",
+    filing_thinking: str | None = None,
+    vision_model: str | None = None,
+) -> CliRig:
+    toml = llm_toml(
+        provider, busy_fallback, filing_thinking=filing_thinking, vision_model=vision_model
     )
+    return CliRig(directory, 'timezone = "America/Los_Angeles"\n' + toml)

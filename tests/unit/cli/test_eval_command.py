@@ -1,23 +1,25 @@
 import io
 import json
 import os
-from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
+from eval_builders import an_eval_targets, arm_headings
+from eval_files import write_cases
 from fakes.chat_model import FakeChatModel
 from fakes.ocr import FakeOcr
 
 from stash.cli.eval_command import EvalRequest, run_eval_command
 from stash.cli.failure import CommandFailed
-from stash.config import ProviderName
-from stash.evaluation import EvalArm, EvalTarget
+from stash.config import ProviderName, Thinking
+from stash.evaluation import EvalArm, EvalTargets
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
 LATE_EVENING = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
+CLOUD_NAMES = {ProviderName.OPENROUTER: "cloud"}
 ANSWER = {"route": "capture", "item_type": "place", "title": "Ramen", "stage": "want_to"}
 TEXT_CASE = {
     "id": "t01",
@@ -34,23 +36,10 @@ IMAGE_CASE = {
 }
 
 
-def write_cases(directory: Path, *cases: Mapping[str, Any]) -> Path:
-    path = directory / "cases.jsonl"
-    path.write_text("\n".join(json.dumps(case) for case in cases) + "\n")
-    (directory / "card.png").write_bytes(b"fake png bytes")
-    return path
-
-
-def two_targets() -> dict[ProviderName, EvalTarget]:
-    return {
-        ProviderName.OPENROUTER: EvalTarget("cloud", FakeChatModel(ANSWER)),
-        ProviderName.OLLAMA: EvalTarget("local", FakeChatModel(ANSWER)),
-    }
-
-
 def request(cases: Path, **overrides: Any) -> EvalRequest:
     fields: dict[str, Any] = {
         "providers": None,
+        "thinking": None,
         "arms": (EvalArm.TEXT,),
         "cases": cases,
         "out": None,
@@ -60,14 +49,16 @@ def request(cases: Path, **overrides: Any) -> EvalRequest:
 
 def evaluated(
     asked: EvalRequest,
-    targets: Mapping[ProviderName, EvalTarget] | None = None,
+    targets: EvalTargets | None = None,
     ocr: FakeOcr | None = None,
     clock_now: datetime = LATE_EVENING,
 ) -> tuple[int, str]:
     out = io.StringIO()
     exit_code = run_eval_command(
         asked,
-        two_targets() if targets is None else targets,
+        an_eval_targets(ProviderName.OPENROUTER, ProviderName.OLLAMA, model_names=CLOUD_NAMES)
+        if targets is None
+        else targets,
         FakeOcr() if ocr is None else ocr,
         lambda: clock_now,
         LOS_ANGELES,
@@ -87,7 +78,10 @@ def test_eval_without_providers_compares_every_configured_provider_in_provider_o
     _, output = evaluated(request(write_cases(tmp_path, TEXT_CASE)))
 
     # Assert
-    assert header(output) == "| metric | local | cloud |"
+    assert (
+        header(output)
+        == "| metric | ollama:local thinking=default | openrouter:cloud thinking=default |"
+    )
 
 
 def test_eval_compares_the_chosen_providers_in_the_order_given(tmp_path: Path) -> None:
@@ -97,7 +91,10 @@ def test_eval_compares_the_chosen_providers_in_the_order_given(tmp_path: Path) -
     )
 
     # Assert
-    assert header(output) == "| metric | cloud | local |"
+    assert (
+        header(output)
+        == "| metric | openrouter:cloud thinking=default | ollama:local thinking=default |"
+    )
 
 
 def test_eval_compares_a_single_chosen_provider(tmp_path: Path) -> None:
@@ -105,7 +102,7 @@ def test_eval_compares_a_single_chosen_provider(tmp_path: Path) -> None:
     _, output = evaluated(request(write_cases(tmp_path, TEXT_CASE), providers=("ollama",)))
 
     # Assert
-    assert header(output) == "| metric | local |"
+    assert header(output) == "| metric | ollama:local thinking=default |"
 
 
 def test_eval_compares_a_provider_named_twice_once(tmp_path: Path) -> None:
@@ -113,7 +110,24 @@ def test_eval_compares_a_provider_named_twice_once(tmp_path: Path) -> None:
     _, output = evaluated(request(write_cases(tmp_path, TEXT_CASE), providers=("ollama", "ollama")))
 
     # Assert
-    assert header(output) == "| metric | local |"
+    assert header(output) == "| metric | ollama:local thinking=default |"
+
+
+def test_eval_runs_every_chosen_thinking_value_for_each_provider_in_turn(tmp_path: Path) -> None:
+    # Execute
+    _, output = evaluated(
+        request(
+            write_cases(tmp_path, TEXT_CASE),
+            providers=("openrouter", "ollama"),
+            thinking=(Thinking.OFF, Thinking.DEFAULT),
+        )
+    )
+
+    # Assert
+    assert header(output) == (
+        "| metric | openrouter:cloud thinking=off | openrouter:cloud thinking=default"
+        " | ollama:local thinking=off | ollama:local thinking=default |"
+    )
 
 
 def test_eval_exits_0_after_printing_the_report(tmp_path: Path) -> None:
@@ -131,9 +145,7 @@ def test_eval_runs_only_the_requested_arms(tmp_path: Path) -> None:
     )
 
     # Assert
-    assert [line for line in output.splitlines() if line.startswith("###")] == [
-        "### ocr arm (1 cases)"
-    ]
+    assert arm_headings(output) == ["### ocr arm (1 cases)"]
 
 
 def test_eval_reads_images_with_the_given_ocr(tmp_path: Path) -> None:
@@ -153,7 +165,7 @@ def test_eval_reads_images_with_the_given_ocr(tmp_path: Path) -> None:
 def test_eval_fills_in_todays_date_in_the_configured_timezone(tmp_path: Path) -> None:
     # Setup
     model = FakeChatModel(ANSWER)
-    targets = {ProviderName.OLLAMA: EvalTarget("local", model)}
+    targets = an_eval_targets(model=model)
 
     # Execute
     evaluated(request(write_cases(tmp_path, TEXT_CASE)), targets)
@@ -178,7 +190,7 @@ def test_eval_with_a_known_provider_that_has_no_settings_says_it_is_not_configur
     tmp_path: Path,
 ) -> None:
     # Setup
-    targets = {ProviderName.OLLAMA: EvalTarget("local", FakeChatModel(ANSWER))}
+    targets = an_eval_targets(ProviderName.OLLAMA)
 
     # Execute
     with pytest.raises(CommandFailed) as failure:
@@ -238,7 +250,7 @@ def test_eval_with_an_out_path_that_cannot_be_written_fails_with_exit_code_1(
     assert failure.value.exit_code == 1
 
 
-def refused_out(asked: EvalRequest, targets: Mapping[ProviderName, EvalTarget]) -> CommandFailed:
+def refused_out(asked: EvalRequest, targets: EvalTargets | None = None) -> CommandFailed:
     with pytest.raises(CommandFailed) as failure:
         evaluated(asked, targets)
     return failure.value
@@ -251,7 +263,7 @@ def test_eval_with_an_out_path_that_is_the_cases_file_fails_with_exit_code_2(
     cases = write_cases(tmp_path, TEXT_CASE)
 
     # Execute
-    failure = refused_out(request(cases, out=cases), two_targets())
+    failure = refused_out(request(cases, out=cases))
 
     # Assert
     assert failure.exit_code == 2
@@ -265,7 +277,7 @@ def test_eval_with_an_out_path_that_is_the_cases_file_leaves_the_cases_untouched
     original = cases.read_text()
 
     # Execute
-    refused_out(request(cases, out=cases), two_targets())
+    refused_out(request(cases, out=cases))
 
     # Assert
     assert cases.read_text() == original
@@ -277,7 +289,7 @@ def test_eval_with_an_out_path_that_is_the_cases_file_asks_no_model(tmp_path: Pa
     cases = write_cases(tmp_path, TEXT_CASE)
 
     # Execute
-    refused_out(request(cases, out=cases), {ProviderName.OLLAMA: EvalTarget("local", model)})
+    refused_out(request(cases, out=cases), an_eval_targets(model=model))
 
     # Assert
     assert model.calls == []
@@ -292,7 +304,7 @@ def test_eval_refuses_an_out_path_that_reaches_the_cases_file_by_another_spellin
     roundabout = tmp_path / "reports" / ".." / "cases.jsonl"
 
     # Execute
-    failure = refused_out(request(cases, out=roundabout), two_targets())
+    failure = refused_out(request(cases, out=roundabout))
 
     # Assert
     assert str(failure) == f"--out {roundabout} is the cases file"
@@ -307,7 +319,7 @@ def test_eval_refuses_an_out_path_with_a_cases_or_image_suffix(tmp_path: Path, n
     cases = write_cases(tmp_path, TEXT_CASE)
 
     # Execute
-    failure = refused_out(request(cases, out=tmp_path / name), two_targets())
+    failure = refused_out(request(cases, out=tmp_path / name))
 
     # Assert
     assert (failure.exit_code, str(failure)) == (
@@ -321,7 +333,7 @@ def test_eval_refuses_an_out_path_suffix_whatever_its_case(tmp_path: Path) -> No
     cases = write_cases(tmp_path, TEXT_CASE)
 
     # Execute
-    failure = refused_out(request(cases, out=tmp_path / "CARD.PNG"), two_targets())
+    failure = refused_out(request(cases, out=tmp_path / "CARD.PNG"))
 
     # Assert
     assert failure.exit_code == 2
@@ -334,7 +346,7 @@ def test_eval_with_a_refused_out_path_asks_no_model_and_creates_no_file(tmp_path
     refused = tmp_path / "card.gif"
 
     # Execute
-    refused_out(request(cases, out=refused), {ProviderName.OLLAMA: EvalTarget("local", model)})
+    refused_out(request(cases, out=refused), an_eval_targets(model=model))
 
     # Assert
     assert (model.calls, refused.exists()) == ([], False)
@@ -388,7 +400,7 @@ def test_eval_refuses_an_out_path_that_is_a_cases_file_with_an_unusual_suffix(
     cases.write_text(json.dumps(TEXT_CASE) + "\n")
 
     # Execute
-    failure = refused_out(request(cases, out=cases), two_targets())
+    failure = refused_out(request(cases, out=cases))
 
     # Assert
     assert str(failure) == f"--out {cases} is the cases file"

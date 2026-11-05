@@ -52,6 +52,35 @@ the report shows only aggregates). `i01` and `i03` pass. Date handling is the we
 investigate on the Mac: print per-case model output in the eval report, reproduce `t10`, and rerun
 with thinking off (see the latency finding above). Vision arm and gemma4:12b not run yet.
 
+## Thinking control (2026-11-04, Mac)
+`[llm.thinking]` sets `default` or `off` per stash LLM task (`filing`, `suggestions`,
+`vision`). Each provider maps `off` to its own request field:
+
+| Provider | `off` sends | Verified |
+|---|---|---|
+| Ollama | `"reasoning_effort": "none"` | Only on Ollama 0.33.2 with `qwen3.5` (latency finding above: 4.7 s → 0.2 s). |
+| OpenRouter | `"reasoning": {"effort": "none"}` | Schema only: read from the generated `openrouter` Python SDK 1.3.121 (`ChatRequest.reasoning.effort` includes `"none"`). openrouter.ai is blocked on the Mac, so it is not sent live. Behaviour per model is unverified (spike-m0 #20). |
+
+- `default` sends no field at all. With no `[llm.thinking]` table every request body is
+  exactly what it was before this setting existed. How a model *without* thinking reacts to
+  the off field is unknown (spike-m0 #21), so nothing is sent unless the owner asks for it.
+- Results belong to one model. A thinking on/off comparison holds only for the model it was
+  measured on. Every `stash eval` column is labelled `<provider>:<model> thinking=<value>`,
+  or `<provider>:<model> vision=<vision model> thinking=<value>` when the provider has a
+  `vision_model` (the vision arm runs that model).
+  Re-run the comparison (`stash eval --thinking default,off`, spike-m0 #19) whenever the
+  chosen model changes.
+- In `stash eval`, one run uses one thinking value for its text model, its `vision_model` and
+  the image arm's fallback to the text model.
+- The setting covers stash's own LLM calls only (filing, suggestions, vision). Hermes agent
+  turns (questions handed to the agent) use Hermes's own provider config and are not affected.
+
+Reading the cases section: when the model returns unusable JSON the filer falls back to route
+`unsure` and stage `inbox`, so a FAIL line showing `got unsure` together with `got inbox` most
+likely means bad model output, not a wrong answer.
+
+The default for `filing` is chosen from the spike-m0 #19 result, recorded here.
+
 ## Decision
 Use `qwen3.5:latest` for filing and for the vision arm as the baseline. Compare against
 `gemma4:12b` with `stash eval` (`qwen3:8b` was rejected, see above); adopt the winner on score and latency.

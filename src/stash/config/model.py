@@ -13,6 +13,7 @@ BUSY_FALLBACKS: tuple[BusyFallback, ...] = get_args(BusyFallback)
 OPENAI_V1_SUFFIX = "/v1"
 HTTP_SCHEMES = ("http", "https")
 DEFAULT_BURST_WINDOW_SECONDS = 8.0
+MODEL_ID_FORBIDDEN_CHARACTERS = frozenset("|")
 
 
 class ConfigError(ValueError):
@@ -51,6 +52,10 @@ def _is_unprintable_or_space(character: str) -> bool:
     return character.isspace() or not character.isprintable()
 
 
+def _is_forbidden_in_model_id(character: str) -> bool:
+    return _is_unprintable_or_space(character) or character in MODEL_ID_FORBIDDEN_CHARACTERS
+
+
 def _check_base_url(name: ProviderName, base_url: str) -> None:
     key = f"llm.{name}.base_url"
     if any(_is_unprintable_or_space(character) for character in base_url):
@@ -86,6 +91,15 @@ class ProviderSettings:
         _check_base_url(self.name, self.base_url)
         if not self.model.strip():
             raise ConfigError(f"llm.{self.name}.model must not be blank")
+        if self.vision_model is not None and not self.vision_model.strip():
+            raise ConfigError(f"llm.{self.name}.vision_model must not be blank")
+        self._check_model_id("model", self.model)
+        if self.vision_model is not None:
+            self._check_model_id("vision_model", self.vision_model)
+
+    def _check_model_id(self, key: str, model_id: str) -> None:
+        if any(_is_forbidden_in_model_id(character) for character in model_id):
+            raise ConfigError(f"llm.{self.name}.{key} must be a model id without spaces or '|'")
 
     @property
     def root_url(self) -> str:

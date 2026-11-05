@@ -2,14 +2,24 @@ import statistics
 from dataclasses import dataclass
 from enum import StrEnum
 
-from stash.domain import require_text
-from stash.evaluation.expectation import EvalField
+from stash.domain import collapse_and_clip, require_text
+from stash.evaluation.expectation import EvalField, FieldMismatch
+
+ERROR_LIMIT = 200
+MISMATCHES_DISAGREE_WITH_FAILURES = "mismatches must cover exactly the failed fields"
+ERROR_HAS_NO_MISMATCHES = "an errored result cannot carry mismatches"
 
 
 class EvalArm(StrEnum):
     TEXT = "text"
     VISION = "vision"
     OCR = "ocr"
+
+
+class CaseOutcome(StrEnum):
+    OK = "ok"
+    FAIL = "fail"
+    ERROR = "error"
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +30,26 @@ class CaseResult:
     failed_fields: frozenset[EvalField]
     latency_s: float
     error: str | None
+    mismatches: tuple[FieldMismatch, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "mismatches", tuple(self.mismatches))
+        if self.error is None:
+            if self._mismatched_fields() != self.failed_fields:
+                raise ValueError(MISMATCHES_DISAGREE_WITH_FAILURES)
+        else:
+            object.__setattr__(self, "error", collapse_and_clip(self.error, ERROR_LIMIT))
+            if self.mismatches:
+                raise ValueError(ERROR_HAS_NO_MISMATCHES)
+
+    @property
+    def outcome(self) -> CaseOutcome:
+        if self.error is not None:
+            return CaseOutcome.ERROR
+        return CaseOutcome.FAIL if self.failed_fields else CaseOutcome.OK
+
+    def _mismatched_fields(self) -> frozenset[EvalField]:
+        return frozenset(mismatch.field for mismatch in self.mismatches)
 
     def scored(self, field: EvalField) -> bool:
         return field in self.passed_fields or field in self.failed_fields

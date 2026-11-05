@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 import pytest
-from eval_builders import a_text_case, an_expectation, an_image_case
+from eval_builders import a_target, a_text_case, an_expectation, an_image_case
 from eval_rig import LOS_ANGELES, NOON_UTC, UTC_ZONE, an_answer, run_cases
 from fakes.chat_model import FakeChatModel
 from fakes.ocr import FakeOcr
@@ -10,7 +10,7 @@ from filing_rig import sent_texts
 from link_builders import a_link_info
 
 from stash.domain import ItemType, Route, Stage
-from stash.evaluation import EvalArm, EvalField, EvalTarget, run_eval
+from stash.evaluation import EvalArm, EvalField, FieldMismatch, run_eval
 
 
 def test_a_filing_of_the_expected_type_passes_the_item_type_field() -> None:
@@ -123,7 +123,7 @@ def test_the_run_carries_the_label_of_its_target() -> None:
     run = run_cases([a_text_case()])
 
     # Assert
-    assert run.label == "local"
+    assert run.label == "ollama:local thinking=default"
 
 
 def test_the_filer_resolves_today_in_the_given_timezone() -> None:
@@ -172,8 +172,28 @@ def test_naming_an_arm_twice_runs_it_once() -> None:
 
 def test_running_an_evaluation_without_a_timezone_is_refused() -> None:
     # Setup
-    target = EvalTarget("local", FakeChatModel(an_answer()))
+    target = a_target()
 
     # Execute / Assert
     with pytest.raises(TypeError, match="timezone"):
         run_eval([a_text_case()], target, [EvalArm.TEXT], FakeOcr(), lambda: NOON_UTC)
+
+
+def test_a_filing_in_the_wrong_stage_records_the_wanted_and_filed_stage_as_a_mismatch() -> None:
+    # Setup
+    case = a_text_case(expect=an_expectation(stage=Stage.PLANNED))
+    model = FakeChatModel(an_answer(stage="want_to"))
+
+    # Execute
+    result = run_cases([case], model).results[0]
+
+    # Assert
+    assert result.mismatches == (FieldMismatch(EvalField.STAGE, "planned", "want_to"),)
+
+
+def test_a_filing_that_agrees_on_every_scored_field_records_no_mismatch() -> None:
+    # Execute
+    result = run_cases([a_text_case()]).results[0]
+
+    # Assert
+    assert result.mismatches == ()

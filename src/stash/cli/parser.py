@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TypeVar
 
 from stash import __version__
+from stash.config import Thinking
 from stash.domain import ItemType, Stage, enum_member
 from stash.evaluation import EvalArm
 from stash.store.port import DEFAULT_PAGE_SIZE
@@ -61,15 +62,19 @@ def _names(text: str) -> tuple[str, ...]:
     return names
 
 
-def _arms(text: str) -> tuple[EvalArm, ...]:
-    valid = [arm.value for arm in EvalArm]
-    names = _names(text)
-    unknown = [name for name in names if name not in valid]
-    if unknown:
-        raise argparse.ArgumentTypeError(
-            f"unknown arm {unknown[0]} (choose from {', '.join(valid)})"
-        )
-    return tuple(EvalArm(name) for name in names)
+def _enum_list(kind: type[_E], noun: str) -> Callable[[str], tuple[_E, ...]]:
+    valid = [member.value for member in kind]
+
+    def convert(text: str) -> tuple[_E, ...]:
+        names = _names(text)
+        unknown = [name for name in names if name not in valid]
+        if unknown:
+            raise argparse.ArgumentTypeError(
+                f"unknown {noun} {unknown[0]} (choose from {', '.join(valid)})"
+            )
+        return tuple(kind(name) for name in names)
+
+    return convert
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -105,6 +110,7 @@ def _add_eval(
         Command.EVAL, parents=[shared], help="compare models on the cases"
     )
     evaluation.add_argument("--providers", type=_names)
-    evaluation.add_argument("--arms", type=_arms, default=tuple(EvalArm))
+    evaluation.add_argument("--thinking", type=_enum_list(Thinking, "thinking"))
+    evaluation.add_argument("--arms", type=_enum_list(EvalArm, "arm"), default=tuple(EvalArm))
     evaluation.add_argument("--cases", type=Path, default=DEFAULT_CASES, metavar="PATH")
     evaluation.add_argument("--out", type=Path, metavar="PATH")

@@ -12,7 +12,7 @@ from llm_rig import llm_toml
 from stash.app import StashApp, build_app
 from stash.capture import Deferred, SerializedPipeline
 from stash.capture.callbacks import FixAction, FixKind
-from stash.config import ConfigError, ProviderName, StashConfig
+from stash.config import ConfigError, StashConfig
 from stash.config.loader import load_config
 from stash.domain import ItemType
 from stash.evaluation import NoOcr
@@ -235,12 +235,14 @@ def test_each_configured_provider_has_an_eval_target_labelled_with_its_model(
     app = built(build_cli_rig(tmp_path))
 
     # Execute
-    labels = {name: target.label for name, target in app.eval_targets.items()}
+    labels = {target.label for target in app.eval_targets.targets}
 
     # Assert
     assert labels == {
-        ProviderName.OLLAMA: "ollama:local-model",
-        ProviderName.OPENROUTER: "openrouter:cloud/model",
+        "ollama:local-model thinking=default",
+        "ollama:local-model thinking=off",
+        "openrouter:cloud/model thinking=default",
+        "openrouter:cloud/model thinking=off",
     }
     app.close()
 

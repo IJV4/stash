@@ -4,11 +4,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from app_builders import an_app
-from fakes.chat_model import FakeChatModel
+from eval_builders import an_eval_targets
 from fakes.close_counter import CloseCounter
 
-from stash.config import ProviderName
-from stash.evaluation import EvalTarget
+from stash.config import Thinking
+from stash.evaluation import EvalTargets
 
 
 def test_closing_the_app_closes_its_resources() -> None:
@@ -34,24 +34,23 @@ def test_the_app_cannot_be_modified() -> None:
 
 def test_the_eval_targets_cannot_be_modified() -> None:
     # Setup
-    target = EvalTarget("local", FakeChatModel())
-    app = an_app(eval_targets={ProviderName.OLLAMA: target})
+    app = an_app(eval_targets=an_eval_targets())
 
     # Execute / Assert
-    with pytest.raises(TypeError):
-        app.eval_targets[ProviderName.OPENROUTER] = target  # type: ignore[index]
+    with pytest.raises(FrozenInstanceError):
+        app.eval_targets.configured = Thinking.OFF  # type: ignore[misc]
 
 
 def test_the_eval_targets_do_not_change_when_the_source_mapping_does() -> None:
     # Setup
-    source = {ProviderName.OLLAMA: EvalTarget("local", FakeChatModel())}
-    app = an_app(eval_targets=source)
+    source = list(an_eval_targets().targets)
+    app = an_app(eval_targets=EvalTargets(source, Thinking.DEFAULT))
 
     # Execute
     source.clear()
 
     # Assert
-    assert set(app.eval_targets) == {ProviderName.OLLAMA}
+    assert len(app.eval_targets.targets) == len(Thinking)
 
 
 LATE_EVENING_IN_LOS_ANGELES = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)

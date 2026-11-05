@@ -22,7 +22,11 @@ def dispatch(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
             return _gpu(arguments.action, app, out)
         case Command.EVAL:
             request = EvalRequest(
-                arguments.providers, arguments.arms, arguments.cases, arguments.out
+                providers=arguments.providers,
+                thinking=arguments.thinking,
+                arms=arguments.arms,
+                cases=arguments.cases,
+                out=arguments.out,
             )
             return run_eval_command(
                 request, app.eval_targets, app.ocr, app.clock, app.config.timezone, out

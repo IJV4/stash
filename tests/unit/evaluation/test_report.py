@@ -1,4 +1,4 @@
-from eval_builders import a_result
+from eval_builders import a_result, arm_headings
 
 from stash.evaluation import EvalArm, EvalField, EvalRun, render_report
 
@@ -127,7 +127,7 @@ def test_there_is_one_section_per_arm_with_its_case_count_in_arm_order() -> None
     )
 
     # Execute
-    headings = [line for line in lines_of([EvalRun("local", results)]) if line.startswith("###")]
+    headings = arm_headings(render_report([EvalRun("local", results)]))
 
     # Assert
     assert headings == ["### text arm (2 cases)", "### ocr arm (3 cases)"]

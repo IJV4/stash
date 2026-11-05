@@ -8,7 +8,6 @@ from fakes.scripted_chat_model import ScriptedChatModel
 
 from stash.domain import ItemType, Stage
 from stash.evaluation import EvalArm, EvalField, NoOcr, OcrError
-from stash.evaluation.runner import ERROR_LIMIT
 from stash.llm import LlmUnavailable
 
 SCORED_EVERYTHING = an_expectation(item_type=ItemType.PLACE, stage=Stage.WANT_TO)
@@ -79,7 +78,7 @@ def test_a_long_error_message_is_clipped() -> None:
     result = run_cases([a_text_case()], model).results[0]
 
     # Assert
-    assert result.error is not None and len(result.error) <= ERROR_LIMIT
+    assert len(result.error or "") == 200
 
 
 def test_an_error_message_is_collapsed_onto_one_line() -> None:
@@ -168,3 +167,15 @@ def test_the_run_continues_with_the_next_case_after_an_image_name_with_a_nul_byt
 
     # Assert
     assert [result.error is None for result in run.results] == [False, True]
+
+
+def test_an_unavailable_model_leaves_the_mismatches_empty() -> None:
+    # Setup
+    model = FakeChatModel(error=LlmUnavailable("ollama is down"))
+    case = a_text_case(expect=SCORED_EVERYTHING)
+
+    # Execute
+    result = run_cases([case], model).results[0]
+
+    # Assert
+    assert result.mismatches == ()

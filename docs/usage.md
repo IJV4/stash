@@ -545,6 +545,62 @@ errors for every image case.
 each provider, with OpenRouter as the reference, and prints the Markdown
 comparison table (see *Local-model eval*).
 
+### Thinking on/off  [thinking-control Task 2]
+
+`stash eval --providers ollama --thinking default,off` runs every chosen
+provider once per thinking value, providers first, then values in the order
+given (`ollama default`, `ollama off`, …). Without `--thinking` the eval runs
+only the configured `[llm.thinking] filing` value (`default` when unset). The
+flag wins over the config: `--thinking off` with no `[llm.thinking]` table
+sends the off field. One run uses one thinking value for its text model, its
+`vision_model` and the image arm's fallback to the text model.
+
+Each column is labelled `<provider>:<model> thinking=<value>`, for example
+`ollama:qwen3.5 thinking=off`. When the provider has a `vision_model`, the
+label names it too, because the vision arm runs it:
+`<provider>:<model> vision=<vision model> thinking=<value>`, for example
+`ollama:qwen3.5 vision=llava thinking=off`. A comparison holds only for those
+models: re-run it when a model changes (ADR 0004).
+
+After the arm tables, the report has one section per run:
+
+    ### cases — ollama:qwen3.5 thinking=off
+    t01 text ok (0.4 s)
+    t10 text FAIL stage: want planned got want_to; date: want 2027-03-14 got none (0.3 s)
+    i02 vision ERROR LlmUnavailable: ollama unreachable: ConnectError (0.0 s)
+
+Cases are listed by arm, in the `--arms` order (text, vision, ocr by
+default), and in file order within each arm. Each case is one line that names
+only the scored fields that failed. A missing value shows as `none`. Details
+show as `key=value` pairs for the expected keys only. Each want/got value is
+collapsed onto one line and clipped to 80 characters. Error text is clipped to
+200. When the model returns unusable JSON, the filer falls back to route
+`unsure` and stage `inbox`. A FAIL line showing `got unsure` together with
+`got inbox` most likely means bad model output, not a wrong answer.
+
+Statements, each with one test:
+
+1. `--thinking default,off` gives two columns, `… thinking=default` and
+   `… thinking=off`. The off run's requests carry the provider's off field
+   and the default run's requests carry none (acceptance:
+   `tests/acceptance/test_cli_eval.py`).
+2. The cases section lists a failing case with its want and got values
+   (acceptance: `t10` shows `want 2027-03-14`).
+3. With no flag, the run uses the configured filing value, and the flag
+   overrides the config (acceptance: `tests/acceptance/test_cli_eval.py`;
+   unit: `tests/unit/cli/`, `tests/unit/evaluation/test_eval_targets.py`).
+4. Pass, fail and error lines have the formats shown above, and long or
+   multi-line model output is clipped and collapsed (unit:
+   `tests/unit/evaluation/test_report_cases.py`,
+   `tests/unit/evaluation/test_expectation_mismatches.py`).
+5. When no vision model is configured, the vision arm uses the text model and
+   the chosen thinking value still applies (acceptance:
+   `tests/acceptance/test_cli_eval.py`).
+6. The label names the vision model when the provider has one, and has no
+   `vision=` part when it does not (unit: `tests/unit/evaluation/test_target.py`,
+   `tests/unit/app/test_eval_provider_targets.py`; acceptance:
+   `tests/acceptance/test_cli_eval.py`).
+
 ## stash backup  [Task 11]
 
 `stash backup --to DIR` writes `stash-YYYYMMDD.db` (today's date in the

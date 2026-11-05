@@ -1,19 +1,23 @@
 from datetime import UTC, datetime
 
 import pytest
-from eval_builders import a_text_case, an_expectation
+from eval_builders import a_named_model, a_target, a_text_case, an_expectation
 from eval_rig import LOS_ANGELES, NOON_UTC, UTC_ZONE, an_answer, read_fake_image
 from fakes.chat_model import FakeChatModel
 from fakes.ocr import FakeOcr
 from filing_rig import sent_texts
 
+from stash.config import ProviderName
 from stash.domain import ItemType
-from stash.evaluation import EvalArm, EvalField, EvalTarget, evaluate
+from stash.evaluation import EvalArm, EvalField, evaluate
 
 
 def test_evaluating_several_targets_gives_one_run_per_target_in_order() -> None:
     # Setup
-    targets = [EvalTarget("local", FakeChatModel()), EvalTarget("reference", FakeChatModel())]
+    targets = [
+        a_target(ProviderName.OLLAMA, text=a_named_model("local")),
+        a_target(ProviderName.OPENROUTER, text=a_named_model("reference")),
+    ]
 
     # Execute
     runs = evaluate(
@@ -26,15 +30,18 @@ def test_evaluating_several_targets_gives_one_run_per_target_in_order() -> None:
     )
 
     # Assert
-    assert [run.label for run in runs] == ["local", "reference"]
+    assert [run.label for run in runs] == [
+        "ollama:local thinking=default",
+        "openrouter:reference thinking=default",
+    ]
 
 
 def test_each_target_is_judged_on_its_own_model() -> None:
     # Setup
     case = a_text_case(expect=an_expectation(item_type=ItemType.RECIPE))
     targets = [
-        EvalTarget("local", FakeChatModel(an_answer(item_type="place"))),
-        EvalTarget("reference", FakeChatModel(an_answer(item_type="recipe"))),
+        a_target(text=a_named_model(chat=FakeChatModel(an_answer(item_type="place")))),
+        a_target(text=a_named_model(chat=FakeChatModel(an_answer(item_type="recipe")))),
     ]
 
     # Execute
@@ -68,7 +75,7 @@ def test_every_target_is_run_in_the_given_timezone() -> None:
     # Execute
     evaluate(
         [a_text_case()],
-        [EvalTarget("local", model)],
+        [a_target(text=a_named_model(chat=model))],
         [EvalArm.TEXT],
         FakeOcr(),
         lambda: after_utc_midnight,

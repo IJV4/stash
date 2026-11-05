@@ -1,12 +1,11 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
-from types import MappingProxyType
 
 from stash.capture import BurstCoalescer, CaptureIntake, FixHandler
-from stash.config import ProviderName, StashConfig
+from stash.config import StashConfig
 from stash.doctor import Doctor
-from stash.evaluation import EvalTarget, Ocr
+from stash.evaluation import EvalTargets, Ocr
 from stash.gpu import GpuGate
 from stash.gpu_switch import GpuSwitch
 from stash.llm import ModelRouter
@@ -25,13 +24,10 @@ class StashApp:
     doctor: Doctor
     burst_factory: Callable[[], BurstCoalescer]
     clock: Callable[[], datetime]
-    eval_targets: Mapping[ProviderName, EvalTarget]
+    eval_targets: EvalTargets
     ocr: Ocr
     backups: BackupWriter
     resources: Closeable
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "eval_targets", MappingProxyType(dict(self.eval_targets)))
 
     def local_now(self) -> datetime:
         return self.clock().astimezone(self.config.timezone)
