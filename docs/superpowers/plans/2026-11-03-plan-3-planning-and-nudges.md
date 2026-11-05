@@ -287,6 +287,12 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 >    COMMIT with a ROLLBACK error, and `record_completion` holds the in-process lock while
 >    `BEGIN IMMEDIATE` waits. A ticker thread plus a cron fallback is the first time two writers
 >    meet. Pin both before relying on them.
+> 5. Carried from the Plan 2 Task 3 review (ruling R10): `stash.lifecycle`'s keep, reopen, drop,
+>    group and ungroup read an item and then call `save_item` (create-or-replace). If a ticker
+>    thread or a cron `stash tick` deletes or reroutes the item in between, it comes back. Add an
+>    update-only store write (Protocol + both stores + contract test, raising `UnknownItemError`
+>    for a missing row) and use it in lifecycle (and `capture.fixes`, which has the same race).
+>    Make `group`'s "child has no children" check and the save one transaction.
 
 **Files:**
 - Create `src/stash/hermes_adapter/ticker.py`.
