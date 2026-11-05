@@ -24,8 +24,8 @@
 {"id": "i02", "arm": "image", "text": "save this", "link": null, "image": "images/event_poster.png", "expect": {"route": "capture", "item_type": "activity", "date": "2027-05-22"}}
 {"id": "i03", "arm": "image", "text": "want this", "link": null, "image": "images/product_screenshot.png", "expect": {"route": "capture", "item_type": "purchase", "stage": "want_to"}}
 {"id": "r06", "arm": "text", "text": "finished Tidewater Notes last night, loved the ending", "link": null, "expect": {"route": "request"}}
-{"id": "r07", "arm": "text", "text": "we tried the dumpling place on Alder Street, it was great", "link": null, "expect": {"route": "request"}}
-{"id": "r08", "arm": "text", "text": "my takeaways from the Deep Sleep Lab episode: naps under 30 minutes work best", "link": null, "expect": {"route": "request"}}
-{"id": "r09", "arm": "text", "text": "made the lemon garlic roast chicken today, would cook it again", "link": null, "expect": {"route": "request"}}
+{"id": "r07", "arm": "text", "text": "tried the dumpling place on Alder Street from my list, honestly the best meal this month", "link": null, "expect": {"route": "request"}}
+{"id": "r08", "arm": "text", "text": "what I learned from the Deep Sleep Lab episode I saved: naps under 30 minutes work best", "link": null, "expect": {"route": "request"}}
+{"id": "r09", "arm": "text", "text": "cooked the lemon garlic roast chicken recipe I saved, would make it again", "link": null, "expect": {"route": "request"}}
 {"id": "r10", "arm": "text", "text": "Read 'The Glass Orchard' by Mira Voss, I just finished her other novel", "link": null, "expect": {"route": "capture"}}
 {"id": "r11", "arm": "text", "text": "Watch the documentary Salt Roads, I just wrapped up the Lantern series", "link": null, "expect": {"route": "capture"}}
