@@ -34,7 +34,7 @@ def test_an_unreachable_ai_saves_the_capture_and_a_later_retry_files_it() -> Non
     rig = build_rig(answer=a_filing_answer(), error=LlmUnavailable("connection refused"))
     result = handle_deferred(rig, a_message("Ramen in Shibuya"))
     pending_while_down = len(rig.store.pending_captures())
-    rig.model.error = None
+    rig.clear_error()
 
     # Execute
     retried = rig.pipeline.retry_pending()
@@ -50,7 +50,7 @@ def test_a_rejected_key_is_treated_like_an_unreachable_ai_and_loses_nothing() ->
     rig = build_rig(answer=a_filing_answer(), error=LlmError("rejected key"))
     result = handle_deferred(rig, a_message("Ramen in Shibuya"))
     pending_with_bad_key = len(rig.store.pending_captures())
-    rig.model.error = None
+    rig.clear_error()
 
     # Execute
     rig.pipeline.retry_pending()
@@ -69,7 +69,7 @@ def test_a_forwarded_backlog_gets_one_combined_reply_only_after_the_burst_window
         ("m2", "Dune", "book"),
         ("m3", "Sell candles", "idea"),
     ]:
-        rig.model.reply = a_filing_answer(title=title, item_type=item_type, details={})
+        rig.set_reply(a_filing_answer(title=title, item_type=item_type, details={}))
         rig.bursts.add(handle_filed(rig, a_message(title, message_id=message_id)), BASE)
 
     # Execute

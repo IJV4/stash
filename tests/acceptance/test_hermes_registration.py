@@ -3,19 +3,19 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from capture_builders import a_filing_answer
+from capture_builders import QUESTION, a_filing_answer, a_request_answer, an_unsure_answer
 from capture_rig import build_rig
-from fakes.hermes_ctx import FakeHermesContext
-from hermes_events import an_event
+from hermes_ctx_builders import a_hermes_context
+from hermes_events import ALLOW, SKIP, an_event
 from hermes_rig import app_over, called, instant_bursts, register_stash, until
 from telegram import InlineKeyboardMarkup
 
 from stash.app import StashApp
 from stash.capture import confirmation
 from stash.config import ConfigError, StashConfig
+from stash.hermes_adapter.assistant import APOLOGY
 
-QUESTION = "what can I do Saturday afternoon?"
-COULD_NOT_HAND_OVER = "I couldn't pass that on to the assistant."
+QUESTION_BUTTON = "That was a question →"
 
 
 def a_plain_app() -> StashApp:
@@ -28,7 +28,7 @@ def refusing_to_load(path: Path, env: Mapping[str, str]) -> StashConfig:
 
 def test_register_adds_the_hook_the_telegram_handler_the_commands_and_the_tools() -> None:
     # Setup
-    ctx = FakeHermesContext()
+    ctx = a_hermes_context()
 
     # Execute
     register_stash(a_plain_app(), ctx)
@@ -52,7 +52,7 @@ def test_register_adds_the_hook_the_telegram_handler_the_commands_and_the_tools(
 
 def test_a_command_name_that_hermes_refuses_is_registered_with_a_stash_prefix_instead() -> None:
     # Setup
-    ctx = FakeHermesContext(reserved={"retry"})
+    ctx = a_hermes_context(reserved={"retry"})
 
     # Execute
     register_stash(a_plain_app(), ctx)
@@ -96,7 +96,7 @@ def test_the_owners_message_is_confirmed_through_telegram_with_the_item_buttons(
         isinstance(sent.reply_markup, InlineKeyboardMarkup),
         wire,
     ) == (
-        {"action": "skip"},
+        SKIP,
         "42",
         "✅ Places · Tokyo · Want to",
         True,
@@ -104,22 +104,59 @@ def test_the_owners_message_is_confirmed_through_telegram_with_the_item_buttons(
     )
 
 
-def test_a_question_that_hermes_refuses_to_take_is_reported_to_the_owner_through_telegram() -> None:
+def test_a_question_dispatched_through_hermes_is_allowed_and_nothing_is_injected() -> None:
     # Setup
-    rig = build_rig(answer=a_filing_answer(route="request"))
-    ctx = FakeHermesContext(inject_result=False)
+    rig = build_rig(answer=a_request_answer())
+    ctx = a_hermes_context()
     plugin = register_stash(app_over(rig, burst_factory=instant_bursts), ctx)
+
+    # Execute
+    verdict = asyncio.run(plugin.dispatch(an_event(text=QUESTION)))
+
+    # Assert
+    assert (verdict, ctx.injected, ctx.refused) == (ALLOW, [], [])
+
+
+def test_that_was_a_question_pressed_through_telegram_apologises_with_no_allowed_question() -> None:
+    # Setup
+    rig = build_rig(outcomes=[an_unsure_answer()])
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
     plugin.connect_telegram()
 
     async def scenario() -> None:
-        await called(ctx.hooks["pre_gateway_dispatch"], an_event(text=QUESTION))
+        await plugin.dispatch(an_event(text=QUESTION))
         await until(lambda: plugin.bot.sent)
+        await plugin.press(plugin.sent_button_data(QUESTION_BUTTON))
 
     # Execute
     asyncio.run(scenario())
 
     # Assert
-    assert ([message.content for message in ctx.injected], [m.text for m in plugin.bot.sent]) == (
-        [QUESTION],
-        [COULD_NOT_HAND_OVER],
-    )
+    assert (
+        [message.content for message in plugin.ctx.refused],
+        plugin.ctx.injected,
+        [sent.text for sent in plugin.bot.sent[1:]],
+    ) == ([QUESTION], [], [APOLOGY.text])
+
+
+def test_that_was_a_question_pressed_through_telegram_injects_the_text_after_a_question() -> None:
+    # Setup
+    rig = build_rig(outcomes=[a_request_answer(), an_unsure_answer()])
+    plugin = register_stash(app_over(rig, burst_factory=instant_bursts))
+    plugin.connect_telegram()
+
+    async def scenario() -> None:
+        await plugin.dispatch(an_event(text="what is on my list?", message_id="q1"))
+        await plugin.dispatch(an_event(text=QUESTION, message_id="q2"))
+        await until(lambda: plugin.bot.sent)
+        await plugin.press(plugin.sent_button_data(QUESTION_BUTTON))
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert (
+        [message.content for message in plugin.ctx.injected],
+        plugin.ctx.refused,
+        len(plugin.bot.sent),
+    ) == ([QUESTION], [], 1)

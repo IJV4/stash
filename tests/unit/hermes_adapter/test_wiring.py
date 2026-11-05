@@ -6,7 +6,6 @@ from app_builders import NOON, an_app
 from capture_builders import sequential_ids
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
-from fakes.recording_assistant import RecordingAssistant
 from fakes.recording_outbox import RecordingOutbox
 from fakes.scripted_steps import ScriptedSteps
 from hermes_events import OWNER_ID, an_event
@@ -30,7 +29,6 @@ def dispatched_messages(
     intake = build_intake(
         app,
         Owners.parse(OWNER_ID),
-        RecordingAssistant(),
         RecordingOutbox(),
         scheduler,
         new_id or sequential_ids(),

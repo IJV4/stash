@@ -2,7 +2,7 @@ import asyncio
 
 from app_builders import an_app, stored
 from builders import BASE, a_capture, an_item, minutes_after
-from capture_builders import a_filing_answer
+from capture_builders import FORCED_QUESTION, a_filing_answer, a_message
 from capture_rig import build_rig
 from hermes_rig import app_over, called, register_stash
 
@@ -72,3 +72,23 @@ def test_retry_files_the_pending_captures_one_line_each_and_then_finds_nothing_p
 
     # Assert
     assert answers == ["filed — Places · Ichiran ramen · Want to", "Nothing pending."]
+
+
+def test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_nothing() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    rig.pipeline.receive(a_message(FORCED_QUESTION))
+    plugin = register_stash(app_over(rig))
+
+    async def scenario() -> list[str]:
+        return [await called(plugin.ctx.commands["retry"], "") for _ in range(2)]
+
+    # Execute
+    answers = asyncio.run(scenario())
+
+    # Assert
+    assert (answers, rig.model.calls, rig.store.list_items()) == (
+        [f"request — {FORCED_QUESTION}", "Nothing pending."],
+        [],
+        [],
+    )

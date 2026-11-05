@@ -22,7 +22,6 @@ def build_scheduler(app: StashApp) -> LoopScheduler:
 def build_intake(
     app: StashApp,
     owners: Owners,
-    assistant: Assistant,
     sender: ReplySender,
     scheduler: Scheduler,
     new_id: Callable[[], str],
@@ -31,9 +30,7 @@ def build_intake(
         EventTranslator(owners, app.clock, new_id),
         app.pipeline,
         Bursts(app.burst_factory, sender, scheduler),
-        assistant,
         sender,
-        scheduler,
     )
 
 

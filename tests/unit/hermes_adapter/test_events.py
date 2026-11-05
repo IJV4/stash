@@ -5,6 +5,14 @@ from datetime import UTC, datetime
 
 import pytest
 from builders import BASE
+from capture_builders import (
+    FORCED_QUESTION,
+    FORCING_TEXTS,
+    LINK_WITH_A_QUERY,
+    NON_FORCING_TEXTS,
+    SAMPLE_TEXT,
+)
+from hermes_events import an_inbound
 from log_records import recording_logs
 
 from stash.capture import IncomingMessage
@@ -374,3 +382,54 @@ def test_accepted_media_paths_log_nothing() -> None:
 
     # Assert
     assert logs.entries() == []
+
+
+@pytest.mark.parametrize("text", [*FORCING_TEXTS, LINK_WITH_A_QUERY, SAMPLE_TEXT])
+def test_an_owner_message_is_read_as_an_inbound_message_whatever_it_starts_with(
+    text: str,
+) -> None:
+    # Setup
+    translator = a_translator()
+
+    # Execute
+    outcome = translator.read(FakeEvent(text=text))
+
+    # Assert
+    assert outcome == Inbound(
+        Chat(CHAT, OWNER), IncomingMessage(SourceRef(CHAT, "m-1"), text, (), BASE)
+    )
+
+
+@pytest.mark.parametrize("text", FORCING_TEXTS)
+def test_the_failure_verdict_of_a_text_forcing_a_request_is_allow(text: str) -> None:
+    # Setup
+    inbound = an_inbound(text)
+
+    # Execute
+    verdict = inbound.failure_verdict
+
+    # Assert
+    assert verdict is Verdict.ALLOW
+
+
+@pytest.mark.parametrize("text", NON_FORCING_TEXTS)
+def test_the_failure_verdict_of_a_text_not_forcing_a_request_is_skip(text: str) -> None:
+    # Setup
+    inbound = an_inbound(text)
+
+    # Execute
+    verdict = inbound.failure_verdict
+
+    # Assert
+    assert verdict is Verdict.SKIP
+
+
+def test_a_forced_question_from_somebody_else_is_passed_through() -> None:
+    # Setup
+    translator = a_translator()
+
+    # Execute
+    outcome = translator.read(FakeEvent(text=FORCED_QUESTION, source=FakeSource(user_id="99")))
+
+    # Assert
+    assert outcome == Passthrough()

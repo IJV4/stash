@@ -2,8 +2,8 @@ import threading
 
 from builders import a_capture
 
-from stash.capture import Duplicate, IncomingMessage, ProcessResult
-from stash.domain import RawCapture
+from stash.capture import Duplicate, IncomingMessage, IsRequest, ProcessResult, forces_request
+from stash.domain import CaptureStatus, RawCapture
 
 HOLD_LIMIT_SECONDS = 1.0
 
@@ -21,6 +21,8 @@ class BlockingIntake:
         return a_capture()
 
     def process(self, capture: RawCapture) -> ProcessResult:
+        if forces_request(capture.text):
+            return IsRequest(capture.with_status(CaptureStatus.REQUEST))
         self._hold()
         return Duplicate()
 

@@ -1,8 +1,15 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from capture_builders import SAMPLE_TEXT, a_message
+
+from stash.hermes_adapter.events import Chat, Inbound
+
 OWNER_ID = "42"
 STRANGER_ID = "99"
+CHAT_ID = "7001"
+SKIP = {"action": "skip"}
+ALLOW = {"action": "allow"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +28,7 @@ class FakeEvent:
 
 
 def an_event(
-    text: str | None = "Ramen in Shibuya",
+    text: str | None = SAMPLE_TEXT,
     user_id: str | None = OWNER_ID,
     chat_id: str = OWNER_ID,
     message_id: str | None = "m1",
@@ -29,3 +36,7 @@ def an_event(
     internal: bool = False,
 ) -> FakeEvent:
     return FakeEvent(text, FakeSource(chat_id, user_id), message_id, media_urls, internal)
+
+
+def an_inbound(text: str = SAMPLE_TEXT) -> Inbound:
+    return Inbound(Chat(CHAT_ID, OWNER_ID), a_message(text))

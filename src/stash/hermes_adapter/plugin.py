@@ -10,6 +10,7 @@ from stash.app import StashApp, build_app
 from stash.config import StashConfig
 from stash.config.loader import expand_home, load_config
 from stash.hermes_adapter.assistant import GatewayAssistant
+from stash.hermes_adapter.events import DISPATCH_HOOK
 from stash.hermes_adapter.host import hermes_secret, resolved_environment
 from stash.hermes_adapter.outbox import LateBoundOutbox
 from stash.hermes_adapter.owners import Owners
@@ -28,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = "~/.config/stash/stash.toml"
 HERMES_SECRETS = ("OPENROUTER_API_KEY", "TELEGRAM_ALLOWED_USERS")
-DISPATCH_HOOK = "pre_gateway_dispatch"
 COMMAND_DESCRIPTIONS = {
     "list": ("List saved items, newest first", "[stage]"),
     "gpu": ("Switch stash's use of the GPU", "on|off|status"),
@@ -84,7 +84,7 @@ def register(
         logger.warning("TELEGRAM_ALLOWED_USERS is empty: stash will ignore every message")
     outbox = LateBoundOutbox()
     assistant = GatewayAssistant(ctx.inject_message, outbox)
-    intake = build_intake(app, owners, assistant, outbox, build_scheduler(app), new_id)
+    intake = build_intake(app, owners, outbox, build_scheduler(app), new_id)
     callbacks = build_callbacks(app, owners, outbox, assistant)
     attachment = TelegramAttachment(outbox, callbacks.on_press)
     ctx.register_hook(DISPATCH_HOOK, intake.on_dispatch)

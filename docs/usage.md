@@ -69,7 +69,10 @@ environment: `OPENROUTER_API_KEY` for the AI provider and `TELEGRAM_ALLOWED_USER
 Each statement below has one acceptance test, in
 `tests/acceptance/test_hermes_registration.py`, `test_hermes_capture.py`,
 `test_hermes_buttons.py`, `test_hermes_commands.py` and `test_hermes_tools.py`
-(all on fakes: a fake Hermes context, a fake outbox and a fake assistant).
+(all on fakes: a fake Hermes context that refuses injection into a chat with no
+admitted human message (a command or a non-owner message does not admit it),
+and a fake outbox; the assistant is the real `GatewayAssistant` over that fake
+context, except in the two button tests that record what was asked).
 
 ### Registration
 
@@ -83,54 +86,129 @@ Each statement below has one acceptance test, in
 2. An unreadable or invalid configuration makes `register` raise the
    `ConfigError`, so the failure shows in Hermes' log instead of messages being
    silently left to the agent.
+3. The registered hook answers `{"action": "allow"}` for a question and Hermes
+   is asked to inject nothing (`test_a_question_dispatched_through_hermes_is_allowed_and_nothing_is_injected`).
+4. The `That was a question →` button on a confirmation that Telegram delivered
+   goes through the registered Telegram handler to the same hand-over. In a
+   chat with no `allow`ed message the owner is told `I couldn't pass that on to
+   the assistant. Send it again starting with ? and I'll hand it over.` and
+   nothing is injected.
+   (`test_that_was_a_question_pressed_through_telegram_apologises_with_no_allowed_question`)
+5. After an `allow`ed question in the same chat the same press, through the
+   registered handler, is injected into Hermes and no apology is sent.
+   (`test_that_was_a_question_pressed_through_telegram_injects_the_text_after_a_question`)
 
 ### Messages (the hook)
 
 The hook runs before Hermes authorises the sender, so stash checks the owner
-itself.
+itself. It saves every owner message raw first, then classifies it **inside the
+hook** (the hook waits for the AI), then answers. Each statement names its
+acceptance test, in `tests/acceptance/test_hermes_capture.py` except statements
+10, 11, 15 and 16 (the `?` rule), which are in
+`tests/acceptance/test_hermes_forced_questions.py`.
 
-1. A plain message from the owner is saved raw and the hook answers
+1. A plain message from the owner is saved raw, classified, and the hook answers
    `{"action": "skip"}`, so the agent never sees it. After the burst window the
    owner gets one reply with the confirmation and its buttons.
+   (`test_a_plain_message_from_the_owner_is_skipped_and_confirmed_after_the_burst_window`)
 2. A message whose text starts with `/` answers `{"action": "allow"}` and stores
    nothing: Hermes runs the command.
+   (`test_a_message_starting_with_a_slash_is_allowed_through_and_stores_nothing`)
 3. A message from anybody else answers `{"action": "allow"}`; nothing is stored
    and nothing is sent, so Hermes' own authorisation decides what they get.
+   (`test_a_message_from_anybody_else_is_allowed_through_stores_nothing_and_sends_nothing`)
 4. The same Telegram message delivered twice is one capture, one item, one
    reply; the second delivery answers `skip` and sends nothing.
+   (`test_the_same_telegram_message_delivered_twice_is_one_item_and_one_reply`)
 5. Several messages inside the burst window get one combined
    `✅ Saved 3 items:` reply. An item that is processed twice in one window
-   (a `/retry` overlapping the background filing) is listed once; that rule
-   lives in `BurstCoalescer.add` (unit-tested there).
+   (a `/retry` overlapping the filing) is listed once; that rule lives in
+   `BurstCoalescer.add` (unit-tested there).
+   (`test_several_messages_inside_the_burst_window_get_one_combined_reply`)
 6. When the AI is down the owner gets `📥 Saved — I'll file it once the AI is
    reachable.`; the capture stays pending.
-7. A message the AI routes as a question creates no item and is handed to the
-   assistant (`ctx.inject_message`); stash sends no reply of its own. If Hermes
-   refuses the hand-over the owner is told so.
-8. If the raw save itself fails the owner is told `⚠️ I could not save that
-   message — please send it again.` and the hook answers `skip`.
-9. If filing raises unexpectedly it is logged, nothing is sent and the capture
-   stays pending for `/retry`.
+   (`test_when_the_ai_is_down_the_owner_is_told_it_is_saved_and_the_capture_stays_pending`)
+7. When the AI goes down between the raw save and the classification the hook
+   answers `skip`, the capture stays pending, and nothing reaches the agent.
+   (`test_when_the_ai_goes_down_after_the_raw_save_the_hook_skips_and_the_agent_gets_nothing`)
+8. A message the AI routes as a question creates no item and the hook answers
+   `{"action": "allow"}`: Hermes runs a normal agent turn on the owner's own
+   message, unchanged. stash injects nothing and sends no reply of its own.
+   (`test_a_question_is_allowed_through_to_the_agent_and_creates_no_item_and_no_reply`)
+9. In a burst of five messages with one question among them, the question's
+   message answers `allow` and the other four answer `skip`; the owner gets one
+   combined `✅ Saved 4 items:` reply for the four captures.
+   (`test_a_burst_with_one_question_allows_it_and_confirms_the_four_captures_together`)
+10. A message that starts with `?` (after leading whitespace) is routed as a
+    request by the core pipeline (see "Asking a question"): it is saved raw,
+    marked as a request with no AI call, and the hook answers `allow`. Hermes
+    receives the message unchanged, `?` included (`?` alone and
+    `  ? what can I do` both qualify).
+    (`test_a_message_starting_with_a_question_mark_is_a_request_without_asking_the_ai`)
+11. A message that merely contains `?` (a link such as
+    `https://x.test/a?b=1`) is classified like any other: the AI is asked, the
+    hook answers `skip` and the item is filed.
+    (`test_a_link_containing_a_question_mark_is_classified_and_filed_not_forced`)
+12. If Hermes redelivers a question (same message id) the first delivery
+    answers `allow` and the second answers `skip`, so the agent answers once.
+    (`test_a_redelivered_question_reaches_the_agent_only_once`)
+13. If the raw save itself fails the owner is told `⚠️ I could not save that
+    message — please send it again.` and the hook answers `skip`.
+    (`test_when_the_raw_save_fails_the_owner_is_told_to_send_it_again_and_the_hook_skips`)
+14. If processing a capture raises unexpectedly (the log names the capture id,
+    never its text) the hook answers `skip`, nothing is sent, and the capture
+    stays pending for `/retry`.
+    (`test_when_filing_raises_nothing_is_sent_and_the_capture_stays_pending`)
+15. If processing a forced question raises, the hook answers `allow` (the
+    raw copy is saved and Hermes still gets the owner's message), the failure
+    is logged by capture id only, nothing is sent and the capture stays pending;
+    a later retry marks it as a request and files nothing.
+    (`test_a_forced_question_whose_processing_raises_is_allowed_and_retried_as_a_request`)
+16. If a retry processes a pending `?` capture between the hook's raw save and
+    the hook's own processing, the retry marks it as a request and files
+    nothing, the hook still answers `allow` once, and nothing is injected or
+    sent by the retry path.
+    (`test_a_retry_racing_the_hook_on_a_forced_question_files_nothing_and_hook_allows_once`)
 
-Pinned by unit tests: a message with an unusable media path (for example
-containing `..`) is still saved, without the media; a message without a user
-id, without text and media, or with a missing message id is handled as above
-(passed through, or given a generated id).
+Pinned by unit tests: the verdict for each processing result and for a raised
+exception (`tests/unit/hermes_adapter/test_intake_routing.py`), where a failure
+answers `allow` for a forced question and `skip` for any other message; the
+hook always classifies through `process`, on a worker thread, and has finished
+when it returns; the pipeline routes a `?` capture as a request, first time or
+on retry, without a model call, a link inspection or an item (resumed items
+first); the `SerializedPipeline` does not make a `?` capture wait for another
+message's classification; a message with an unusable media path (for example containing
+`..`) is still saved, without the media; a message without a user id, without
+text and media, or with a missing message id is handled as above (passed
+through, or given a generated id).
+
+Unverified until the PC checks it (`docs/spike-m0.md` #23): whether Hermes
+times out a hook that waits 25-45 s for classification, and whether a slow hook
+delays other messages.
 
 ### Buttons
 
 Every callback is scoped to data starting `stash:`, so Hermes' own buttons keep
-working; stash always acknowledges a press.
+working; stash always acknowledges a press. All in
+`tests/acceptance/test_hermes_buttons.py`.
 
 1. Pressing `Type`, then `Recipes`, edits the same message to the updated
    confirmation.
 2. Pressing `That was a question →` hands the original text to the assistant.
 3. A press from anybody but the owner is acknowledged and otherwise ignored.
 4. A stale or forged press edits the message to `That item no longer exists.`
+5. The hand-over uses `ctx.inject_message`, which Hermes accepts only in a chat
+   that has already had a human message admitted. In a chat with none the
+   owner is told `I couldn't pass that on to the assistant. Send it again
+   starting with ? and I'll hand it over.` and nothing is injected.
+   (`test_pressing_that_was_a_question_with_no_admitted_message_in_the_chat_apologises`)
+6. After an `allow`ed question in the same chat the same press is injected.
+   (`test_pressing_that_was_a_question_after_an_allowed_question_injects_the_text`)
 
 Pinned by unit tests: Telegram refusing an edit (message unchanged) is logged
 and never raises; a press whose question cannot be handed to the assistant
-tells the owner.
+tells the owner; the apology text is exactly the one above, for a refused and
+for a raising injection.
 
 ### Commands
 
@@ -142,7 +220,9 @@ Replies are plain text, at most 4096 characters.
 2. `/gpu status`, `/gpu off` and `/gpu on` answer as `stash gpu` does (see
    *stash gpu*); `/gpu` alone is `status`; anything else prints the usage.
 3. `/retry` files the pending captures and prints one line each, or
-   `Nothing pending.`
+   `Nothing pending.` A pending capture starting with `?` prints a `request`
+   line, files nothing and asks the AI nothing
+   (`test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_nothing`).
 
 ### Agent tools
 
@@ -275,6 +355,18 @@ Send `what can I do Saturday afternoon?`.
    `That was a question →` button; pressing it deletes the item, marks the
    capture as a request and hands the original text to the assistant. Pressing
    it a second time answers `That item no longer exists.`
+3. A message that starts with `?` (after leading whitespace) is a request
+   without asking the AI: no link is inspected, no model is called, no item is
+   created and the capture is marked as a request. `?` alone qualifies;
+   `https://x.test/a?b=1` and `what time is it?` do not start with it and are
+   classified as usual. Every path that processes a capture follows the rule:
+   `handle`, `retry_pending`, `stash retry` and `/stash_retry`.
+   (`test_a_message_starting_with_a_question_mark_is_handled_as_a_request_without_the_ai`
+   in `tests/acceptance/test_capture_requests_and_fixes.py`; for `stash retry`,
+   `test_retry_of_a_pending_question_mark_capture_prints_a_request_line_and_asks_the_ai_nothing`
+   in `tests/acceptance/test_cli.py`; for `/stash_retry`,
+   `test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_nothing`
+   in `tests/acceptance/test_hermes_commands.py`)
 
 ## Pressing a fix button  [Task 9]
 
@@ -485,6 +577,10 @@ start of the text). Acceptance tests:
    `Nothing pending.`
 2. While the GPU is busy the lines say `deferred (gpu_busy)`, the captures stay
    pending and the exit code is 0.
+3. A pending capture that starts with `?` prints a `request` line, files
+   nothing and sends no AI request; running it again prints `Nothing pending.`
+   (`test_retry_of_a_pending_question_mark_capture_prints_a_request_line_and_asks_the_ai_nothing`
+   in `tests/acceptance/test_cli.py`)
 
 ## stash gpu  [Task 11]
 

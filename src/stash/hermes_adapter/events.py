@@ -5,13 +5,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Protocol
 
-from stash.capture import IncomingMessage
+from stash.capture import IncomingMessage, forces_request
 from stash.domain import SourceRef
 from stash.hermes_adapter.owners import Owners
 
 logger = logging.getLogger(__name__)
 
 COMMAND_PREFIX = "/"
+DISPATCH_HOOK = "pre_gateway_dispatch"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +63,10 @@ class HermesEvent(Protocol):
 class Inbound:
     chat: Chat
     message: IncomingMessage
+
+    @property
+    def failure_verdict(self) -> Verdict:
+        return Verdict.ALLOW if forces_request(self.message.text) else Verdict.SKIP
 
 
 @dataclass(frozen=True, slots=True)

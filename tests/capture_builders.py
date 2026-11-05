@@ -6,14 +6,22 @@ from builders import BASE, a_capture, a_source, an_item
 from fakes.memory_store import MemoryStore
 
 from stash.capture import CaptureFiler, CapturePipeline, IncomingMessage, IntakeStore, Reply
-from stash.domain import CaptureStatus, Item, ItemType, Stage
+from stash.domain import CaptureStatus, Item, ItemType, RawCapture, Stage
 from stash.enrich.links import LinkInspector
 
 RAMEN_URL = "https://example.com/ramen-tokyo"
+SAMPLE_TEXT = "Ramen in Shibuya"
+QUESTION = "what can I do Saturday afternoon?"
+FORCED_QUESTION = "? what can I do"
+LINK_WITH_A_QUERY = "https://x.test/a?b=1"
+BARE_QUESTION_MARK = "?"
+INDENTED_FORCED_QUESTION = "  ? what can I do"
+FORCING_TEXTS = [BARE_QUESTION_MARK, INDENTED_FORCED_QUESTION, "\n?why"]
+NON_FORCING_TEXTS = [LINK_WITH_A_QUERY, "what time is it?", ""]
 
 
 def a_message(
-    text: str = "Ramen in Shibuya",
+    text: str = SAMPLE_TEXT,
     message_id: str = "m1",
     media_paths: tuple[str, ...] = (),
     received_at: datetime = BASE,
@@ -24,6 +32,13 @@ def a_message(
         media_paths=media_paths,
         received_at=received_at,
     )
+
+
+def received(pipeline: CapturePipeline, text: str) -> RawCapture:
+    capture = pipeline.receive(a_message(text))
+    if capture is None:
+        raise AssertionError(f"the pipeline refused to receive {text!r}")
+    return capture
 
 
 def a_filing_answer(**overrides: Any) -> dict[str, object]:
@@ -38,6 +53,14 @@ def a_filing_answer(**overrides: Any) -> dict[str, object]:
         "date": None,
     }
     return {**answer, **overrides}
+
+
+def a_request_answer(**overrides: Any) -> dict[str, object]:
+    return a_filing_answer(route="request", **overrides)
+
+
+def an_unsure_answer(**overrides: Any) -> dict[str, object]:
+    return a_filing_answer(route="unsure", item_type="other", details={}, **overrides)
 
 
 def a_placed_item(**overrides: Any) -> Item:

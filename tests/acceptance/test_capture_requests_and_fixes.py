@@ -1,16 +1,23 @@
-from capture_builders import RAMEN_URL, a_filing_answer, a_message, button_data
+from capture_builders import (
+    FORCED_QUESTION,
+    QUESTION,
+    RAMEN_URL,
+    a_filing_answer,
+    a_message,
+    a_request_answer,
+    an_unsure_answer,
+    button_data,
+)
 from capture_rig import build_rig
 from link_builders import a_link_info
 
 from stash.capture import Filed, IsRequest, Reroute, gone, reply_for
 from stash.domain import CaptureStatus, ItemType
 
-QUESTION = "what can I do Saturday afternoon?"
-
 
 def test_a_question_creates_no_item_and_is_marked_as_a_request_for_the_assistant() -> None:
     # Setup
-    rig = build_rig(answer=a_filing_answer(route="request"))
+    rig = build_rig(answer=a_request_answer())
 
     # Execute
     result = rig.pipeline.handle(a_message(QUESTION))
@@ -26,9 +33,25 @@ def test_a_question_creates_no_item_and_is_marked_as_a_request_for_the_assistant
     )
 
 
+def test_a_message_starting_with_a_question_mark_is_handled_as_a_request_without_the_ai() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+
+    # Execute
+    result = rig.pipeline.handle(a_message(FORCED_QUESTION))
+
+    # Assert
+    assert (type(result), rig.model.calls, rig.store.list_items(), rig.inspector.inspected) == (
+        IsRequest,
+        [],
+        [],
+        [],
+    )
+
+
 def test_an_unsure_ai_files_the_item_and_the_question_button_reroutes_it_exactly_once() -> None:
     # Setup
-    rig = build_rig(answer=a_filing_answer(route="unsure", item_type="other", details={}))
+    rig = build_rig(answer=an_unsure_answer())
     result = rig.pipeline.handle(a_message(QUESTION))
     assert isinstance(result, Filed)
     reply = reply_for(result)

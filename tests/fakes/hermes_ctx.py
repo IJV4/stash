@@ -2,6 +2,9 @@ from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from stash.hermes_adapter.events import COMMAND_PREFIX, DISPATCH_HOOK, HermesEvent, Verdict
+from stash.hermes_adapter.owners import Owners
+
 Handler = Callable[..., Any]
 
 
@@ -30,22 +33,36 @@ class InjectedMessage:
     origin: Mapping[str, Any] | None
 
 
+class _AdmittedChats:
+    def __init__(self) -> None:
+        self._chat_ids: set[str] = set()
+
+    def admit(self, chat_id: str) -> None:
+        self._chat_ids.add(chat_id)
+
+    def admits(self, origin: Mapping[str, Any] | None) -> bool:
+        return origin is not None and origin.get("chat_id") in self._chat_ids
+
+
 class FakeHermesContext:
     def __init__(
         self,
+        *,
+        owners: Owners,
         config: Mapping[str, Any] | None = None,
         reserved: Collection[str] = (),
-        inject_result: bool = True,
     ) -> None:
+        self._owners = owners
+        self._admitted = _AdmittedChats()
         self._config = dict(config or {})
         self._reserved = frozenset(reserved)
-        self.inject_result = inject_result
         self.hooks: dict[str, Handler] = {}
         self.platform_handlers: dict[str, Handler] = {}
         self.commands: dict[str, Handler] = {}
         self.command_registrations: list[RegisteredCommand] = []
         self.tools: dict[str, RegisteredTool] = {}
         self.injected: list[InjectedMessage] = []
+        self.refused: list[InjectedMessage] = []
 
     def get_config(self, key: str, default: Any = None) -> Any:
         return self._config.get(key, default)
@@ -91,6 +108,17 @@ class FakeHermesContext:
         self.tools[name] = tool
         return tool
 
+    async def dispatch(self, event: HermesEvent) -> dict[str, str]:
+        verdict: dict[str, str] = await self.hooks[DISPATCH_HOOK](event)
+        if verdict == Verdict.ALLOW.hook_result() and self._is_owner_prose(event):
+            self._admitted.admit(event.source.chat_id)
+        return verdict
+
+    def _is_owner_prose(self, event: HermesEvent) -> bool:
+        user_id = event.source.user_id
+        is_owner = user_id is not None and self._owners.admits_user(user_id)
+        return is_owner and not (event.text or "").strip().startswith(COMMAND_PREFIX)
+
     def inject_message(
         self,
         content: str,
@@ -99,5 +127,9 @@ class FakeHermesContext:
         session_key: str | None = None,
         origin: Mapping[str, Any] | None = None,
     ) -> bool:
-        self.injected.append(InjectedMessage(content, role, session_key, origin))
-        return self.inject_result
+        message = InjectedMessage(content, role, session_key, origin)
+        if not self._admitted.admits(origin):
+            self.refused.append(message)
+            return False
+        self.injected.append(message)
+        return True

@@ -1,27 +1,30 @@
 import asyncio
 import inspect
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from app_builders import an_app
-from capture_builders import sequential_ids
+from capture_builders import SAMPLE_TEXT, sequential_ids
 from capture_rig import CaptureRig, build_rig
 from config_builders import a_stash_config
 from fakes.fake_telegram_bot import FakeTelegramApplication, FakeTelegramBot
 from fakes.hermes_ctx import FakeHermesContext
 from fakes.pausing_scheduler import PausingScheduler
-from fakes.recording_assistant import RecordingAssistant
+from fakes.ptb_callback_updates import AnsweringBot, callback_update
 from fakes.recording_outbox import RecordingOutbox
-from hermes_events import OWNER_ID, an_event
+from hermes_ctx_builders import a_hermes_context
+from hermes_events import OWNER_ID, FakeEvent, an_event
 
 from stash.app import StashApp
 from stash.capture import BurstCoalescer, CaptureIntake, Reply, SerializedPipeline
 from stash.config import StashConfig
+from stash.domain import CaptureStatus
 from stash.enrich.links import LinkInfo
+from stash.hermes_adapter.assistant import Assistant, GatewayAssistant
 from stash.hermes_adapter.callbacks import CallbackPress, FixCallbacks
-from stash.hermes_adapter.events import Chat
+from stash.hermes_adapter.events import DISPATCH_HOOK, Chat
 from stash.hermes_adapter.intake import MessageIntake
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.plugin import register
@@ -77,17 +80,23 @@ async def called(function: Callable[..., Any], *arguments: Any) -> Any:
 @dataclass(frozen=True, slots=True)
 class HermesRig:
     capture: CaptureRig
-    app: StashApp
     scheduler: PausingScheduler
     outbox: RecordingOutbox
-    assistant: RecordingAssistant
+    ctx: FakeHermesContext
     intake: MessageIntake
     callbacks: FixCallbacks
 
-    async def confirmation_for(self, text: str = "Ramen in Shibuya") -> Reply:
-        await self.intake.on_dispatch(an_event(text=text))
+    async def deliver(self, *events: FakeEvent) -> list[dict[str, str]]:
+        verdicts = [await self.ctx.dispatch(event) for event in events]
         await self.scheduler.drain()
+        return verdicts
+
+    async def confirmation_for(self, text: str = SAMPLE_TEXT) -> Reply:
+        await self.deliver(an_event(text=text))
         return self.outbox.sent[0].reply
+
+    def capture_statuses(self) -> list[CaptureStatus]:
+        return [capture.status for capture in self.capture.store.stored_captures()]
 
 
 def build_hermes_rig(
@@ -96,21 +105,26 @@ def build_hermes_rig(
     links: Mapping[str, LinkInfo] | None = None,
     wrap: Callable[[CaptureIntake], CaptureIntake] = unchanged,
     owner_ids: str = OWNER_ID,
+    outcomes: Sequence[Mapping[str, object] | LlmError] | None = None,
+    assistant: Assistant | None = None,
 ) -> HermesRig:
-    capture = build_rig(answer=answer, error=error, links=links)
+    capture = build_rig(answer=answer, error=error, links=links, outcomes=outcomes)
     app = app_over(capture, wrap)
     scheduler = PausingScheduler()
     outbox = RecordingOutbox()
-    assistant = RecordingAssistant()
     owners = Owners.parse(owner_ids)
+    ctx = a_hermes_context(owners=owners)
+    intake = build_intake(app, owners, outbox, scheduler, sequential_ids())
+    ctx.register_hook(DISPATCH_HOOK, intake.on_dispatch)
     return HermesRig(
         capture=capture,
-        app=app,
         scheduler=scheduler,
         outbox=outbox,
-        assistant=assistant,
-        intake=build_intake(app, owners, assistant, outbox, scheduler, sequential_ids()),
-        callbacks=build_callbacks(app, owners, outbox, assistant),
+        ctx=ctx,
+        intake=intake,
+        callbacks=build_callbacks(
+            app, owners, outbox, assistant or GatewayAssistant(ctx.inject_message, outbox)
+        ),
     )
 
 
@@ -135,6 +149,28 @@ class RegisteredStash:
     def connect_telegram(self) -> None:
         self.ctx.platform_handlers["telegram"](self.application, None)
 
+    async def dispatch(self, event: FakeEvent) -> dict[str, str]:
+        return await self.ctx.dispatch(event)
+
+    def sent_button_data(self, label: str) -> str:
+        [sent, *_] = self.bot.sent
+        return next(
+            button.callback_data
+            for row in sent.reply_markup.inline_keyboard
+            for button in row
+            if button.text == label
+        )
+
+    async def press(self, data: str, message_id: int = int(CONFIRMATION_MESSAGE_ID)) -> None:
+        update = callback_update(
+            AnsweringBot([]),
+            data=data,
+            chat_id=int(OWNER_ID),
+            user_id=int(OWNER_ID),
+            message_id=message_id,
+        )
+        await self.application.handlers[0].callback(update, None)
+
 
 def register_stash(
     app: StashApp,
@@ -142,7 +178,7 @@ def register_stash(
     load: LoadConfig = instant_config,
     owner_ids: str = OWNER_ID,
 ) -> RegisteredStash:
-    context = FakeHermesContext() if ctx is None else ctx
+    context = a_hermes_context(owners=Owners.parse(owner_ids)) if ctx is None else ctx
     exits: list[Callable[[], None]] = []
     register(
         context,

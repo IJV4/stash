@@ -9,6 +9,7 @@ class ScriptedSteps:
     def __init__(
         self,
         inner: IntakeSteps,
+        *,
         receive_failure: Exception | None = None,
         process_failure: Exception | None = None,
         process_result: ProcessResult | None = None,
@@ -17,12 +18,14 @@ class ScriptedSteps:
         self._receive_failure = receive_failure
         self._process_failure = process_failure
         self._process_result = process_result
+        self.calls: list[tuple[str, str]] = []
         self.received: list[IncomingMessage] = []
         self.processed: list[RawCapture] = []
         self.receive_threads: list[int] = []
         self.process_threads: list[int] = []
 
     def receive(self, message: IncomingMessage) -> RawCapture | None:
+        self.calls.append(("receive", message.text))
         self.received.append(message)
         self.receive_threads.append(threading.get_ident())
         if self._receive_failure is not None:
@@ -30,6 +33,7 @@ class ScriptedSteps:
         return self._inner.receive(message)
 
     def process(self, capture: RawCapture) -> ProcessResult:
+        self.calls.append(("process", capture.text))
         self.processed.append(capture)
         self.process_threads.append(threading.get_ident())
         if self._process_failure is not None:

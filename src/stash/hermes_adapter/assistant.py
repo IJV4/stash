@@ -3,13 +3,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from stash.capture import Reply
+from stash.capture import QUESTION_PREFIX, Reply
 from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.outbox import ReplySender
 
 logger = logging.getLogger(__name__)
 
-APOLOGY = Reply("I couldn't pass that on to the assistant.")
+APOLOGY = Reply(
+    "I couldn't pass that on to the assistant. "
+    f"Send it again starting with {QUESTION_PREFIX} and I'll hand it over."
+)
 
 
 @dataclass(frozen=True, slots=True)

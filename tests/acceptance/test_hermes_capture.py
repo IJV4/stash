@@ -1,16 +1,11 @@
 import asyncio
 
-from capture_builders import a_filing_answer
+from capture_builders import QUESTION, a_filing_answer, a_request_answer
 from fakes.raising_intake import RaisingIntake
-from hermes_events import OWNER_ID, STRANGER_ID, an_event
+from hermes_events import ALLOW, SKIP, STRANGER_ID, an_event
 from hermes_rig import build_hermes_rig
 
-from stash.hermes_adapter.events import Chat
 from stash.llm import LlmUnavailable
-
-QUESTION = "what can I do Saturday afternoon?"
-SKIP = {"action": "skip"}
-ALLOW = {"action": "allow"}
 
 
 class SaveFailed(Exception):
@@ -128,25 +123,6 @@ def test_when_the_ai_is_down_the_owner_is_told_it_is_saved_and_the_capture_stays
     )
 
 
-def test_a_question_creates_no_item_and_goes_to_the_assistant_without_a_reply_from_stash() -> None:
-    # Setup
-    rig = build_hermes_rig(answer=a_filing_answer(route="request"))
-
-    async def scenario() -> None:
-        await rig.intake.on_dispatch(an_event(text=QUESTION))
-        await rig.scheduler.drain()
-
-    # Execute
-    asyncio.run(scenario())
-
-    # Assert
-    assert (rig.assistant.asked, rig.capture.store.list_items(), rig.outbox.sent) == (
-        [(QUESTION, Chat(chat_id=OWNER_ID, user_id=OWNER_ID))],
-        [],
-        [],
-    )
-
-
 def test_when_the_raw_save_fails_the_owner_is_told_to_send_it_again_and_the_hook_skips() -> None:
     # Setup
     rig = build_hermes_rig(
@@ -176,12 +152,78 @@ def test_when_filing_raises_nothing_is_sent_and_the_capture_stays_pending() -> N
         wrap=lambda inner: RaisingIntake(inner, on_process=FilingExploded("boom")),
     )
 
-    async def scenario() -> None:
-        await rig.intake.on_dispatch(an_event())
-        await rig.scheduler.drain()
-
     # Execute
-    asyncio.run(scenario())
+    [verdict] = asyncio.run(rig.deliver(an_event()))
 
     # Assert
-    assert (rig.outbox.sent, len(rig.capture.store.pending_captures())) == ([], 1)
+    assert (verdict, rig.outbox.sent, len(rig.capture.store.pending_captures())) == (SKIP, [], 1)
+
+
+def test_a_question_is_allowed_through_to_the_agent_and_creates_no_item_and_no_reply() -> None:
+    # Setup
+    rig = build_hermes_rig(answer=a_request_answer())
+
+    # Execute
+    [verdict] = asyncio.run(rig.deliver(an_event(text=QUESTION)))
+
+    # Assert
+    assert {
+        "verdict": verdict,
+        "injected": rig.ctx.injected,
+        "refused": rig.ctx.refused,
+        "items": rig.capture.store.list_items(),
+        "sent": rig.outbox.sent,
+    } == {"verdict": ALLOW, "injected": [], "refused": [], "items": [], "sent": []}
+
+
+def test_a_burst_with_one_question_allows_it_and_confirms_the_four_captures_together() -> None:
+    # Setup
+    rig = build_hermes_rig(
+        outcomes=[
+            a_filing_answer(title="Ramen"),
+            a_filing_answer(title="Pasta"),
+            a_request_answer(),
+            a_filing_answer(title="Tacos"),
+            a_filing_answer(title="Pho"),
+        ]
+    )
+    events = [an_event(text=f"message {n}", message_id=f"m{n}") for n in range(5)]
+
+    # Execute
+    verdicts = asyncio.run(rig.deliver(*events))
+
+    # Assert
+    assert (verdicts, [text.splitlines()[0] for text in rig.outbox.sent_texts()]) == (
+        [SKIP, SKIP, ALLOW, SKIP, SKIP],
+        ["✅ Saved 4 items:"],
+    )
+
+
+def test_when_the_ai_goes_down_after_the_raw_save_the_hook_skips_and_the_agent_gets_nothing() -> (
+    None
+):
+    # Setup
+    rig = build_hermes_rig(outcomes=[LlmUnavailable("connection refused")])
+
+    # Execute
+    [verdict] = asyncio.run(rig.deliver(an_event(text=QUESTION)))
+
+    # Assert
+    assert (
+        verdict,
+        len(rig.capture.store.pending_captures()),
+        rig.ctx.injected,
+        rig.ctx.refused,
+    ) == (SKIP, 1, [], [])
+
+
+def test_a_redelivered_question_reaches_the_agent_only_once() -> None:
+    # Setup
+    rig = build_hermes_rig(answer=a_request_answer())
+    redelivery = [an_event(text=QUESTION, message_id="m1")] * 2
+
+    # Execute
+    verdicts = asyncio.run(rig.deliver(*redelivery))
+
+    # Assert
+    assert verdicts == [ALLOW, SKIP]

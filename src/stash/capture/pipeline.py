@@ -11,6 +11,7 @@ from stash.capture.results import (
     IsRequest,
     ProcessResult,
 )
+from stash.capture.routing import forces_request
 from stash.domain import CaptureStatus, Filing, Item, RawCapture, Route
 from stash.enrich.links import LinkInspector
 from stash.enrich.urls import extract_urls
@@ -49,6 +50,8 @@ class CapturePipeline:
         existing = self._store.get_item(capture.item_id)
         if existing is not None:
             return self._resumed(capture, existing)
+        if forces_request(capture.text):
+            return self._request(capture)
         urls = extract_urls(capture.text)
         first_url = urls[0] if urls else None
         link = None if first_url is None else self._inspector.inspect(first_url)

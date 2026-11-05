@@ -9,14 +9,14 @@ from router_builders import default_thinking_models
 
 from stash.config import ProviderName
 from stash.filing import Filer
-from stash.llm import BusyCheck, ModelRouter, TextPart
+from stash.llm import BusyCheck, ChatModel, ModelRouter, TextPart
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
 NOON_UTC = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 
 
 def build_filer(
-    model: FakeChatModel,
+    model: ChatModel,
     busy: BusyCheck | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> Filer:

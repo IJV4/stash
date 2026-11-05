@@ -1,15 +1,24 @@
 import asyncio
 
-from capture_builders import a_filing_answer, button_data
-from hermes_events import OWNER_ID, STRANGER_ID
+from capture_builders import (
+    QUESTION,
+    a_filing_answer,
+    a_request_answer,
+    an_unsure_answer,
+    button_data,
+)
+from fakes.recording_assistant import RecordingAssistant
+from hermes_events import OWNER_ID, STRANGER_ID, an_event
 from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_hermes_rig
 
 from stash.capture.callbacks import FixAction, FixKind
 from stash.hermes_adapter.events import Chat
 
-QUESTION = "what can I do Saturday afternoon?"
 GONE = "That item no longer exists."
 FORGED_ITEM_ID = "f" * 32
+APOLOGY_TEXT = (
+    "I couldn't pass that on to the assistant. Send it again starting with ? and I'll hand it over."
+)
 
 
 def test_pressing_type_then_recipes_edits_the_same_message_to_the_updated_confirmation() -> None:
@@ -36,9 +45,8 @@ def test_pressing_type_then_recipes_edits_the_same_message_to_the_updated_confir
 
 def test_pressing_that_was_a_question_hands_the_original_text_to_the_assistant() -> None:
     # Setup
-    rig = build_hermes_rig(
-        answer=a_filing_answer(route="unsure", item_type="other", details={}),
-    )
+    assistant = RecordingAssistant()
+    rig = build_hermes_rig(answer=an_unsure_answer(), assistant=assistant)
 
     async def scenario() -> None:
         confirmation = await rig.confirmation_for(QUESTION)
@@ -48,14 +56,13 @@ def test_pressing_that_was_a_question_hands_the_original_text_to_the_assistant()
     asyncio.run(scenario())
 
     # Assert
-    assert rig.assistant.asked == [(QUESTION, Chat(chat_id=OWNER_ID, user_id=OWNER_ID))]
+    assert assistant.asked == [(QUESTION, Chat(chat_id=OWNER_ID, user_id=OWNER_ID))]
 
 
 def test_a_press_from_anybody_but_the_owner_changes_and_asks_nothing() -> None:
     # Setup
-    rig = build_hermes_rig(
-        answer=a_filing_answer(route="unsure", item_type="other", details={}),
-    )
+    assistant = RecordingAssistant()
+    rig = build_hermes_rig(answer=an_unsure_answer(), assistant=assistant)
 
     async def scenario() -> None:
         confirmation = await rig.confirmation_for(QUESTION)
@@ -66,7 +73,7 @@ def test_a_press_from_anybody_but_the_owner_changes_and_asks_nothing() -> None:
     asyncio.run(scenario())
 
     # Assert
-    assert (rig.assistant.asked, rig.outbox.edited, len(rig.capture.store.list_items())) == (
+    assert (assistant.asked, rig.outbox.edited, len(rig.capture.store.list_items())) == (
         [],
         [],
         1,
@@ -86,3 +93,38 @@ def test_a_stale_or_forged_press_edits_the_message_to_say_the_item_no_longer_exi
     assert [(edit.message_id, edit.reply.text) for edit in rig.outbox.edited] == [
         (CONFIRMATION_MESSAGE_ID, GONE)
     ]
+
+
+def test_pressing_that_was_a_question_with_no_admitted_message_in_the_chat_apologises() -> None:
+    # Setup
+    rig = build_hermes_rig(answer=an_unsure_answer())
+
+    async def scenario() -> None:
+        confirmation = await rig.confirmation_for(QUESTION)
+        await rig.callbacks.on_press(a_press(button_data(confirmation, "That was a question →")))
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert (rig.outbox.sent_texts()[1:], rig.ctx.injected, len(rig.ctx.refused)) == (
+        [APOLOGY_TEXT],
+        [],
+        1,
+    )
+
+
+def test_pressing_that_was_a_question_after_an_allowed_question_injects_the_text() -> None:
+    # Setup
+    rig = build_hermes_rig(outcomes=[a_request_answer(), an_unsure_answer()])
+
+    async def scenario() -> None:
+        await rig.deliver(an_event(text="what is on my list?", message_id="q1"))
+        confirmation = await rig.confirmation_for(QUESTION)
+        await rig.callbacks.on_press(a_press(button_data(confirmation, "That was a question →")))
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert ([message.content for message in rig.ctx.injected], rig.ctx.refused) == ([QUESTION], [])

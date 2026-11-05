@@ -48,6 +48,10 @@ class MemoryStore:
         with self._lock:
             return self._captures.get(capture_id)
 
+    def stored_captures(self) -> list[RawCapture]:
+        with self._lock:
+            return list(self._captures.values())
+
     def pending_captures(self) -> list[RawCapture]:
         with self._lock:
             pending = [

@@ -3,6 +3,7 @@ import threading
 from stash.capture.message import IncomingMessage
 from stash.capture.ports import CaptureIntake
 from stash.capture.results import ProcessResult
+from stash.capture.routing import forces_request
 from stash.domain import RawCapture
 
 
@@ -15,6 +16,9 @@ class SerializedPipeline:
         return self._inner.receive(message)
 
     def process(self, capture: RawCapture) -> ProcessResult:
+        # No turn: a forced request makes no AI call, so it must not queue behind a classification.
+        if forces_request(capture.text):
+            return self._inner.process(capture)
         with self._turn:
             return self._inner.process(capture)
 

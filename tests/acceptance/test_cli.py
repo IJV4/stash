@@ -6,9 +6,10 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from capture_builders import a_filing_answer
+from capture_builders import FORCED_QUESTION, a_filing_answer
 from cli_rig import LATE_EVENING_IN_LOS_ANGELES, NOON, CliRig, build_cli_rig
 from fakes.backup_source import FakeBackupSource
+from fakes.fake_providers import OLLAMA_CHAT_PATH
 
 from stash.cli import main
 from stash.store import BackupError
@@ -142,6 +143,25 @@ def test_retry_while_the_gpu_is_busy_says_deferred_keeps_the_captures_pending_an
     # Assert
     line = "deferred (gpu_busy) — Ichiran ramen in Fukuoka\n"
     assert (first.exit_code, first.out, second.out) == (0, line, line)
+
+
+def test_retry_of_a_pending_question_mark_capture_prints_a_request_line_and_asks_the_ai_nothing(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    rig.received(FORCED_QUESTION)
+
+    # Execute
+    first = rig.run("retry")
+    second = rig.run("retry")
+
+    # Assert
+    assert (first.out, second.out, rig.providers.sent_to(OLLAMA_CHAT_PATH)) == (
+        f"request — {FORCED_QUESTION}\n",
+        "Nothing pending.\n",
+        [],
+    )
 
 
 def test_gpu_off_prints_the_expiry_unloads_the_model_and_status_then_reads_busy(

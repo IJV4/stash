@@ -11,7 +11,9 @@ from stash.hermes_adapter.events import Chat
 
 CHAT = Chat(chat_id="1001", user_id="42")
 TEXT = "what is on my list today?"
-APOLOGY = Reply("I couldn't pass that on to the assistant.")
+APOLOGY = Reply(
+    "I couldn't pass that on to the assistant. Send it again starting with ? and I'll hand it over."
+)
 
 
 class ScriptedInject:

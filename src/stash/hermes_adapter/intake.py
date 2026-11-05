@@ -4,7 +4,6 @@ from typing import assert_never
 
 from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult, Reply
 from stash.domain import RawCapture
-from stash.hermes_adapter.assistant import Assistant
 from stash.hermes_adapter.bursts import Bursts
 from stash.hermes_adapter.events import (
     Chat,
@@ -16,7 +15,6 @@ from stash.hermes_adapter.events import (
 )
 from stash.hermes_adapter.outbox import ReplySender
 from stash.hermes_adapter.ports import IntakeSteps
-from stash.hermes_adapter.scheduler import Scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +27,12 @@ class MessageIntake:
         translator: EventTranslator,
         steps: IntakeSteps,
         bursts: Bursts,
-        assistant: Assistant,
         sender: ReplySender,
-        scheduler: Scheduler,
     ) -> None:
         self._translator = translator
         self._steps = steps
         self._bursts = bursts
-        self._assistant = assistant
         self._sender = sender
-        self._scheduler = scheduler
 
     async def on_dispatch(
         self,
@@ -47,15 +41,13 @@ class MessageIntake:
         session_store: object = None,
         **kwargs: object,
     ) -> dict[str, str]:
-        inbound = self._read(event)
-        if not isinstance(inbound, Inbound):
+        read = self._read(event)
+        if isinstance(read, Passthrough):
             return Verdict.ALLOW.hook_result()
-        capture = await self._received(inbound)
-        if capture is not None:
-            self._scheduler.spawn(
-                self._process(capture, inbound.chat), f"stash-process-{capture.id}"
-            )
-        return Verdict.SKIP.hook_result()
+        capture = await self._received(read)
+        if capture is None:
+            return Verdict.SKIP.hook_result()
+        return (await self._verdict(capture, read)).hook_result()
 
     def _read(self, event: HermesEvent) -> Inbound | Passthrough:
         try:
@@ -82,20 +74,23 @@ class MessageIntake:
         except Exception:
             logger.exception("could not apologise to chat %s", chat.chat_id)
 
-    async def _process(self, capture: RawCapture, chat: Chat) -> None:
+    async def _verdict(self, capture: RawCapture, inbound: Inbound) -> Verdict:
         try:
+            # Unverified, PC must check spike-m0 #23: a 25-45 s hook may time out or delay others.
             result = await asyncio.to_thread(self._steps.process, capture)
-            await self._route(result, chat)
+            return self._settle(result, inbound.chat)
         except Exception:
             logger.exception("processing capture %s failed", capture.id)
+            return inbound.failure_verdict
 
-    async def _route(self, result: ProcessResult, chat: Chat) -> None:
+    def _settle(self, result: ProcessResult, chat: Chat) -> Verdict:
         match result:
             case Filed() | Deferred():
                 self._bursts.add(chat.chat_id, result)
-            case IsRequest(capture):
-                await self._assistant.ask(capture.text, chat)
+                return Verdict.SKIP
+            case IsRequest():
+                return Verdict.ALLOW
             case Duplicate():
-                pass
+                return Verdict.SKIP
             case _:
                 assert_never(result)

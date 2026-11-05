@@ -17,6 +17,7 @@ from stash.capture import ProcessResult
 from stash.cli import main
 from stash.config import StashConfig
 from stash.config.loader import load_config
+from stash.domain import RawCapture
 from stash.evaluation import Ocr
 
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
@@ -65,6 +66,15 @@ class CliRig:
         out, err = io.StringIO(), io.StringIO()
         exit_code = main(list(argv), factory=self.build, env=self.env, out=out, err=err)
         return CliResult(exit_code, out.getvalue(), err.getvalue())
+
+    def received(self, text: str, message_id: str = "m1") -> RawCapture | None:
+        app = self.build(load_config(self.config_file, self.env))
+        try:
+            return app.pipeline.receive(
+                a_message(text, message_id=message_id, received_at=self.now)
+            )
+        finally:
+            app.close()
 
     def filed(self, text: str, message_id: str = "m1") -> ProcessResult:
         app = self.build(load_config(self.config_file, self.env))

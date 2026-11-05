@@ -13,6 +13,7 @@ from fakes.hermes_ctx import FakeHermesContext
 from fakes.pending_intake import PendingIntake
 from fakes.recording_loader import RecordingLoader
 from fakes.scripted_steps import ScriptedSteps
+from hermes_ctx_builders import a_hermes_context
 from hermes_events import OWNER_ID, an_event
 from hermes_rig import called
 from log_records import recording_logs
@@ -50,7 +51,7 @@ def register_plugin(
     exits: list[Callable[[], None]] | None = None,
     new_id: Callable[[], str] | None = None,
 ) -> FakeHermesContext:
-    context = ctx or FakeHermesContext()
+    context = ctx or a_hermes_context()
     built = app or an_app()
     register(
         context,
@@ -75,14 +76,17 @@ def loaded_environment(
 ) -> Mapping[str, str]:
     loader = RecordingLoader(a_stash_config())
     register_plugin(
-        FakeHermesContext(config=ABSOLUTE_CONFIG), env=env, read_secret=read_secret, load=loader
+        a_hermes_context(config=ABSOLUTE_CONFIG),
+        env=env,
+        read_secret=read_secret,
+        load=loader,
     )
     return loader.calls[0].environment
 
 
 def test_the_default_config_path_is_under_the_home_of_the_resolved_environment() -> None:
     # Execute
-    path = loaded_path(FakeHermesContext(), {"HOME": HOME})
+    path = loaded_path(a_hermes_context(), {"HOME": HOME})
 
     # Assert
     assert path == DEFAULT_PATH
@@ -90,7 +94,7 @@ def test_the_default_config_path_is_under_the_home_of_the_resolved_environment()
 
 def test_a_configured_path_is_used_instead_of_the_default() -> None:
     # Setup
-    ctx = FakeHermesContext(config={"config_path": "/etc/stash/stash.toml"})
+    ctx = a_hermes_context(config={"config_path": "/etc/stash/stash.toml"})
 
     # Execute
     path = loaded_path(ctx, {"HOME": HOME})
@@ -101,7 +105,7 @@ def test_a_configured_path_is_used_instead_of_the_default() -> None:
 
 def test_a_configured_path_under_the_tilde_is_expanded_with_the_resolved_home() -> None:
     # Setup
-    ctx = FakeHermesContext(config={"config_path": "~/notes/stash.toml"})
+    ctx = a_hermes_context(config={"config_path": "~/notes/stash.toml"})
 
     # Execute
     path = loaded_path(ctx, {"HOME": HOME})
@@ -112,7 +116,7 @@ def test_a_configured_path_under_the_tilde_is_expanded_with_the_resolved_home() 
 
 def test_a_bare_tilde_is_the_resolved_home() -> None:
     # Setup
-    ctx = FakeHermesContext(config={"config_path": "~"})
+    ctx = a_hermes_context(config={"config_path": "~"})
 
     # Execute
     path = loaded_path(ctx, {"HOME": HOME})
@@ -132,7 +136,7 @@ def test_a_tilde_path_without_a_home_in_the_environment_is_a_config_error() -> N
 
 def test_a_tilde_path_without_a_home_registers_nothing() -> None:
     # Setup
-    ctx = FakeHermesContext()
+    ctx = a_hermes_context()
 
     # Execute
     with pytest.raises(ConfigError):
@@ -144,7 +148,7 @@ def test_a_tilde_path_without_a_home_registers_nothing() -> None:
 
 def test_a_path_that_only_starts_with_a_tilde_is_not_expanded() -> None:
     # Setup
-    ctx = FakeHermesContext(config={"config_path": "~owner/stash.toml"})
+    ctx = a_hermes_context(config={"config_path": "~owner/stash.toml"})
 
     # Execute
     path = loaded_path(ctx, {"HOME": HOME})
@@ -222,7 +226,7 @@ def test_nothing_is_closed_while_registering() -> None:
 
 def test_a_config_error_leaves_nothing_registered_and_no_exit_hook() -> None:
     # Setup
-    ctx = FakeHermesContext()
+    ctx = a_hermes_context()
     exits: list[Callable[[], None]] = []
 
     # Execute
@@ -305,7 +309,7 @@ def test_a_refused_command_keeps_its_argument_hint_and_description_under_the_pre
     None
 ):
     # Setup
-    ctx = FakeHermesContext(reserved={"gpu"})
+    ctx = a_hermes_context(reserved={"gpu"})
 
     # Execute
     register_plugin(ctx)
@@ -317,7 +321,7 @@ def test_a_refused_command_keeps_its_argument_hint_and_description_under_the_pre
 
 def test_a_refused_command_runs_the_same_command_under_the_prefixed_name() -> None:
     # Setup
-    ctx = FakeHermesContext(reserved={"retry"})
+    ctx = a_hermes_context(reserved={"retry"})
     register_plugin(ctx)
 
     # Execute
@@ -329,7 +333,7 @@ def test_a_refused_command_runs_the_same_command_under_the_prefixed_name() -> No
 
 def test_a_refused_command_is_found_by_the_gateways_underscore_to_hyphen_lookup() -> None:
     # Setup
-    ctx = FakeHermesContext(reserved={"retry"})
+    ctx = a_hermes_context(reserved={"retry"})
     register_plugin(ctx)
     typed_in_telegram = "stash_retry"
 
@@ -342,7 +346,7 @@ def test_a_refused_command_is_found_by_the_gateways_underscore_to_hyphen_lookup(
 
 def test_a_refused_command_is_logged_as_one_warning() -> None:
     # Setup
-    ctx = FakeHermesContext(reserved={"list"})
+    ctx = a_hermes_context(reserved={"list"})
 
     # Execute
     with recording_logs(LOGGER) as logs:
@@ -354,7 +358,7 @@ def test_a_refused_command_is_logged_as_one_warning() -> None:
 
 def test_a_refused_command_is_not_registered_under_its_own_name() -> None:
     # Setup
-    ctx = FakeHermesContext(reserved={"list"})
+    ctx = a_hermes_context(reserved={"list"})
 
     # Execute
     register_plugin(ctx)
@@ -399,7 +403,7 @@ def test_events_without_a_message_id_get_the_ids_of_the_injected_id_source() -> 
 
 def message_ids_with_the_default_id_source() -> list[str]:
     steps = ScriptedSteps(PendingIntake())
-    ctx = FakeHermesContext()
+    ctx = a_hermes_context()
     register(
         ctx,
         env=OWNERS_ENV,

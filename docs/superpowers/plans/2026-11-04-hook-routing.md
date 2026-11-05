@@ -79,6 +79,10 @@ saved raw and answered `allow` with no LLM call.
 - Produces: the verdict mapping in Global Constraints; `QUESTION_PREFIX`; the new `APOLOGY`; the
   fake context's admitted-chat rule (RF5); and an `IntakeSteps.mark_request(capture) -> None`
   method if the pipeline has no public way to record a forced request.
+  **Superseded by the controller's follow-up rulings (2026-11-04):** the `?` rule is core
+  pipeline routing (`stash.capture.forces_request`; `process()` returns `IsRequest` for it,
+  first time or on retry), so there is no `mark_request`. A forced question whose
+  processing fails answers `allow`. See `task-1-report.md`, "Follow-up".
 - [ ] **Step 1: Failing tests:**
   - Acceptance:
     - "What can I do this Saturday?" classified as a request → the hook answers `allow`, nothing

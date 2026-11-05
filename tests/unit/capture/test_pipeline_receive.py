@@ -1,5 +1,5 @@
 from builders import BASE, a_source
-from capture_builders import a_message, a_pipeline
+from capture_builders import INDENTED_FORCED_QUESTION, a_message, a_pipeline, received
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
 from fakes.memory_store import MemoryStore
@@ -115,3 +115,14 @@ def test_handle_of_a_duplicate_message_does_not_ask_the_filer_again() -> None:
 
     # Assert
     assert len(filer.calls) == 1
+
+
+def test_receive_keeps_the_message_text_unchanged_including_a_leading_question_mark() -> None:
+    # Setup
+    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+
+    # Execute
+    capture = received(pipeline, INDENTED_FORCED_QUESTION)
+
+    # Assert
+    assert capture.text == INDENTED_FORCED_QUESTION

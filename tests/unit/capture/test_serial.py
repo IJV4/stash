@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import pytest
 from builders import a_capture
-from capture_builders import a_message, a_pipeline
+from capture_builders import FORCED_QUESTION, a_message, a_pipeline
 from fakes.blocking_intake import BlockingIntake
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
@@ -11,12 +11,13 @@ from fakes.memory_store import MemoryStore
 from fakes.recording_intake import RecordingIntake
 from threads import run_in_thread
 
-from stash.capture import Duplicate
+from stash.capture import Duplicate, IsRequest
 from stash.capture.serial import SerializedPipeline
 from stash.domain import CaptureStatus
 
 WAIT_LIMIT_SECONDS = 1.0
 OVERLAP_GRACE_SECONDS = 0.005
+NO_WAIT_SECONDS = 0.2
 Call = Callable[[SerializedPipeline], object]
 CALLS: dict[str, Call] = {
     "handle": lambda pipeline: pipeline.handle(a_message()),
@@ -179,3 +180,30 @@ def test_a_failing_call_gives_up_its_turn() -> None:
 
     # Assert
     assert result == Duplicate()
+
+
+def test_processing_a_capture_that_forces_a_request_returns_the_inner_pipelines_result() -> None:
+    # Setup
+    inner = RecordingIntake()
+
+    # Execute
+    result = SerializedPipeline(inner).process(a_capture(text=FORCED_QUESTION))
+
+    # Assert
+    assert (result, inner.calls) == (inner.result, ["process"])
+
+
+def test_processing_a_forcing_capture_does_not_wait_for_a_call_holding_the_turn() -> None:
+    # Setup
+    inner = BlockingIntake()
+    pipeline = SerializedPipeline(inner)
+    start(lambda: pipeline.process(a_capture()))
+    await_signal(inner.entered)
+    forced = a_capture(text=FORCED_QUESTION)
+
+    # Execute
+    result = run_in_thread(lambda: pipeline.process(forced), timeout=NO_WAIT_SECONDS)
+    inner.release.set()
+
+    # Assert
+    assert result == IsRequest(forced.with_status(CaptureStatus.REQUEST))

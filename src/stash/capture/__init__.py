@@ -14,9 +14,11 @@ from stash.capture.replies import (
     summary,
 )
 from stash.capture.results import Deferred, Duplicate, Filed, IsRequest, ProcessResult
+from stash.capture.routing import QUESTION_PREFIX, forces_request
 from stash.capture.serial import SerializedPipeline
 
 __all__ = [
+    "QUESTION_PREFIX",
     "BurstCoalescer",
     "Button",
     "CaptureFiler",
@@ -36,6 +38,7 @@ __all__ = [
     "SerializedPipeline",
     "confirmation",
     "deferred",
+    "forces_request",
     "gone",
     "reply_for",
     "stage_menu",
