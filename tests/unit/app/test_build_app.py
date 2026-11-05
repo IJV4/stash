@@ -434,3 +434,59 @@ def test_the_filer_tells_the_model_the_date_in_the_configured_timezone(tmp_path:
     prompt = rig.providers.sent_to("/v1/chat/completions")[0].content.decode()
     assert "Today is Monday 2026-11-02." in prompt
     app.close()
+
+
+def test_the_apps_lifecycle_completes_items_in_the_apps_store_stamped_with_the_apps_clock(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    app = built(rig)
+    app.pipeline.handle(a_message("Ichiran ramen in Fukuoka", received_at=rig.now))
+    item = app.store.list_items()[0]
+    rig.now = NOON + timedelta(hours=1)
+
+    # Execute
+    app.lifecycle.complete(item.id)
+
+    # Assert
+    [outcome] = app.store.outcomes_for(item.id)
+    assert (fetched_item(app.store, item.id).stage, outcome.recorded_at) == (Stage.DONE, rig.now)
+    app.close()
+
+
+def test_the_apps_lifecycle_files_completions_under_the_configured_timezone(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    app = built(rig)
+    app.pipeline.handle(a_message("Ichiran ramen in Fukuoka", received_at=rig.now))
+    item = app.store.list_items()[0]
+    rig.now = LATE_EVENING_IN_LOS_ANGELES
+
+    # Execute
+    app.lifecycle.complete(item.id)
+
+    # Assert
+    [outcome] = app.store.outcomes_for(item.id)
+    assert outcome.completed_on == date(2026, 11, 2)
+    app.close()
+
+
+def test_a_completion_pressed_on_a_button_and_a_repeat_made_through_the_app_share_one_history(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    app = built(rig)
+    app.pipeline.handle(a_message("Ichiran ramen in Fukuoka", received_at=rig.now))
+    item = app.store.list_items()[0]
+
+    # Execute
+    app.fixes.apply(FixAction(FixKind.DONE, item.id).encode())
+    app.lifecycle.complete(item.id)
+
+    # Assert
+    assert len({outcome.id for outcome in app.lifecycle.history(item.id).outcomes}) == 2
+    app.close()

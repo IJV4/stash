@@ -23,6 +23,8 @@ EVERY_SUBCOMMAND = [
     ["gpu", "status"],
     ["eval"],
     ["backup", "--to", "backups"],
+    ["library"],
+    ["show", "x"],
 ]
 
 

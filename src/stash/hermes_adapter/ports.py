@@ -1,10 +1,12 @@
-from datetime import datetime
+from collections.abc import Sequence
+from datetime import date, datetime
 from typing import Protocol
 
 from stash.capture import IncomingMessage, ProcessResult, Reply, Reroute
-from stash.domain import Item, ItemType, RawCapture, Stage
+from stash.domain import Item, ItemType, Outcome, RawCapture, Stage
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
+from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LibraryQuery
 
 
 class IntakeSteps(Protocol):
@@ -39,3 +41,34 @@ class ItemReader(Protocol):
     ) -> list[Item]: ...
 
     def search_items(self, query: str, limit: int = ...) -> list[Item]: ...
+
+
+class LibraryReader(Protocol):
+    def library(self, query: LibraryQuery = ...) -> tuple[LibraryEntry, ...]: ...
+
+
+class ItemLifecycle(LibraryReader, Protocol):
+    def complete(
+        self,
+        item_id: str,
+        *,
+        rating: int | None = None,
+        notes: str = "",
+        takeaways: Sequence[str] = (),
+        keep: bool | None = None,
+        on: date | None = None,
+    ) -> Completion: ...
+
+    def annotate(
+        self, outcome_id: str, notes: str, takeaways: Sequence[str] | None = None
+    ) -> Outcome: ...
+
+    def keep(self, item_id: str, kept: bool) -> Item: ...
+
+    def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item: ...
+
+    def group(self, child_id: str, parent_id: str) -> Item: ...
+
+    def ungroup(self, child_id: str) -> Item: ...
+
+    def history(self, item_id: str) -> ItemHistory: ...

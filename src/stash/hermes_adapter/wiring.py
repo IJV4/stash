@@ -4,15 +4,17 @@ from stash.app import StashApp
 from stash.hermes_adapter.assistant import Assistant
 from stash.hermes_adapter.bursts import Bursts
 from stash.hermes_adapter.callbacks import FixCallbacks
-from stash.hermes_adapter.commands import GpuCommand, ListCommand, RetryCommand
+from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
 from stash.hermes_adapter.events import EventTranslator
 from stash.hermes_adapter.intake import MessageIntake
+from stash.hermes_adapter.lifecycle_tools import LifecycleTools
 from stash.hermes_adapter.outbox import Outbox, ReplySender
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.scheduler import LoopScheduler, Scheduler
+from stash.hermes_adapter.tool_spec import ToolSpec
 from stash.hermes_adapter.tools import StashTools
 
-Command = ListCommand | GpuCommand | RetryCommand
+Command = ListCommand | GpuCommand | RetryCommand | LibraryCommand
 
 
 def build_scheduler(app: StashApp) -> LoopScheduler:
@@ -40,8 +42,8 @@ def build_callbacks(
     return FixCallbacks(app.fixes, owners, outbox, assistant)
 
 
-def build_tools(app: StashApp) -> StashTools:
-    return StashTools(app.store)
+def build_tools(app: StashApp) -> tuple[ToolSpec, ...]:
+    return (*StashTools(app.store).specs(), *LifecycleTools(app.lifecycle).specs())
 
 
 def build_commands(app: StashApp) -> dict[str, Command]:
@@ -49,4 +51,5 @@ def build_commands(app: StashApp) -> dict[str, Command]:
         "list": ListCommand(app.store),
         "gpu": GpuCommand(app.gpu_switch, app.local_now),
         "retry": RetryCommand(app.pipeline),
+        "library": LibraryCommand(app.lifecycle),
     }

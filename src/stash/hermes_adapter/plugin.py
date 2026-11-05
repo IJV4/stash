@@ -1,7 +1,7 @@
 import atexit
 import logging
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -15,7 +15,7 @@ from stash.hermes_adapter.events import DISPATCH_HOOK
 from stash.hermes_adapter.host import hermes_secret, resolved_environment
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.telegram_link import TelegramLink
-from stash.hermes_adapter.tools import LIST_SCHEMA, SEARCH_SCHEMA, TOOLSET, StashTools
+from stash.hermes_adapter.tool_spec import TOOLSET, ToolSpec
 from stash.hermes_adapter.wiring import (
     Command,
     build_callbacks,
@@ -33,6 +33,7 @@ COMMAND_DESCRIPTIONS = {
     "list": ("List saved items, newest first", "[stage]"),
     "gpu": ("Switch stash's use of the GPU", "on|off|status"),
     "retry": ("Retry captures that are still pending", ""),
+    "library": ("List kept items, most recently finished first", "[type]"),
 }
 
 
@@ -52,14 +53,14 @@ def _register_commands(ctx: Any, commands: Mapping[str, Command]) -> None:
             ctx.register_command(alias, command.run, description=description, args_hint=args_hint)
 
 
-def _register_tools(ctx: Any, tools: StashTools) -> None:
-    for schema, handler in ((SEARCH_SCHEMA, tools.search), (LIST_SCHEMA, tools.list_items)):
+def _register_tools(ctx: Any, specs: Sequence[ToolSpec]) -> None:
+    for spec in specs:
         ctx.register_tool(
-            name=schema["name"],
+            name=spec.schema["name"],
             toolset=TOOLSET,
-            schema=schema,
-            handler=handler,
-            description=schema["description"],
+            schema=spec.schema,
+            handler=spec.handler,
+            description=spec.schema["description"],
         )
 
 

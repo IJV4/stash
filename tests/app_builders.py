@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from builders import a_capture, a_source
-from capture_rig import a_fix_handler
 from config_builders import a_stash_config
 from fakes.backup_source import FakeBackupSource
 from fakes.busy import FakeBusy
@@ -13,10 +12,11 @@ from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.recording_unloader import RecordingUnloader
 from gate_rig import a_gate, a_sample
+from lifecycle_rig import a_lifecycle
 from router_builders import default_thinking_models
 
 from stash.app import StashApp
-from stash.capture import BurstCoalescer
+from stash.capture import BurstCoalescer, FixHandler
 from stash.config import ProviderName, Thinking
 from stash.doctor import Doctor
 from stash.domain import Item
@@ -38,13 +38,16 @@ def stored(*items: Item) -> MemoryStore:
 
 def an_app(**overrides: Any) -> StashApp:
     config = a_stash_config()
-    store = MemoryStore()
+    store = overrides.get("store", MemoryStore())
+    clock = overrides.get("clock", lambda: NOON)
+    lifecycle = overrides.get("lifecycle", a_lifecycle(store, clock))
     gate = a_gate(a_sample(), store=store)
     fields: dict[str, Any] = {
         "config": config,
         "store": store,
         "pipeline": PendingIntake(),
-        "fixes": a_fix_handler(store, lambda: NOON),
+        "fixes": FixHandler(store, lifecycle, clock),
+        "lifecycle": lifecycle,
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),
         "router": ModelRouter(
@@ -54,7 +57,7 @@ def an_app(**overrides: Any) -> StashApp:
         ),
         "doctor": Doctor([]),
         "burst_factory": lambda: BurstCoalescer(config.burst_window_seconds),
-        "clock": lambda: NOON,
+        "clock": clock,
         "eval_targets": EvalTargets((), Thinking.DEFAULT),
         "ocr": FakeOcr(),
         "backups": Backups(FakeBackupSource()),

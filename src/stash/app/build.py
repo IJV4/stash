@@ -73,6 +73,7 @@ def build_app(
             store=sqlite,
             pipeline=SerializedPipeline(pipeline),
             fixes=FixHandler(sqlite, lifecycle, clock),
+            lifecycle=lifecycle,
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),
             router=router,

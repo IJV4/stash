@@ -8,6 +8,7 @@ from stash.doctor import Doctor
 from stash.evaluation import EvalTargets, Ocr
 from stash.gpu import GpuGate
 from stash.gpu_switch import GpuSwitch
+from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
 from stash.store import BackupWriter, Closeable, Store
 
@@ -18,6 +19,7 @@ class StashApp:
     store: Store
     pipeline: CaptureIntake
     fixes: FixHandler
+    lifecycle: Lifecycle
     gpu: GpuGate
     gpu_switch: GpuSwitch
     router: ModelRouter

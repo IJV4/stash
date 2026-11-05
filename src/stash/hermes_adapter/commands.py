@@ -13,13 +13,15 @@ from stash.capture import (
     ProcessResult,
 )
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
-from stash.hermes_adapter.ports import GpuControl, ItemReader, Retrier
-from stash.hermes_adapter.queries import MAX_LIMIT, ItemQuery
+from stash.hermes_adapter.ports import GpuControl, ItemReader, LibraryReader, Retrier
+from stash.hermes_adapter.queries import MAX_LIMIT, ItemQuery, item_type_from_text
+from stash.lifecycle import MAX_LIBRARY_LIMIT, LibraryQuery
 from stash.rendering import (
     NO_ITEMS,
     NOTHING_PENDING,
     SWITCHED_ON,
     gpu_status_line,
+    library_line,
     listing_line,
     result_line,
     switched_off_lines,
@@ -45,6 +47,10 @@ def _bounded(lines: Sequence[str], exact: bool = True) -> str:
         shown.pop()
         hidden += 1
     return _text(shown, hidden, exact)
+
+
+def _listing(lines: Sequence[str], cap: int) -> str:
+    return _bounded(lines, exact=len(lines) < cap) if lines else NO_ITEMS
 
 
 def _zone(moment: datetime) -> tzinfo:
@@ -74,7 +80,22 @@ class ListCommand:
             return str(refusal)
         items = await asyncio.to_thread(query.fetch, self._reader)
         lines = [listing_line(item) for item in items]
-        return _bounded(lines, exact=len(items) < MAX_LIMIT) if lines else NO_ITEMS
+        return _listing(lines, MAX_LIMIT)
+
+
+class LibraryCommand:
+    def __init__(self, reader: LibraryReader) -> None:
+        self._reader = reader
+
+    async def run(self, raw_args: str) -> str:
+        try:
+            item_type = item_type_from_text(raw_args)
+        except ValueError as refusal:
+            return str(refusal)
+        query = LibraryQuery(item_type, MAX_LIBRARY_LIMIT)
+        entries = await asyncio.to_thread(self._reader.library, query)
+        lines = [library_line(entry.item, entry.last_outcome) for entry in entries]
+        return _listing(lines, MAX_LIBRARY_LIMIT)
 
 
 class GpuCommand:

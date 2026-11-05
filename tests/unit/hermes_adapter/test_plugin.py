@@ -21,9 +21,27 @@ from log_records import recording_logs
 
 from stash.app import StashApp
 from stash.config import ConfigError, StashConfig
+from stash.hermes_adapter.lifecycle_schemas import (
+    ANNOTATE_SCHEMA,
+    COMPLETE_SCHEMA,
+    GET_SCHEMA,
+    GROUP_SCHEMA,
+    KEEP_SCHEMA,
+    LIBRARY_SCHEMA,
+    SET_STAGE_SCHEMA,
+)
 from stash.hermes_adapter.plugin import register
 from stash.hermes_adapter.tools import LIST_SCHEMA, SEARCH_SCHEMA
 
+LIFECYCLE_SCHEMAS = (
+    GET_SCHEMA,
+    COMPLETE_SCHEMA,
+    ANNOTATE_SCHEMA,
+    SET_STAGE_SCHEMA,
+    KEEP_SCHEMA,
+    GROUP_SCHEMA,
+    LIBRARY_SCHEMA,
+)
 LOGGER = "stash.hermes_adapter.plugin"
 HOME = "/home/owner"
 DEFAULT_PATH = Path("/home/owner/.config/stash/stash.toml")
@@ -292,6 +310,7 @@ def test_commands_are_registered_with_their_argument_hints() -> None:
         "list": "[stage]",
         "gpu": "on|off|status",
         "retry": "",
+        "library": "[type]",
     }
 
 
@@ -304,6 +323,7 @@ def test_commands_are_registered_with_their_descriptions() -> None:
         "list": "List saved items, newest first",
         "gpu": "Switch stash's use of the GPU",
         "retry": "Retry captures that are still pending",
+        "library": "List kept items, most recently finished first",
     }
 
 
@@ -377,6 +397,7 @@ def test_tools_are_registered_with_the_description_of_their_schema() -> None:
     assert {name: tool.description for name, tool in ctx.tools.items()} == {
         "stash_search": SEARCH_SCHEMA["description"],
         "stash_list": LIST_SCHEMA["description"],
+        **{schema["name"]: schema["description"] for schema in LIFECYCLE_SCHEMAS},
     }
 
 

@@ -1,10 +1,11 @@
 import io
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 from builders import API_KEY
-from capture_builders import a_message
+from capture_builders import a_filing_answer, a_message
 from fakes.fake_providers import FakeProviders
 from fakes.installed_modules import InstalledModules
 from fakes.nvidia_smi import SwitchableSmi
@@ -13,12 +14,13 @@ from fakes.search_path import FakeSearchPath
 from llm_rig import llm_toml
 
 from stash.app import StashApp, build_app
-from stash.capture import ProcessResult
+from stash.capture import Filed, ProcessResult
 from stash.cli import main
 from stash.config import StashConfig
 from stash.config.loader import load_config
-from stash.domain import RawCapture
+from stash.domain import Item, RawCapture
 from stash.evaluation import Ocr
+from stash.lifecycle import Lifecycle
 
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 LATE_EVENING_IN_LOS_ANGELES = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
@@ -80,6 +82,19 @@ class CliRig:
         app = self.build(load_config(self.config_file, self.env))
         try:
             return app.pipeline.handle(a_message(text, message_id=message_id, received_at=self.now))
+        finally:
+            app.close()
+
+    def filed_as(self, text: str, message_id: str = "m1", **answer: object) -> Item:
+        self.providers.answer = a_filing_answer(**answer)
+        result = self.filed(text, message_id)
+        assert isinstance(result, Filed)
+        return result.item
+
+    def through_lifecycle(self, act: Callable[[Lifecycle], object]) -> None:
+        app = self.build(load_config(self.config_file, self.env))
+        try:
+            act(app.lifecycle)
         finally:
             app.close()
 

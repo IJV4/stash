@@ -3,11 +3,15 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
-from app_builders import an_app
+from app_builders import an_app, stored
+from builders import an_item, fetched_item
 from eval_builders import an_eval_targets
 from fakes.close_counter import CloseCounter
+from lifecycle_rig import a_lifecycle
 
+from stash.capture.callbacks import FixAction, FixKind
 from stash.config import Thinking
+from stash.domain import Stage
 from stash.evaluation import EvalTargets
 
 
@@ -76,3 +80,63 @@ def test_today_is_the_calendar_day_in_the_configured_timezone() -> None:
 
     # Assert
     assert today == date(2026, 11, 2)
+
+
+def test_the_apps_lifecycle_works_on_the_store_the_app_was_given() -> None:
+    # Setup
+    store = stored(an_item(id="a", capture_id="ca"))
+    app = an_app(store=store)
+
+    # Execute
+    app.lifecycle.set_stage("a", Stage.DOING)
+
+    # Assert
+    assert fetched_item(store, "a").stage is Stage.DOING
+
+
+def test_the_default_fix_handler_works_on_the_store_the_app_was_given() -> None:
+    # Setup
+    store = stored(an_item(id="a", capture_id="ca"))
+    app = an_app(store=store)
+
+    # Execute
+    app.fixes.apply(FixAction(FixKind.DONE, "a").encode())
+
+    # Assert
+    assert fetched_item(store, "a").stage is Stage.DONE
+
+
+def test_the_default_fix_handler_and_the_apps_lifecycle_draw_ids_from_one_sequence() -> None:
+    # Setup
+    store = stored(an_item(id="a", capture_id="ca"), an_item(id="b", capture_id="cb"))
+    app = an_app(store=store)
+
+    # Execute
+    app.fixes.apply(FixAction(FixKind.DONE, "a").encode())
+    app.lifecycle.complete("b")
+
+    # Assert
+    assert len({outcome.id for item_id in "ab" for outcome in store.outcomes_for(item_id)}) == 2
+
+
+def test_an_explicit_lifecycle_replaces_the_default_one() -> None:
+    # Setup
+    lifecycle = a_lifecycle(stored())
+
+    # Execute
+    app = an_app(lifecycle=lifecycle)
+
+    # Assert
+    assert app.lifecycle is lifecycle
+
+
+def test_the_default_fix_handler_uses_an_explicit_lifecycle() -> None:
+    # Setup
+    store = stored(an_item(id="a", capture_id="ca"))
+    app = an_app(store=store, lifecycle=a_lifecycle(store, new_id=lambda: "fixed-id"))
+
+    # Execute
+    app.fixes.apply(FixAction(FixKind.DONE, "a").encode())
+
+    # Assert
+    assert [outcome.id for outcome in store.outcomes_for("a")] == ["fixed-id"]

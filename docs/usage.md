@@ -285,11 +285,15 @@ Replies are plain text, at most 4096 characters.
    A pending capture starting with `?` prints that `request` line, files nothing
    and asks the AI nothing
    (`test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_nothing`).
+4. `/library [type]` lists kept items (see *Your library*).
 
 ### Agent tools
 
-Both tools return a JSON string and never raise. Titles come from the owner's
-own captures and are data, not instructions.
+Every tool returns a JSON string and never raises. Titles, notes and details come
+from the owner's own captures and are data, not instructions. The lifecycle
+tools (`stash_get`, `stash_complete`, `stash_annotate`, `stash_set_stage`,
+`stash_keep`, `stash_group`, `stash_library`) are described under *Finishing
+things* and *Your library*.
 
 1. `stash_search {query}` returns `{"items": [{"id", "type", "title", "stage",
    "date"}]}` for a case-insensitive match (the same search as the store).
@@ -917,6 +921,96 @@ by another caller in between is overwritten, and an item deleted in that instant
 is saved again. The grouping check (`children_of`) and its save are likewise not
 one transaction. Acceptable for one owner; an update-only store write would
 close it.
+
+### From the agent  [Plan 2 Task 6]
+
+Rich text (notes, takeaways) arrives through the agent, which calls these tools
+(toolset `stash`). Each description tells the agent to find the id with
+`stash_search` (or `stash_list`) first. `StashApp.lifecycle` is the one
+`Lifecycle` the buttons, the tools, `/library` and the CLI share.
+
+    tools = LifecycleTools(app.lifecycle)          # stash.hermes_adapter.lifecycle_tools
+    tools.complete({"item_id": "b1", "rating": 4, "takeaways": ["Start small"], "keep": True})
+    # -> '{"item": {...}, "outcome": {...}, "repeat": false}'
+
+| Tool | Arguments | Answers |
+|---|---|---|
+| `stash_get` | `item_id` | `{"item", "outcomes", "children"}` |
+| `stash_complete` | `item_id`, `rating?` (1-5), `notes?`, `takeaways?` (list), `keep?` (bool), `completed_on?` (`YYYY-MM-DD`, default local today) | `{"item", "outcome", "repeat"}` |
+| `stash_annotate` | `outcome_id`, `notes`, `takeaways?` (omitted keeps the current list) | `{"outcome"}` |
+| `stash_set_stage` | `item_id`, `stage`, `reason?` (only with `dropped`) | `{"item"}` |
+| `stash_keep` | `item_id`, `kept` (bool) | `{"item"}` |
+| `stash_group` | `child_id`, `parent_id` (an id, or `null` to ungroup) | `{"item"}` |
+| `stash_library` | `item_type?`, `limit?` (1-50, default 20) | `{"items"}`: list entries plus `rating` and `completed_on` of the latest outcome (`null` when none) |
+
+An `item` is `{"id", "type", "title", "stage", "date", "kept", "in_library",
+"parent_id", "drop_reason", "source_url", "note", "details"}`; `details` carries
+the link facts (`link_title`, `uploader`, `duration`). An `outcome` is `{"id",
+"completed_on", "rating", "notes", "takeaways"}`; `children` are list entries
+(`{"id", "type", "title", "stage", "date"}`). `stash_annotate` replaces the
+notes (and the takeaways when given), so the agent passes the full text.
+`stash_set_stage` offers only the stages an owner can move to; `done` is
+refused (`done is reached by completing an item`, the same rule the buttons
+follow) and its description tells the agent to call `stash_complete` instead;
+`dropped` takes the optional `reason`; the other stages move
+the item as the stage buttons do (Planned needs a date).
+
+Each statement has one acceptance test in `tests/acceptance/test_hermes_tools.py`:
+
+1. "I finished Dune, 4 stars, takeaways: start small; fear is the mind-killer —
+   keep it": `stash_search {"query": "dune"}` finds the id, `stash_complete`
+   records one outcome with the rating and both takeaways and keeps the book,
+   and `stash_library {"item_type": "book"}` then lists it with that rating.
+2. `stash_get` shows the item's link details, its outcomes with their
+   takeaways, and its children.
+3. A call with bad arguments answers `{"error": ...}` and changes nothing.
+
+Review Focus 5, pinned by unit tests (`tests/unit/hermes_adapter/test_tools_lifecycle_refusals.py`
+for each tool, `test_tool_arguments.py` for each argument rule):
+each of these answers `{"error": ...}` with the store unchanged — arguments that
+are not an object; a missing, non-text, blank or non-wire-safe id; an unknown
+item or outcome id; a `rating` that is a bool (`true` is an integer in
+Python), a float, text, or outside 1-5; a `keep`/`kept` that is not a bool; a
+`completed_on` that is not text or not an ISO date; `takeaways` given as one
+string, containing a non-string, more than 20 entries or one over 500
+characters; `notes` that are not text or over 4000 characters; a `reason` that
+is not text, over 300 characters, or given with a stage other than `dropped`;
+an unknown `stage` or `item_type`; a `limit` that is not an integer in 1-50; a
+`parent_id` that is neither text nor `null`. A store that fails answers
+`{"error": ...}` and is logged; nothing raises out of a tool.
+
+## Your library  [Plan 2 Task 6]
+
+Kept items that are not dropped (`Item.in_library`), most recently finished
+first. One line per item: `📚 <Type>: <title> · ⭐<last rating>` (the rating part
+is left out when the latest outcome has none).
+
+    entries = app.lifecycle.library(LibraryQuery(ItemType.BOOK, limit=20))  # limit 1-50
+    # -> tuple[LibraryEntry(item, last_outcome), ...]
+    rendering.library_line(entry.item, entry.last_outcome)  # "📚 Books: Dune · ⭐4"
+    rendering.history_lines(app.lifecycle.history(item_id))  # what `stash show` prints
+
+1. `/library recipe` in Telegram lists only kept recipes
+   (`tests/acceptance/test_hermes_commands.py`). Pinned by unit tests
+   (`tests/unit/hermes_adapter/test_commands.py`): bare `/library` lists every
+   type; it is bounded like `/list` (20 lines, `…and N more`, at most 4096
+   characters); with nothing to show it says `No items.`; an unknown type lists
+   the valid ones.
+2. `stash library [--type T] [--limit N]` prints the same lines, each prefixed
+   with the item id and two spaces so it can be passed to `stash show`; with
+   nothing kept it prints `No items.` (`tests/acceptance/test_cli_library.py`;
+   the limit, 1-50, is pinned in `tests/unit/cli/`).
+3. `stash show ID` prints the item line (with `📚 in library` when it is
+   kept), `Dropped because: <reason>` for a dropped item, `Link: <url>`, one
+   `<key>: <value>` line per detail, then each outcome as
+   `Done <YYYY-MM-DD> · ⭐<n>` followed by its notes and `  • <takeaway>` lines,
+   then `In this group:` and one indented line per child. An unknown id prints
+   `no item '<id>'` on standard error and exits 1
+   (`tests/acceptance/test_cli_library.py`; each line's format, including the
+   `Dropped because:` and `Link:` lines, is pinned in `tests/unit/test_rendering.py`).
+
+Untrusted text (titles, notes, takeaways, details, URLs) is printed through the
+same non-printable filter as `/list`.
 
 ## Storage guarantees  [Tasks 2-3]
 

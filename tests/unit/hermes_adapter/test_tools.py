@@ -12,7 +12,8 @@ from fakes.memory_store import MemoryStore
 from log_records import recording_logs
 
 from stash.domain import ItemType, Stage
-from stash.hermes_adapter.tools import LIST_SCHEMA, SEARCH_SCHEMA, TOOLSET, StashTools
+from stash.hermes_adapter.tool_spec import TOOLSET
+from stash.hermes_adapter.tools import LIST_SCHEMA, SEARCH_SCHEMA, StashTools
 
 LOGGER = "stash.hermes_adapter.tools"
 NOT_DICTS = [None, "ramen", ["ramen"], 3]
@@ -391,3 +392,20 @@ def test_the_list_schema_bounds_the_limit_from_1_to_50() -> None:
 
     # Assert
     assert (limit["type"], limit["minimum"], limit["maximum"]) == ("integer", 1, 50)
+
+
+def test_the_specs_pair_each_schema_with_the_handler_that_answers_it() -> None:
+    # Setup
+    specs = StashTools(ramen_and_dune()).specs()
+
+    # Execute
+    answers = [json.loads(spec.handler({"query": "dune"})) for spec in specs]
+
+    # Assert
+    assert [
+        (spec.schema["name"], "error" in answer)
+        for spec, answer in zip(specs, answers, strict=True)
+    ] == [
+        ("stash_search", False),
+        ("stash_list", False),
+    ]

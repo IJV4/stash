@@ -3,12 +3,14 @@ from contextlib import contextmanager
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item, Outcome, frozen_strings
+from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item, Outcome, Stage, frozen_strings
 from stash.lifecycle.errors import LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.ports import LifecycleStore
-from stash.lifecycle.results import Completion, ItemHistory
+from stash.lifecycle.query import DEFAULT_LIBRARY_QUERY, LibraryQuery
+from stash.lifecycle.results import Completion, ItemHistory, LibraryEntry
 from stash.store.port import UnknownItemError
 
+REASON_ONLY_FOR_DROPPING = "a reason is only for dropping an item"
 TAKEAWAYS_NOT_A_LIST = "takeaways must be a list of separate items, not one piece of text"
 
 
@@ -91,6 +93,17 @@ class Lifecycle:
             changed = item.dropped(_unless_blank(reason), now)
         return self._saved(changed)
 
+    def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item:
+        if stage is Stage.DROPPED:
+            return self.drop(item_id, reason)
+        if _unless_blank(reason) is not None:
+            raise LifecycleRefused(REASON_ONLY_FOR_DROPPING)
+        item = self._item(item_id)
+        now = self._clock()
+        with _refusing_what_the_domain_refuses():
+            changed = item.relocated_to(stage, now)
+        return self._saved(changed)
+
     def group(self, child_id: str, parent_id: str) -> Item:
         child = self._item(child_id)
         parent = self._item(parent_id)
@@ -106,11 +119,14 @@ class Lifecycle:
         now = self._clock()
         return self._saved(child.ungrouped(now))
 
-    def annotate(self, outcome_id: str, notes: str, takeaways: Sequence[str]) -> Outcome:
+    def annotate(
+        self, outcome_id: str, notes: str, takeaways: Sequence[str] | None = None
+    ) -> Outcome:
         outcome = self._outcome(outcome_id)
         now = self._clock()
+        kept_or_replaced = None if takeaways is None else _takeaway_list(takeaways)
         with _refusing_what_the_domain_refuses():
-            changed = outcome.with_notes(notes, _takeaway_list(takeaways), now)
+            changed = outcome.with_notes(notes, kept_or_replaced, now)
         return self._saved_outcome(changed)
 
     def rate(self, outcome_id: str, rating: int) -> Outcome:
@@ -124,6 +140,14 @@ class Lifecycle:
         item = self._item(item_id)
         outcomes = tuple(self._store.outcomes_for(item.id))
         return ItemHistory(item, outcomes, tuple(self._store.children_of(item.id)))
+
+    def library(self, query: LibraryQuery = DEFAULT_LIBRARY_QUERY) -> tuple[LibraryEntry, ...]:
+        items = self._store.library(query.item_type, query.limit)
+        return tuple(LibraryEntry(item, self._last_outcome(item)) for item in items)
+
+    def _last_outcome(self, item: Item) -> Outcome | None:
+        outcomes = self._store.outcomes_for(item.id)
+        return outcomes[-1] if outcomes else None
 
     def _saved_outcome(self, outcome: Outcome) -> Outcome:
         with _reporting_items_that_vanished():

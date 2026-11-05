@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 from builders import (
@@ -6,7 +7,6 @@ from builders import (
     BARE_STRING_TAKEAWAYS,
     BASE,
     LATER,
-    NONE_TAKEAWAYS,
     fetched_outcome,
     stored_completion,
 )
@@ -18,6 +18,7 @@ from stash.domain import Outcome
 from stash.lifecycle import Lifecycle, LifecycleRefused, UnknownItem, UnknownOutcome
 
 OUTCOME_ID = "o-i1"
+NON_ITERABLE_TAKEAWAYS: Any = 5
 
 REFUSED_EDITS: dict[str, Callable[[Lifecycle], Outcome]] = {
     "oversized-notes": lambda lifecycle: lifecycle.annotate(OUTCOME_ID, "n" * 4001, ()),
@@ -149,7 +150,7 @@ def test_a_wiring_bug_in_annotated_takeaways_is_not_dressed_up_as_a_refusal() ->
 
     # Execute
     with pytest.raises(TypeError):
-        lifecycle.annotate(OUTCOME_ID, "", NONE_TAKEAWAYS)
+        lifecycle.annotate(OUTCOME_ID, "", NON_ITERABLE_TAKEAWAYS)
 
 
 def test_annotating_an_unknown_outcome_raises_unknown_outcome_naming_it() -> None:
@@ -196,3 +197,42 @@ def test_rating_an_outcome_whose_item_was_deleted_meanwhile_raises_unknown_item(
 
     # Assert
     assert raised.value.item_id == "i1"
+
+
+def test_annotating_without_takeaways_keeps_the_current_takeaways() -> None:
+    # Setup
+    store = store_with_an_outcome()
+    before = fetched_outcome(store, OUTCOME_ID)
+
+    # Execute
+    edited = a_lifecycle(store).annotate(OUTCOME_ID, "Better")
+
+    # Assert
+    assert (edited.notes, edited.takeaways, fetched_outcome(store, OUTCOME_ID)) == (
+        "Better",
+        before.takeaways,
+        edited,
+    )
+
+
+def test_annotating_with_none_as_takeaways_keeps_the_current_takeaways() -> None:
+    # Setup
+    store = store_with_an_outcome()
+    before = fetched_outcome(store, OUTCOME_ID)
+
+    # Execute
+    edited = a_lifecycle(store).annotate(OUTCOME_ID, "Better", None)
+
+    # Assert
+    assert edited.takeaways == before.takeaways
+
+
+def test_annotating_with_an_empty_list_clears_the_takeaways() -> None:
+    # Setup
+    store = store_with_an_outcome()
+
+    # Execute
+    edited = a_lifecycle(store).annotate(OUTCOME_ID, "Better", [])
+
+    # Assert
+    assert edited.takeaways == ()

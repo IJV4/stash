@@ -1,11 +1,19 @@
 import json
+from typing import Any
 
 from app_builders import an_app, stored
-from builders import BASE, an_item, minutes_after
+from builders import BASE, an_item, an_outcome, minutes_after
 from fakes.failing_list_store import FailingListStore
 from hermes_registration_rig import register_stash
+from tool_rig import answer_of, store_snapshot
 
 from stash.domain import ItemType, Stage
+
+LINK_DETAILS = {
+    "link_title": "Black holes explained",
+    "uploader": "Kurzgesagt",
+    "duration": "11:02",
+}
 
 
 def test_stash_search_returns_the_items_matching_the_query_regardless_of_case() -> None:
@@ -60,3 +68,90 @@ def test_a_failing_store_makes_stash_list_answer_an_error() -> None:
 
     # Assert
     assert list(json.loads(answer)) == ["error"]
+
+
+def test_finishing_a_book_through_the_tools_records_keeps_and_lists_it_in_the_library() -> None:
+    # Setup
+    dune = an_item(
+        id="b1", capture_id="c1", item_type=ItemType.BOOK, title="Dune", stage=Stage.DOING
+    )
+    miso = an_item(
+        id="r1",
+        capture_id="c2",
+        item_type=ItemType.RECIPE,
+        title="Miso soup",
+        stage=Stage.DONE,
+        kept=True,
+    )
+    store = stored(dune, miso)
+    store.add_outcome(an_outcome(id="o-r1", item_id="r1", rating=5))
+    tools = register_stash(an_app(store=store)).ctx.tools
+
+    def call(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return answer_of(tools[name].handler(arguments))
+
+    # Execute
+    [found] = call("stash_search", {"query": "dune"})["items"]
+    call(
+        "stash_complete",
+        {
+            "item_id": found["id"],
+            "rating": 4,
+            "takeaways": ["Start small", "Fear is the mind-killer"],
+            "keep": True,
+        },
+    )
+    library = call("stash_library", {"item_type": "book"})
+    shown = call("stash_get", {"item_id": found["id"]})
+
+    # Assert
+    assert (
+        [(entry["id"], entry["rating"]) for entry in library["items"]],
+        [(outcome["rating"], outcome["takeaways"]) for outcome in shown["outcomes"]],
+        shown["item"]["kept"],
+    ) == ([("b1", 4)], [(4, ["Start small", "Fear is the mind-killer"])], True)
+
+
+def test_stash_get_shows_the_link_details_the_outcomes_with_takeaways_and_the_children() -> None:
+    # Setup
+    video = an_item(
+        id="m1",
+        capture_id="c1",
+        item_type=ItemType.MEDIA,
+        title="Black holes",
+        stage=Stage.DONE,
+        source_url="https://example.com/watch?v=1",
+        details=LINK_DETAILS,
+        kept=True,
+    )
+    part_two = an_item(id="m2", capture_id="c2", title="Part two", parent_id="m1")
+    store = stored(video, part_two)
+    store.add_outcome(an_outcome(id="o1", item_id="m1", takeaways=("Event horizons", "Spaghetti")))
+    tools = register_stash(an_app(store=store)).ctx.tools
+
+    # Execute
+    shown = answer_of(tools["stash_get"].handler({"item_id": "m1"}))
+
+    # Assert
+    assert (
+        shown["item"]["details"],
+        [outcome["takeaways"] for outcome in shown["outcomes"]],
+        [child["id"] for child in shown["children"]],
+    ) == (
+        LINK_DETAILS,
+        [["Event horizons", "Spaghetti"]],
+        ["m2"],
+    )
+
+
+def test_a_tool_call_with_bad_arguments_answers_an_error_and_changes_nothing() -> None:
+    # Setup
+    store = stored(an_item(id="b1", capture_id="c1", item_type=ItemType.BOOK, stage=Stage.DOING))
+    tools = register_stash(an_app(store=store)).ctx.tools
+    before = store_snapshot(store)
+
+    # Execute
+    answer = answer_of(tools["stash_complete"].handler({"item_id": "b1", "rating": True}))
+
+    # Assert
+    assert (list(answer), store_snapshot(store)) == (["error"], before)

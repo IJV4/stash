@@ -12,6 +12,16 @@ LIFECYCLE_IMPORTERS = (
     "stash.capture.completion_buttons",
     "stash.capture.completion_replies",
     "stash.app.build",
+    "stash.app.app",
+    "stash.rendering",
+    "stash.cli.commands",
+    "stash.cli.parser",
+    "stash.cli.dispatch",
+    "stash.hermes_adapter.ports",
+    "stash.hermes_adapter.lifecycle_tools",
+    "stash.hermes_adapter.lifecycle_schemas",
+    "stash.hermes_adapter.tool_json",
+    "stash.hermes_adapter.commands",
 )
 CONCRETE_LIFECYCLE = ("stash.lifecycle.service", "stash.lifecycle.Lifecycle")
 LIFECYCLE_MAY_IMPORT = ("stash.domain", "stash.store.port", LIFECYCLE)

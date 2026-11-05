@@ -1,10 +1,13 @@
 import asyncio
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from app_builders import NOON, an_app
+from app_builders import NOON, an_app, stored
+from builders import an_item, stored_completion
 from capture_builders import a_filing_answer, sequential_ids
 from capture_rig import build_rig
+from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
 from fakes.recording_outbox import RecordingOutbox
@@ -12,10 +15,12 @@ from fakes.scripted_steps import ScriptedSteps
 from hermes_events import OWNER_ID, an_event
 from hermes_rig import app_over, instant_bursts
 
+from stash.app import StashApp
 from stash.capture import IncomingMessage, confirmation
-from stash.hermes_adapter.commands import GpuCommand, ListCommand, RetryCommand
+from stash.domain import Stage
+from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
 from stash.hermes_adapter.owners import Owners
-from stash.hermes_adapter.wiring import build_commands, build_intake, build_scheduler
+from stash.hermes_adapter.wiring import build_commands, build_intake, build_scheduler, build_tools
 
 LATER = datetime(2026, 11, 3, 9, 30, tzinfo=UTC)
 
@@ -118,7 +123,7 @@ def test_intakes_built_by_two_registrations_confirm_their_messages_separately() 
     ]
 
 
-def test_the_commands_are_list_gpu_and_retry() -> None:
+def test_the_commands_are_list_gpu_retry_and_library() -> None:
     # Execute
     commands = build_commands(an_app())
 
@@ -127,4 +132,64 @@ def test_the_commands_are_list_gpu_and_retry() -> None:
         "list": ListCommand,
         "gpu": GpuCommand,
         "retry": RetryCommand,
+        "library": LibraryCommand,
     }
+
+
+def handler_named(app: StashApp, name: str) -> Callable[..., str]:
+    return next(spec.handler for spec in build_tools(app) if spec.schema["name"] == name)
+
+
+def test_the_tools_are_search_list_and_the_seven_lifecycle_tools() -> None:
+    # Execute
+    specs = build_tools(an_app())
+
+    # Assert
+    assert [spec.schema["name"] for spec in specs] == [
+        "stash_search",
+        "stash_list",
+        "stash_get",
+        "stash_complete",
+        "stash_annotate",
+        "stash_set_stage",
+        "stash_keep",
+        "stash_group",
+        "stash_library",
+    ]
+
+
+def test_the_lifecycle_tools_act_on_the_lifecycle_of_the_app() -> None:
+    # Setup
+    store = stored(an_item(id="w1", capture_id="c1", stage=Stage.WANT_TO))
+    complete = handler_named(an_app(store=store), "stash_complete")
+
+    # Execute
+    complete({"item_id": "w1", "rating": 3})
+
+    # Assert
+    assert [outcome.rating for outcome in store.outcomes_for("w1")] == [3]
+
+
+def test_the_search_and_list_tools_read_the_store_of_the_app() -> None:
+    # Setup
+    store = stored(an_item(id="w1", capture_id="c1", title="Ramen"))
+    search = handler_named(an_app(store=store), "stash_search")
+
+    # Execute
+    answer = search({"query": "ramen"})
+
+    # Assert
+    assert json.loads(answer)["items"][0]["id"] == "w1"
+
+
+def test_the_library_command_lists_the_kept_items_of_the_app_lifecycle() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_completion(store, "k1", kept=True, title="Dune")
+    command = build_commands(an_app(store=store))["library"]
+
+    # Execute
+    text = asyncio.run(command.run(""))
+
+    # Assert
+    assert text == "📚 Places: Dune · ⭐4"

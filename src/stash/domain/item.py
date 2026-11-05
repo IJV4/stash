@@ -85,6 +85,7 @@ _STAGE_LABELS = {
 
 MOVEABLE_STAGES = (Stage.INBOX, Stage.WANT_TO, Stage.PLANNED, Stage.DOING, Stage.DROPPED)
 PLANNED_NEEDS_DATE = "planned items need a date"
+DONE_VIA_COMPLETION = "done is reached by completing an item"
 
 
 def lacks_required_date(stage: Stage, date: dt.date | None) -> bool:
@@ -201,6 +202,12 @@ class Item:
         drop_reason = self.drop_reason if stage is Stage.DROPPED else None
         return replace(self, stage=stage, drop_reason=drop_reason, updated_at=now)
 
+    def relocated_to(self, stage: Stage, now: dt.datetime) -> "Item":
+        refusal = self._move_refusal(stage)
+        if refusal is not None:
+            raise ValueError(refusal)
+        return self.moved_to(stage, now)
+
     def completed(self, now: dt.datetime) -> "Item":
         if self.is_done:
             raise ValueError("item is already done")
@@ -237,7 +244,14 @@ class Item:
         return self.kept and self.stage is not Stage.DROPPED
 
     def can_move_to(self, stage: Stage) -> bool:
-        return stage in MOVEABLE_STAGES and not lacks_required_date(stage, self.date)
+        return self._move_refusal(stage) is None
+
+    def _move_refusal(self, stage: Stage) -> str | None:
+        if stage is Stage.DONE:
+            return DONE_VIA_COMPLETION
+        if lacks_required_date(stage, self.date):
+            return PLANNED_NEEDS_DATE
+        return None
 
     def moveable_stages(self) -> tuple[Stage, ...]:
         return tuple(stage for stage in MOVEABLE_STAGES if self.can_move_to(stage))

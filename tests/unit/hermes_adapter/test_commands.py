@@ -6,19 +6,22 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from app_builders import stored
-from builders import BASE, a_capture, an_item
+from builders import BASE, a_capture, an_item, days_after, stored_completion
 from fakes.failing_list_store import FailingListStore
+from fakes.failing_read_store import FailingReadStore
 from fakes.memory_store import MemoryStore
 from fakes.recording_unloader import RecordingUnloader
+from fakes.thread_noting_library import ThreadNotingLibrary
 from fakes.thread_noting_retrier import ThreadNotingRetrier
 from fakes.thread_noting_store import ThreadNotingStore
 from gate_rig import a_gate, a_sample
+from lifecycle_rig import a_lifecycle
 
 from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
 from stash.domain import Item, ItemType, Stage
 from stash.gpu_switch import GpuSwitch
-from stash.hermes_adapter.commands import GpuCommand, ListCommand, RetryCommand
+from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
 from stash.llm import LlmUnavailable
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
@@ -26,7 +29,9 @@ NOON_IN_LOS_ANGELES = BASE.astimezone(LOS_ANGELES)
 USAGE = "Usage: /gpu on|off|status"
 
 
-def run(command: ListCommand | GpuCommand | RetryCommand, raw_args: str = "") -> str:
+def run(
+    command: ListCommand | GpuCommand | RetryCommand | LibraryCommand, raw_args: str = ""
+) -> str:
     return asyncio.run(command.run(raw_args))
 
 
@@ -478,3 +483,170 @@ def test_retry_files_the_pending_captures_off_the_event_loop_thread() -> None:
 
     # Assert
     assert [thread != loop_thread for thread in retrier.threads] == [True]
+
+
+def kept_items(*titles: tuple[str, ItemType]) -> MemoryStore:
+    store = MemoryStore()
+    for number, (title, item_type) in enumerate(titles):
+        stored_completion(
+            store,
+            f"k{number}",
+            completed_on=days_after(number),
+            kept=True,
+            title=title,
+            item_type=item_type,
+        )
+    return store
+
+
+def many_kept_items(count: int, title: Callable[[int], str] = "Item {}".format) -> MemoryStore:
+    return kept_items(*[(title(number), ItemType.BOOK) for number in range(count)])
+
+
+def a_library_command(store: MemoryStore) -> LibraryCommand:
+    return LibraryCommand(a_lifecycle(store))
+
+
+def test_library_prints_one_line_per_kept_item_with_its_rating_most_recently_finished_first() -> (
+    None
+):
+    # Setup
+    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
+
+    # Execute
+    text = run(a_library_command(store))
+
+    # Assert
+    assert text == "📚 Recipes: Miso soup · ⭐4\n📚 Books: Dune · ⭐4"
+
+
+def test_library_narrows_to_a_type() -> None:
+    # Setup
+    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
+
+    # Execute
+    text = run(a_library_command(store), "recipe")
+
+    # Assert
+    assert text == "📚 Recipes: Miso soup · ⭐4"
+
+
+def test_library_accepts_a_type_in_any_case_with_surrounding_space() -> None:
+    # Setup
+    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
+
+    # Execute
+    text = run(a_library_command(store), "  BOOK ")
+
+    # Assert
+    assert text == "📚 Books: Dune · ⭐4"
+
+
+def test_library_leaves_out_items_that_are_not_kept() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_completion(store, "skipped", title="Not kept")
+
+    # Execute
+    text = run(a_library_command(store))
+
+    # Assert
+    assert text == "No items."
+
+
+def test_library_with_nothing_to_show_says_no_items() -> None:
+    # Execute
+    text = run(a_library_command(MemoryStore()))
+
+    # Assert
+    assert text == "No items."
+
+
+def test_library_with_an_unknown_type_names_it_and_lists_the_valid_ones() -> None:
+    # Execute
+    text = run(a_library_command(MemoryStore()), "spaceship")
+
+    # Assert
+    assert text == (
+        "unknown item_type 'spaceship' "
+        "(valid: place, recipe, purchase, learn, book, media, idea, plan, activity, gift, other)"
+    )
+
+
+def test_library_with_a_5000_character_argument_answers_within_the_telegram_limit() -> None:
+    # Execute
+    text = run(a_library_command(MemoryStore()), "x" * 5000)
+
+    # Assert
+    assert len(text) <= TELEGRAM_TEXT_LIMIT
+
+
+def test_library_shows_at_most_20_items_and_counts_the_rest() -> None:
+    # Execute
+    lines = run(a_library_command(many_kept_items(25))).splitlines()
+
+    # Assert
+    assert (len(lines), lines[-1]) == (21, "…and 5 more")
+
+
+def test_library_shows_the_most_recently_finished_20_items() -> None:
+    # Execute
+    lines = run(a_library_command(many_kept_items(25))).splitlines()
+
+    # Assert
+    assert lines[0] == "📚 Books: Item 24 · ⭐4"
+
+
+def test_library_says_at_least_when_more_items_exist_than_it_looked_at() -> None:
+    # Execute
+    lines = run(a_library_command(many_kept_items(80))).splitlines()
+
+    # Assert
+    assert lines[-1] == "…and 30+ more"
+
+
+def test_library_says_exactly_when_it_looked_at_everything() -> None:
+    # Execute
+    lines = run(a_library_command(many_kept_items(49))).splitlines()
+
+    # Assert
+    assert lines[-1] == "…and 29 more"
+
+
+def test_library_never_exceeds_the_telegram_text_limit() -> None:
+    # Execute
+    text = run(a_library_command(many_kept_items(30, lambda number: f"{number} " + "x" * 100)))
+
+    # Assert
+    assert len(text) <= TELEGRAM_TEXT_LIMIT
+
+
+def test_library_counts_the_lines_it_had_to_drop_to_fit() -> None:
+    # Execute
+    lines = run(
+        a_library_command(many_kept_items(30, lambda number: f"{number} " + "x" * 100))
+    ).splitlines()
+
+    # Assert
+    assert (len(lines) - 1) + int(lines[-1].split()[1].rstrip("+")) == 30
+
+
+def test_library_reads_off_the_event_loop_thread() -> None:
+    # Setup
+    library = ThreadNotingLibrary()
+
+    async def scenario() -> int:
+        await LibraryCommand(library).run("")
+        return threading.get_ident()
+
+    # Execute
+    loop_thread = asyncio.run(scenario())
+
+    # Assert
+    assert [thread != loop_thread for thread in library.threads] == [True]
+
+
+def test_library_lets_a_failing_store_propagate() -> None:
+    # Execute / Assert
+    with pytest.raises(Exception, match="database is closed"):
+        run(a_library_command(FailingReadStore()))

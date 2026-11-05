@@ -4,7 +4,14 @@ from builders import BASE, an_item
 from fakes.memory_store import MemoryStore
 
 from stash.domain import ItemType, Stage
-from stash.hermes_adapter.queries import DEFAULT_LIMIT, MAX_LIMIT, ItemQuery
+from stash.hermes_adapter.queries import (
+    DEFAULT_LIMIT,
+    MAX_LIMIT,
+    ItemQuery,
+    checked_limit,
+    item_type_from_text,
+)
+from stash.hermes_adapter.tool_arguments import ToolArguments
 
 
 def three_items() -> MemoryStore:
@@ -43,6 +50,21 @@ def test_a_query_with_limit_1_and_a_query_with_limit_50_are_accepted() -> None:
 
     # Assert
     assert limits == [1, 50]
+
+
+def test_a_limit_check_returns_a_limit_within_bounds_unchanged() -> None:
+    # Execute
+    limit = checked_limit(MAX_LIMIT)
+
+    # Assert
+    assert limit == MAX_LIMIT
+
+
+@pytest.mark.parametrize("limit", [0, MAX_LIMIT + 1])
+def test_a_limit_check_refuses_a_limit_out_of_bounds(limit: int) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="between 1 and 50"):
+        checked_limit(limit)
 
 
 def test_a_limit_of_0_is_refused() -> None:
@@ -142,7 +164,7 @@ def test_from_text_with_an_unknown_stage_lists_the_valid_stages() -> None:
 
 def test_from_arguments_of_nothing_is_the_default_query() -> None:
     # Execute
-    query = ItemQuery.from_arguments({})
+    query = ItemQuery.from_arguments(ToolArguments.of({}))
 
     # Assert
     assert query == ItemQuery(None, None, DEFAULT_LIMIT)
@@ -150,7 +172,9 @@ def test_from_arguments_of_nothing_is_the_default_query() -> None:
 
 def test_from_arguments_reads_stage_type_and_limit() -> None:
     # Execute
-    query = ItemQuery.from_arguments({"stage": "done", "item_type": "recipe", "limit": 7})
+    query = ItemQuery.from_arguments(
+        ToolArguments.of({"stage": "done", "item_type": "recipe", "limit": 7})
+    )
 
     # Assert
     assert query == ItemQuery(Stage.DONE, ItemType.RECIPE, 7)
@@ -158,7 +182,7 @@ def test_from_arguments_reads_stage_type_and_limit() -> None:
 
 def test_from_arguments_accepts_a_stage_in_any_case() -> None:
     # Execute
-    query = ItemQuery.from_arguments({"stage": " Want-To "})
+    query = ItemQuery.from_arguments(ToolArguments.of({"stage": " Want-To "}))
 
     # Assert
     assert query.stage is Stage.WANT_TO
@@ -166,7 +190,7 @@ def test_from_arguments_accepts_a_stage_in_any_case() -> None:
 
 def test_from_arguments_ignores_arguments_it_does_not_know() -> None:
     # Execute
-    query = ItemQuery.from_arguments({"limit": 3, "colour": "red"})
+    query = ItemQuery.from_arguments(ToolArguments.of({"limit": 3, "colour": "red"}))
 
     # Assert
     assert query == ItemQuery(None, None, 3)
@@ -175,7 +199,7 @@ def test_from_arguments_ignores_arguments_it_does_not_know() -> None:
 @pytest.mark.parametrize("key", ["stage", "item_type", "limit"])
 def test_from_arguments_treats_an_explicit_null_as_absent(key: str) -> None:
     # Execute
-    query = ItemQuery.from_arguments({key: None})
+    query = ItemQuery.from_arguments(ToolArguments.of({key: None}))
 
     # Assert
     assert query == ItemQuery(None, None, DEFAULT_LIMIT)
@@ -184,13 +208,13 @@ def test_from_arguments_treats_an_explicit_null_as_absent(key: str) -> None:
 def test_from_arguments_refuses_an_unknown_stage_naming_it() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="unknown stage 'soonish'"):
-        ItemQuery.from_arguments({"stage": "soonish"})
+        ItemQuery.from_arguments(ToolArguments.of({"stage": "soonish"}))
 
 
 def test_from_arguments_refuses_an_unknown_stage_listing_the_valid_ones() -> None:
     # Execute
     with pytest.raises(ValueError) as refusal:
-        ItemQuery.from_arguments({"stage": "soonish"})
+        ItemQuery.from_arguments(ToolArguments.of({"stage": "soonish"}))
 
     # Assert
     assert all(stage.value in str(refusal.value) for stage in Stage)
@@ -199,13 +223,13 @@ def test_from_arguments_refuses_an_unknown_stage_listing_the_valid_ones() -> Non
 def test_from_arguments_refuses_an_unknown_type_naming_it() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="unknown item_type 'spaceship'"):
-        ItemQuery.from_arguments({"item_type": "spaceship"})
+        ItemQuery.from_arguments(ToolArguments.of({"item_type": "spaceship"}))
 
 
 def test_from_arguments_refuses_an_unknown_type_listing_the_valid_ones() -> None:
     # Execute
     with pytest.raises(ValueError) as refusal:
-        ItemQuery.from_arguments({"item_type": "spaceship"})
+        ItemQuery.from_arguments(ToolArguments.of({"item_type": "spaceship"}))
 
     # Assert
     assert all(item_type.value in str(refusal.value) for item_type in ItemType)
@@ -214,27 +238,27 @@ def test_from_arguments_refuses_an_unknown_type_listing_the_valid_ones() -> None
 def test_from_arguments_refuses_a_stage_that_is_not_text() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="stage must be text"):
-        ItemQuery.from_arguments({"stage": 3})
+        ItemQuery.from_arguments(ToolArguments.of({"stage": 3}))
 
 
 def test_from_arguments_refuses_a_type_that_is_not_text() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="item_type must be text"):
-        ItemQuery.from_arguments({"item_type": ["place"]})
+        ItemQuery.from_arguments(ToolArguments.of({"item_type": ["place"]}))
 
 
 @pytest.mark.parametrize("limit", [True, False, "5", 2.5])
 def test_from_arguments_refuses_a_limit_that_is_not_an_integer(limit: object) -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="limit must be an integer"):
-        ItemQuery.from_arguments({"limit": limit})
+        ItemQuery.from_arguments(ToolArguments.of({"limit": limit}))
 
 
 @pytest.mark.parametrize("limit", [0, 51, -3])
 def test_from_arguments_refuses_a_limit_out_of_range(limit: int) -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="between 1 and 50"):
-        ItemQuery.from_arguments({"limit": limit})
+        ItemQuery.from_arguments(ToolArguments.of({"limit": limit}))
 
 
 def test_an_unknown_stage_of_5000_characters_is_echoed_cut_to_40_and_an_ellipsis() -> None:
@@ -258,7 +282,31 @@ def test_an_unknown_stage_of_exactly_40_characters_is_echoed_whole() -> None:
 def test_an_unknown_item_type_of_5000_characters_is_echoed_cut_to_40_and_an_ellipsis() -> None:
     # Execute
     with pytest.raises(ValueError) as refusal:
-        ItemQuery.from_arguments({"item_type": "y" * 5000})
+        ItemQuery.from_arguments(ToolArguments.of({"item_type": "y" * 5000}))
 
     # Assert
     assert str(refusal.value).startswith(f"unknown item_type '{'y' * 40}…' (valid:")
+
+
+@pytest.mark.parametrize("raw", ["", "   \t "])
+def test_item_type_from_nothing_is_no_type(raw: str) -> None:
+    # Execute
+    item_type = item_type_from_text(raw)
+
+    # Assert
+    assert item_type is None
+
+
+@pytest.mark.parametrize("raw", ["recipe", " Recipe ", "RECIPE"])
+def test_item_type_from_text_ignores_case_and_surrounding_space(raw: str) -> None:
+    # Execute
+    item_type = item_type_from_text(raw)
+
+    # Assert
+    assert item_type is ItemType.RECIPE
+
+
+def test_item_type_from_text_with_an_unknown_type_names_it_and_lists_the_valid_ones() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match=r"unknown item_type 'spaceship' \(valid: place, recipe"):
+        item_type_from_text("spaceship")

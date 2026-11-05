@@ -1,6 +1,7 @@
 from typing import Protocol
 
-from stash.domain import Item, Outcome
+from stash.domain import Item, ItemType, Outcome
+from stash.store.port import DEFAULT_PAGE_SIZE
 
 
 class LifecycleStore(Protocol):
@@ -17,3 +18,10 @@ class LifecycleStore(Protocol):
     def get_outcome(self, outcome_id: str) -> Outcome | None: ...
 
     def children_of(self, parent_id: str) -> list[Item]: ...
+
+    def library(
+        self,
+        item_type: ItemType | None = None,
+        limit: int = DEFAULT_PAGE_SIZE,
+        offset: int = 0,
+    ) -> list[Item]: ...

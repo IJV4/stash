@@ -326,3 +326,22 @@ def test_with_notes_dated_before_the_outcome_was_recorded_is_accepted() -> None:
 
     # Assert
     assert edited.edited_at == BASE
+
+
+def test_with_notes_without_takeaways_keeps_the_current_takeaways() -> None:
+    # Setup
+    outcome = an_outcome(takeaways=("Salt early", "Rest dough"))
+
+    # Execute
+    edited = outcome.with_notes("Better", None, LATER)
+
+    # Assert
+    assert edited.takeaways == ("Salt early", "Rest dough")
+
+
+def test_with_notes_without_takeaways_still_replaces_the_notes() -> None:
+    # Execute
+    edited = an_outcome().with_notes("Better", None, LATER)
+
+    # Assert
+    assert edited.notes == "Better"

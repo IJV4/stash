@@ -5,6 +5,7 @@ from stash.app import StashApp
 from stash.cli import commands
 from stash.cli.eval_command import EvalRequest, run_eval_command
 from stash.cli.parser import Command, GpuAction
+from stash.lifecycle import LibraryQuery
 
 
 def dispatch(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
@@ -33,8 +34,17 @@ def dispatch(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
             )
         case Command.BACKUP:
             return commands.backup(app.backups, app.today(), arguments.to, out)
+        case Command.LIBRARY:
+            return _library(arguments, app, out)
+        case Command.SHOW:
+            return commands.show(app.lifecycle, arguments.item_id, out)
         case _:
             assert_never(command)
+
+
+def _library(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
+    query = LibraryQuery(arguments.item_type, arguments.limit)
+    return commands.library(app.lifecycle, query, out)
 
 
 def _gpu(action: GpuAction, app: StashApp, out: TextIO) -> int:

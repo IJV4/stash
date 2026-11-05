@@ -8,9 +8,11 @@ from stash import __version__
 from stash.config import Thinking
 from stash.domain import ItemType, Stage, enum_member
 from stash.evaluation import EvalArm
+from stash.lifecycle import MAX_LIBRARY_LIMIT, MIN_LIBRARY_LIMIT
 from stash.store.port import DEFAULT_PAGE_SIZE
 
 DEFAULT_CASES = Path("evals/cases.jsonl")
+MIN_LIMIT = 1
 MAX_LIMIT = 1000
 
 _E = TypeVar("_E", bound=StrEnum)
@@ -23,6 +25,8 @@ class Command(StrEnum):
     GPU = "gpu"
     EVAL = "eval"
     BACKUP = "backup"
+    LIBRARY = "library"
+    SHOW = "show"
 
 
 class GpuAction(StrEnum):
@@ -43,16 +47,21 @@ def _choice(kind: type[_E]) -> Callable[[str], _E]:
     return convert
 
 
-def _positive_int(text: str) -> int:
-    try:
-        value = int(text)
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"{text!r} is not a number") from None
-    if value < 1:
-        raise argparse.ArgumentTypeError("must be at least 1")
-    if value > MAX_LIMIT:
-        raise argparse.ArgumentTypeError(f"invalid limit {value} (choose 1 to {MAX_LIMIT})")
-    return value
+def _limit_between(minimum: int, maximum: int) -> Callable[[str], int]:
+    def convert(text: str) -> int:
+        try:
+            value = int(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"{text!r} is not a number") from None
+        if value < minimum:
+            raise argparse.ArgumentTypeError(f"must be at least {minimum}")
+        if value > maximum:
+            raise argparse.ArgumentTypeError(
+                f"invalid limit {value} (choose {minimum} to {maximum})"
+            )
+        return value
+
+    return convert
 
 
 def _names(text: str) -> tuple[str, ...]:
@@ -91,6 +100,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_eval(commands, shared)
     backup = commands.add_parser(Command.BACKUP, parents=[shared], help="back up the database")
     backup.add_argument("--to", required=True, type=Path, metavar="DIR")
+    _add_library(commands, shared)
+    show = commands.add_parser(Command.SHOW, parents=[shared], help="show an item's history")
+    show.add_argument("item_id")
     return parser
 
 
@@ -100,7 +112,21 @@ def _add_list(
     listing = commands.add_parser(Command.LIST, parents=[shared], help="list saved items")
     listing.add_argument("--stage", type=_choice(Stage), choices=list(Stage))
     listing.add_argument("--type", dest="item_type", type=_choice(ItemType), choices=list(ItemType))
-    listing.add_argument("--limit", type=_positive_int, default=DEFAULT_PAGE_SIZE)
+    listing.add_argument(
+        "--limit", type=_limit_between(MIN_LIMIT, MAX_LIMIT), default=DEFAULT_PAGE_SIZE
+    )
+
+
+def _add_library(
+    commands: "argparse._SubParsersAction[argparse.ArgumentParser]", shared: argparse.ArgumentParser
+) -> None:
+    library = commands.add_parser(Command.LIBRARY, parents=[shared], help="list kept items")
+    library.add_argument("--type", dest="item_type", type=_choice(ItemType), choices=list(ItemType))
+    library.add_argument(
+        "--limit",
+        type=_limit_between(MIN_LIBRARY_LIMIT, MAX_LIBRARY_LIMIT),
+        default=DEFAULT_PAGE_SIZE,
+    )
 
 
 def _add_eval(

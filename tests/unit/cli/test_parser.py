@@ -7,6 +7,7 @@ from stash.cli.parser import MAX_LIMIT, Command, GpuAction, build_parser
 from stash.config import Thinking
 from stash.domain import ItemType, Stage
 from stash.evaluation import EvalArm
+from stash.lifecycle import MAX_LIBRARY_LIMIT
 
 
 def parse(*argv: str) -> argparse.Namespace:
@@ -67,7 +68,16 @@ def test_list_refuses_values_outside_its_choices(argv: list[str]) -> None:
 
 @pytest.mark.parametrize(
     "argv",
-    [["doctor"], ["list"], ["retry"], ["gpu", "status"], ["eval"], ["backup", "--to", "d"]],
+    [
+        ["doctor"],
+        ["list"],
+        ["retry"],
+        ["gpu", "status"],
+        ["eval"],
+        ["backup", "--to", "d"],
+        ["library"],
+        ["show", "x"],
+    ],
     ids=lambda argv: argv[0],
 )
 def test_every_subcommand_takes_a_config_path(argv: list[str]) -> None:
@@ -255,7 +265,7 @@ def test_gpu_gives_the_action_as_a_gpu_action() -> None:
 @pytest.mark.parametrize("command", list(Command))
 def test_every_command_is_a_subcommand_of_the_parser(command: Command) -> None:
     # Setup
-    required = {Command.BACKUP: ["--to", "d"], Command.GPU: ["on"]}
+    required = {Command.BACKUP: ["--to", "d"], Command.GPU: ["on"], Command.SHOW: ["x"]}
 
     # Execute
     arguments = parse(command.value, *required.get(command, []))
@@ -304,3 +314,68 @@ def test_list_refuses_a_limit_above_the_maximum_naming_the_choices(
     # Assert
     message = f"invalid limit {limit} (choose 1 to 1000)"
     assert (stop.value.code, message in capsys.readouterr().err) == (2, True)
+
+
+def test_library_defaults_to_every_type_and_a_limit_of_20() -> None:
+    # Execute
+    arguments = parse("library")
+
+    # Assert
+    assert (arguments.item_type, arguments.limit) == (None, 20)
+
+
+def test_library_takes_a_type_and_a_limit() -> None:
+    # Execute
+    arguments = parse("library", "--type", "book", "--limit", "5")
+
+    # Assert
+    assert (arguments.item_type, arguments.limit) == (ItemType.BOOK, 5)
+
+
+def test_library_accepts_the_largest_limit() -> None:
+    # Execute
+    arguments = parse("library", "--limit", str(MAX_LIBRARY_LIMIT))
+
+    # Assert
+    assert arguments.limit == MAX_LIBRARY_LIMIT
+
+
+@pytest.mark.parametrize("limit", ["0", "-1", str(MAX_LIBRARY_LIMIT + 1), "many"])
+def test_library_refuses_a_limit_outside_1_to_50(limit: str) -> None:
+    # Execute / Assert
+    with pytest.raises(SystemExit) as stop:
+        parse("library", "--limit", limit)
+    assert stop.value.code == 2
+
+
+def test_library_names_the_allowed_limits_when_the_limit_is_too_big(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Execute
+    with pytest.raises(SystemExit):
+        parse("library", "--limit", "51")
+
+    # Assert
+    assert "invalid limit 51 (choose 1 to 50)" in capsys.readouterr().err
+
+
+def test_library_refuses_an_unknown_type() -> None:
+    # Execute / Assert
+    with pytest.raises(SystemExit) as stop:
+        parse("library", "--type", "spaceship")
+    assert stop.value.code == 2
+
+
+def test_show_takes_the_item_id() -> None:
+    # Execute
+    arguments = parse("show", "abc123")
+
+    # Assert
+    assert arguments.item_id == "abc123"
+
+
+def test_show_needs_an_item_id() -> None:
+    # Execute / Assert
+    with pytest.raises(SystemExit) as stop:
+        parse("show")
+    assert stop.value.code == 2

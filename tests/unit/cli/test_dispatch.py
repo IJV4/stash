@@ -4,11 +4,12 @@ from pathlib import Path
 
 import pytest
 from app_builders import NOON, an_app, stored
-from builders import BASE, an_item
+from builders import BASE, an_item, stored_completion, stored_item
 from cli_session import Session
 from eval_builders import an_eval_targets
 from eval_files import write_cases
 from fakes.backup_source import FakeBackupSource
+from fakes.memory_store import MemoryStore
 from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.provider_probe import FakeProviderProbe
@@ -226,3 +227,54 @@ def test_the_gpu_commands_read_the_clock_once(tmp_path: Path, argv: tuple[str, .
 
     # Assert
     assert len(reads) == 1
+
+
+def a_library_of_three_kept_items() -> MemoryStore:
+    store = MemoryStore()
+    for number, (item_id, item_type) in enumerate(
+        [("dune", ItemType.BOOK), ("emma", ItemType.BOOK), ("pad-thai", ItemType.RECIPE)]
+    ):
+        stored_completion(
+            store,
+            item_id,
+            title=item_id,
+            item_type=item_type,
+            kept=True,
+            recorded_at=BASE.replace(minute=number),
+        )
+    return store
+
+
+def test_library_passes_the_type_and_the_limit_to_the_lifecycle(tmp_path: Path) -> None:
+    # Setup
+    session = Session(tmp_path, an_app(store=a_library_of_three_kept_items()))
+
+    # Execute
+    output = at(session, "library", "--type", "book", "--limit", "1")
+
+    # Assert
+    assert output == "emma  📚 Books: emma · ⭐4\n"
+
+
+def test_library_without_flags_lists_every_type(tmp_path: Path) -> None:
+    # Setup
+    session = Session(tmp_path, an_app(store=a_library_of_three_kept_items()))
+
+    # Execute
+    output = at(session, "library")
+
+    # Assert
+    assert len(output.splitlines()) == 3
+
+
+def test_show_reads_the_history_of_the_given_item(tmp_path: Path) -> None:
+    # Setup
+    store = MemoryStore()
+    stored_item(store, id="trip", title="Japan trip", item_type=ItemType.PLAN)
+    session = Session(tmp_path, an_app(store=store))
+
+    # Execute
+    output = at(session, "show", "trip")
+
+    # Assert
+    assert output == "Plans · Japan trip · Inbox\n"

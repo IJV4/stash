@@ -11,7 +11,13 @@ from architecture_guard import (
 RENDERING = "stash.rendering"
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 IMAGING_AND_EXTRACTION = ("yt_dlp", "PIL", "pytesseract")
-RENDERING_STASH_PACKAGES = ("stash.capture", "stash.domain", "stash.gpu", "stash.gpu_switch")
+RENDERING_STASH_PACKAGES = (
+    "stash.capture",
+    "stash.domain",
+    "stash.gpu",
+    "stash.gpu_switch",
+    "stash.lifecycle",
+)
 
 
 def test_the_rendering_module_imports_no_adapter_module() -> None:
