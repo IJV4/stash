@@ -1,22 +1,23 @@
 import datetime as dt
 
-from capture_builders import a_placed_item
+from builders import HEX_ID
+from capture_builders import a_placed_item, button_labels
 
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT
 from stash.capture.menus import stage_menu, type_menu
-from stash.capture.replies import Button, Reply, confirmation
+from stash.capture.replies import Reply, confirmation
 from stash.domain import ItemType, Stage
 
-HEX_ID = "0123456789abcdef0123456789abcdef"
 A_DATE = dt.date(2026, 11, 14)
 
 
-def labels(rows: tuple[tuple[Button, ...], ...]) -> list[list[str]]:
-    return [[button.label for button in row] for row in rows]
-
-
 def _offered(reply: Reply) -> list[Stage]:
-    return [Stage(button.data.split(":")[3]) for row in reply.buttons for button in row]
+    return [
+        Stage(button.data.split(":")[3])
+        for row in reply.buttons
+        for button in row
+        if button.data.startswith("stash:S:")
+    ]
 
 
 def test_the_type_menu_asks_the_owner_to_pick_a_type() -> None:
@@ -32,7 +33,7 @@ def test_the_type_menu_has_one_button_per_item_type_in_rows_of_three() -> None:
     reply = type_menu(a_placed_item())
 
     # Assert
-    assert labels(reply.buttons) == [
+    assert button_labels(reply.buttons) == [
         ["Places", "Recipes", "Purchases"],
         ["Learning", "Books", "Media"],
         ["Ideas", "Plans", "Activities"],
@@ -80,20 +81,25 @@ def test_the_stage_menu_asks_the_owner_to_pick_a_stage() -> None:
     assert reply.text == "Pick a stage:"
 
 
-def test_the_stage_menu_for_a_dateless_item_has_two_rows_of_two() -> None:
+def test_the_stage_menu_for_a_dateless_item_has_two_rows_of_two_then_a_done_row() -> None:
     # Execute
     reply = stage_menu(a_placed_item(date=None))
 
     # Assert
-    assert labels(reply.buttons) == [["Inbox", "Want to"], ["Doing", "Dropped"]]
+    assert button_labels(reply.buttons) == [["Inbox", "Want to"], ["Doing", "Dropped"], ["Done ✓"]]
 
 
-def test_the_stage_menu_for_a_dated_item_ends_with_a_short_row() -> None:
+def test_the_stage_menu_for_a_dated_item_has_a_short_stage_row_then_a_done_row() -> None:
     # Execute
     reply = stage_menu(a_placed_item(date=A_DATE))
 
     # Assert
-    assert labels(reply.buttons) == [["Inbox", "Want to"], ["Planned", "Doing"], ["Dropped"]]
+    assert button_labels(reply.buttons) == [
+        ["Inbox", "Want to"],
+        ["Planned", "Doing"],
+        ["Dropped"],
+        ["Done ✓"],
+    ]
 
 
 def test_each_stage_button_carries_the_item_id_and_its_stage_value() -> None:
@@ -101,7 +107,9 @@ def test_each_stage_button_carries_the_item_id_and_its_stage_value() -> None:
     reply = stage_menu(a_placed_item(id="i7", date=A_DATE))
 
     # Assert
-    assert [button.data for row in reply.buttons for button in row] == [
+    assert [
+        button.data for row in reply.buttons for button in row if button.data.startswith("stash:S:")
+    ] == [
         "stash:S:i7:inbox",
         "stash:S:i7:want_to",
         "stash:S:i7:planned",

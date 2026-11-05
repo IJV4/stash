@@ -28,6 +28,7 @@ from stash.gpu import GpuGate
 from stash.gpu.probe import CommandRunner, NvidiaSmiProbe, run_command
 from stash.gpu_switch import GpuSwitch
 from stash.http_client import make_http_client
+from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
 from stash.store.backup import Backups
 
@@ -66,11 +67,12 @@ def build_app(
             _new_id,
             clock,
         )
+        lifecycle = Lifecycle(sqlite, _new_id, clock, config.timezone)
         return StashApp(
             config=config,
             store=sqlite,
             pipeline=SerializedPipeline(pipeline),
-            fixes=FixHandler(sqlite, clock),
+            fixes=FixHandler(sqlite, lifecycle, clock),
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),
             router=router,

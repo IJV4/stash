@@ -1,7 +1,19 @@
-from architecture_guard import importers_outside, imports_outside_allowed, project_sources
+from architecture_guard import (
+    forbidden_imports_in,
+    importers_outside,
+    imports_outside_allowed,
+    project_sources,
+)
 
 LIFECYCLE = "stash.lifecycle"
-LIFECYCLE_IMPORTERS = (LIFECYCLE,)
+LIFECYCLE_IMPORTERS = (
+    LIFECYCLE,
+    "stash.capture.ports",
+    "stash.capture.completion_buttons",
+    "stash.capture.completion_replies",
+    "stash.app.build",
+)
+CONCRETE_LIFECYCLE = ("stash.lifecycle.service", "stash.lifecycle.Lifecycle")
 LIFECYCLE_MAY_IMPORT = ("stash.domain", "stash.store.port", LIFECYCLE)
 ONLY_THE_STORE_PORT = ("stash.store.port",)
 
@@ -116,3 +128,57 @@ def test_nothing_outside_the_lifecycle_package_imports_it() -> None:
 
     # Assert
     assert offenders == []
+
+
+def test_nothing_in_the_capture_package_imports_the_concrete_lifecycle() -> None:
+    # Execute
+    offenders = forbidden_imports_in(project_sources("capture"), CONCRETE_LIFECYCLE)
+
+    # Assert
+    assert offenders == []
+
+
+def test_importing_the_lifecycle_class_from_the_package_is_reported_as_the_concrete_lifecycle() -> (
+    None
+):
+    # Setup
+    sources = {"stash.capture.x": "from stash.lifecycle import Lifecycle"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, CONCRETE_LIFECYCLE)
+
+    # Assert
+    assert offenders == ["stash.capture.x -> stash.lifecycle.Lifecycle"]
+
+
+def test_importing_the_lifecycle_service_module_is_reported_as_the_concrete_lifecycle() -> None:
+    # Setup
+    sources = {"stash.capture.x": "from stash.lifecycle.service import Lifecycle"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, CONCRETE_LIFECYCLE)
+
+    # Assert
+    assert offenders == ["stash.capture.x -> stash.lifecycle.service"]
+
+
+def test_importing_only_the_lifecycle_errors_is_not_reported_as_the_concrete_lifecycle() -> None:
+    # Setup
+    sources = {"stash.capture.x": "from stash.lifecycle.errors import UnknownItem"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, CONCRETE_LIFECYCLE)
+
+    # Assert
+    assert offenders == []
+
+
+def test_a_lifecycle_import_from_an_unlisted_module_is_reported_as_an_importer_outside() -> None:
+    # Setup
+    sources = {"stash.capture.fixes": "from stash.lifecycle.errors import UnknownItem"}
+
+    # Execute
+    offenders = importers_outside(LIFECYCLE, LIFECYCLE_IMPORTERS, sources)
+
+    # Assert
+    assert offenders == ["stash.capture.fixes"]

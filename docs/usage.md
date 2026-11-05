@@ -452,6 +452,54 @@ offered Inbox, Want to, Doing and Dropped; items with a date are also offered
 Planned; a stage the menu did not offer is answered with the menu again;
 every button's data is at most 64 bytes.
 
+## One-tap Done, rating and keep  [Plan 2 Task 4]
+
+The confirmation of a filed item (and the stage menu) carries a `Done ✓`
+button unless the item is already Done. Rich text (notes, takeaways) is never
+collected through buttons; the footer tells the owner to send it any time and
+the agent records it. `app.fixes.apply(data)` answers every press with a
+`Reply` for the host to edit into the same message:
+
+    done = app.fixes.apply("stash:d:<item id>")       # Done ✓
+    rated = app.fixes.apply("stash:r:<outcome id>:4") # ⭐4
+    kept = app.fixes.apply("stash:k:<item id>:1")     # Keep 📚 (…:0 is Not keeping)
+
+Each statement has one acceptance test in
+`tests/acceptance/test_capture_requests_and_fixes.py`:
+
+1. Pressing `Done ✓` on a filed item moves it to Done, records exactly one
+   outcome and answers `🎉 Done: <title>` with a footer line `Tell me notes or
+   takeaways any time.`, a row of buttons `⭐1` to `⭐5` for that outcome and a
+   row `Keep 📚`, `Not keeping`.
+2. Pressing `⭐4` sets that outcome's rating to 4 and answers
+   `🎉 Done: <title> · ⭐4`, keeping the keep row and dropping the rating row.
+3. Pressing `Keep 📚` keeps the item and answers `📚 Kept: <title>`.
+4. Pressing `Done ✓` on an item that is already Done, when its latest outcome
+   was recorded 60 seconds or more earlier (an old confirmation tapped again
+   later, a deliberate repeat), records a second outcome, leaves the first one
+   untouched and answers `🎉 Done: <title> (again)`.
+5. Pressing `Done ✓` twice within 60 seconds of the latest outcome (a double
+   tap on the same message) records nothing more: exactly one outcome exists
+   and the second press answers the same reply as the first, without
+   `(again)`.
+
+Pinned by unit tests: the three new callback strings fit 64 bytes for maximum
+length ids; `Not keeping` answers `Okay, not keeping <title>.`; pressing the
+same rating twice leaves the rating and the single outcome unchanged; a
+rating outside 1-5, or a keep value other than `1`/`0`, answers
+`That item no longer exists.` and is logged; an unknown item or outcome
+answers the same; keeping an item that is no longer Done is refused with the
+lifecycle's message; the stage menu offers `Done ✓` only for items that are
+not Done.
+
+Presses are applied one at a time (`FixHandler.apply` holds one in-process
+lock), so two near-simultaneous presses cannot both record a first completion.
+The 60-second window is the `DOUBLE_TAP_WINDOW` constant in
+`stash.capture.completion_buttons`, measured against the handler's injected
+clock; a latest outcome recorded exactly 60 seconds earlier is outside it, and
+so is one dated after the clock (a clock stepped back): that press is a normal
+repeat, because a visible extra outcome is safer than a swallowed completion.
+
 ## GPU busy  [Task 9]
 
 Another application is using the GPU (or the owner ran `stash gpu off`).

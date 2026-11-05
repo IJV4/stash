@@ -2,10 +2,18 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from builders import BASE, a_capture, a_source, an_item
+from builders import BASE, a_capture, a_source, an_item, stored_completion
 from fakes.memory_store import MemoryStore
 
-from stash.capture import CaptureFiler, CapturePipeline, IncomingMessage, IntakeStore, Reply
+from stash.capture import (
+    Button,
+    CaptureFiler,
+    CapturePipeline,
+    IncomingMessage,
+    IntakeStore,
+    Reply,
+    Reroute,
+)
 from stash.domain import CaptureStatus, Item, ItemType, RawCapture, Stage
 from stash.enrich.links import LinkInspector
 
@@ -18,6 +26,11 @@ BARE_QUESTION_MARK = "?"
 INDENTED_FORCED_QUESTION = "  ? what can I do"
 FORCING_TEXTS = [BARE_QUESTION_MARK, INDENTED_FORCED_QUESTION, "\n?why"]
 NON_FORCING_TEXTS = [LINK_WITH_A_QUERY, "what time is it?", ""]
+COMPLETED_ITEM_ID = "i1"
+COMPLETED_OUTCOME_ID = "o-i1"
+COMPLETED_TITLE = "Dune"
+INVALID_RATINGS = ["0", "6", "x", "+3"]
+INVALID_KEEP_CHOICES = ["2", "yes"]
 
 
 def a_message(
@@ -106,3 +119,18 @@ def store_with_filed_item(
 
 def button_data(reply: Reply, label: str) -> str:
     return next(button.data for row in reply.buttons for button in row if button.label == label)
+
+
+def button_labels(rows: tuple[tuple[Button, ...], ...]) -> list[list[str]]:
+    return [[button.label for button in row] for row in rows]
+
+
+def a_store_with_a_completed_item(**item_overrides: Any) -> MemoryStore:
+    store = MemoryStore()
+    stored_completion(store, COMPLETED_ITEM_ID, title=COMPLETED_TITLE, **item_overrides)
+    return store
+
+
+def text_of(answer: Reply | Reroute) -> str:
+    assert isinstance(answer, Reply)
+    return answer.text

@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item, Outcome, Stage, frozen_strings
+from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item, Outcome, frozen_strings
 from stash.lifecycle.errors import LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.ports import LifecycleStore
 from stash.lifecycle.results import Completion, ItemHistory
@@ -54,7 +54,7 @@ class Lifecycle:
         item = self._item(item_id)
         outcome_id = self._new_id()
         now = self._clock()
-        repeat = item.stage is Stage.DONE
+        repeat = item.is_done
         with _refusing_what_the_domain_refuses():
             outcome = Outcome(
                 id=outcome_id,

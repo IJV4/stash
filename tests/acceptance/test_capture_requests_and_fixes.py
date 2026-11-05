@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from builders import fetched_item
 from capture_builders import (
     FORCED_QUESTION,
     QUESTION,
@@ -7,12 +10,14 @@ from capture_builders import (
     a_request_answer,
     an_unsure_answer,
     button_data,
+    button_labels,
 )
-from capture_rig import build_rig
+from capture_rig import CaptureRig, build_rig
+from clocks import SettableClock
 from link_builders import a_link_info
 
-from stash.capture import Filed, IsRequest, Reroute, gone, reply_for
-from stash.domain import CaptureStatus, ItemType
+from stash.capture import Filed, IsRequest, Reply, Reroute, gone, reply_for
+from stash.domain import CaptureStatus, Item, ItemType, Stage
 
 
 def test_a_question_creates_no_item_and_is_marked_as_a_request_for_the_assistant() -> None:
@@ -102,3 +107,112 @@ def test_a_stale_or_forged_button_answers_that_the_item_no_longer_exists_and_nev
 
     # Assert
     assert answers == [gone()] * 4
+
+
+FILED_TITLE = "Ichiran ramen"
+SIXTY_SECONDS = timedelta(seconds=60)
+ONE_SECOND = timedelta(seconds=1)
+FOOTER = "Tell me notes or takeaways any time."
+RATING_LABELS = ["⭐1", "⭐2", "⭐3", "⭐4", "⭐5"]
+KEEP_LABELS = ["Keep 📚", "Not keeping"]
+
+
+def filed_confirmation(rig: CaptureRig) -> tuple[Item, Reply]:
+    result = rig.pipeline.handle(a_message())
+    assert isinstance(result, Filed)
+    return result.item, reply_for(result)
+
+
+def pressed(rig: CaptureRig, reply: Reply, label: str) -> Reply:
+    answer = rig.fixes.apply(button_data(reply, label))
+    assert isinstance(answer, Reply)
+    return answer
+
+
+def test_pressing_done_on_a_filed_item_completes_it_once_and_offers_a_rating_and_keep() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    item, confirmation = filed_confirmation(rig)
+
+    # Execute
+    reply = pressed(rig, confirmation, "Done ✓")
+
+    # Assert
+    assert (
+        fetched_item(rig.store, item.id).stage,
+        len(rig.store.outcomes_for(item.id)),
+        reply.text,
+        button_labels(reply.buttons),
+    ) == (
+        Stage.DONE,
+        1,
+        f"🎉 Done: {FILED_TITLE}\n{FOOTER}",
+        [RATING_LABELS, KEEP_LABELS],
+    )
+
+
+def test_pressing_a_star_rating_rates_the_outcome_and_keeps_only_the_keep_row() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    item, confirmation = filed_confirmation(rig)
+    done = pressed(rig, confirmation, "Done ✓")
+
+    # Execute
+    reply = pressed(rig, done, "⭐4")
+
+    # Assert
+    [outcome] = rig.store.outcomes_for(item.id)
+    assert (outcome.rating, reply.text, button_labels(reply.buttons)) == (
+        4,
+        f"🎉 Done: {FILED_TITLE} · ⭐4",
+        [KEEP_LABELS],
+    )
+
+
+def test_pressing_keep_keeps_the_item_and_answers_that_it_is_kept() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    item, confirmation = filed_confirmation(rig)
+    done = pressed(rig, confirmation, "Done ✓")
+
+    # Execute
+    reply = pressed(rig, done, "Keep 📚")
+
+    # Assert
+    kept = rig.store.get_item(item.id)
+    assert (kept and kept.kept, reply.text) == (True, f"📚 Kept: {FILED_TITLE}")
+
+
+def test_pressing_done_a_minute_later_records_a_second_outcome_and_answers_again() -> None:
+    # Setup
+    clock = SettableClock()
+    rig = build_rig(answer=a_filing_answer(), clock=clock)
+    item, confirmation = filed_confirmation(rig)
+    pressed(rig, confirmation, "Done ✓")
+    [first] = rig.store.outcomes_for(item.id)
+    clock.advance(SIXTY_SECONDS)
+
+    # Execute
+    reply = pressed(rig, confirmation, "Done ✓")
+
+    # Assert
+    outcomes = rig.store.outcomes_for(item.id)
+    assert first in outcomes
+    assert len(outcomes) == 2
+    assert reply.text.splitlines()[0] == f"🎉 Done: {FILED_TITLE} (again)"
+
+
+def test_pressing_done_twice_within_a_minute_records_one_outcome_and_answers_the_same() -> None:
+    # Setup
+    clock = SettableClock()
+    rig = build_rig(answer=a_filing_answer(), clock=clock)
+    item, confirmation = filed_confirmation(rig)
+    first = pressed(rig, confirmation, "Done ✓")
+    clock.advance(SIXTY_SECONDS - ONE_SECOND)
+
+    # Execute
+    reply = pressed(rig, confirmation, "Done ✓")
+
+    # Assert
+    assert len(rig.store.outcomes_for(item.id)) == 1
+    assert reply == first

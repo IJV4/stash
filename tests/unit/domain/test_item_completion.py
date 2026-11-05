@@ -9,6 +9,23 @@ from builders import (
 from stash.domain.item import Stage
 
 
+def test_an_item_in_the_done_stage_is_done() -> None:
+    # Setup
+    item = an_item_at(Stage.DONE)
+
+    # Execute / Assert
+    assert item.is_done
+
+
+@pytest.mark.parametrize("stage", NON_DONE_STAGES)
+def test_an_item_in_any_other_stage_is_not_done(stage: Stage) -> None:
+    # Setup
+    item = an_item_at(stage)
+
+    # Execute / Assert
+    assert not item.is_done
+
+
 @pytest.mark.parametrize("stage", NON_DONE_STAGES)
 def test_completed_moves_the_item_to_done_from_every_other_stage(stage: Stage) -> None:
     # Setup

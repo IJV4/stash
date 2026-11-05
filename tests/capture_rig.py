@@ -1,5 +1,6 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 
 from builders import BASE
 from capture_builders import sequential_ids
@@ -10,12 +11,25 @@ from fakes.memory_store import MemoryStore
 from fakes.recording_chat_model import RecordingChatModel
 from fakes.scripted_chat_model import ScriptedChatModel
 from filing_rig import build_filer
+from lifecycle_rig import a_lifecycle
+from log_records import recording_logs
 
 from stash.capture import BurstCoalescer, CapturePipeline, FixHandler
 from stash.enrich.links import LinkInfo
 from stash.llm import LlmError
 
 BURST_WINDOW_SECONDS = 5.0
+CAPTURE_LOGGER = "stash.capture"
+
+
+def a_fix_handler(store: MemoryStore, clock: Callable[[], datetime] = lambda: BASE) -> FixHandler:
+    return FixHandler(store, a_lifecycle(store, clock), clock)
+
+
+def logged_by_applying(store: MemoryStore, data: str) -> list[tuple[int, str]]:
+    with recording_logs(CAPTURE_LOGGER) as recorder:
+        a_fix_handler(store).apply(data)
+    return recorder.entries()
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +59,7 @@ def build_rig(
     error: LlmError | None = None,
     links: Mapping[str, LinkInfo] | None = None,
     outcomes: Sequence[Mapping[str, object] | LlmError] | None = None,
+    clock: Callable[[], datetime] = lambda: BASE,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
@@ -56,7 +71,6 @@ def build_rig(
         else ScriptedChatModel(outcomes)
     )
     busy = FakeBusy()
-    clock = lambda: BASE  # noqa: E731
     return CaptureRig(
         store=store,
         inspector=inspector,
@@ -65,6 +79,6 @@ def build_rig(
         pipeline=CapturePipeline(
             store, inspector, build_filer(model, busy, clock), sequential_ids(), clock
         ),
-        fixes=FixHandler(store, clock),
+        fixes=a_fix_handler(store, clock),
         bursts=BurstCoalescer(BURST_WINDOW_SECONDS),
     )

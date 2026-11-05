@@ -1,9 +1,9 @@
 import sqlite3
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from builders import a_capture
+from builders import a_capture, fetched_item
 from capture_builders import a_message
 from cli_rig import LATE_EVENING_IN_LOS_ANGELES, NOON, CliRig, build_cli_rig
 from fakes.search_path import FakeSearchPath
@@ -14,7 +14,7 @@ from stash.capture import Deferred, SerializedPipeline
 from stash.capture.callbacks import FixAction, FixKind
 from stash.config import ConfigError, StashConfig
 from stash.config.loader import load_config
-from stash.domain import ItemType
+from stash.domain import ItemType, Stage
 from stash.evaluation import NoOcr
 from stash.evaluation.tesseract import TesseractOcr
 
@@ -130,6 +130,44 @@ def test_the_fix_handler_edits_items_in_the_apps_store_stamped_with_the_apps_clo
     edited = app.store.get_item(item.id)
     assert edited is not None
     assert (edited.item_type, edited.updated_at) == (ItemType.BOOK, rig.now)
+    app.close()
+
+
+def test_the_fix_handler_completes_items_in_the_apps_store_stamped_with_the_apps_clock(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    app = built(rig)
+    app.pipeline.handle(a_message("Ichiran ramen in Fukuoka", received_at=rig.now))
+    item = app.store.list_items()[0]
+    rig.now = NOON + timedelta(hours=1)
+
+    # Execute
+    app.fixes.apply(FixAction(FixKind.DONE, item.id).encode())
+
+    # Assert
+    [outcome] = app.store.outcomes_for(item.id)
+    assert (fetched_item(app.store, item.id).stage, outcome.recorded_at) == (Stage.DONE, rig.now)
+    app.close()
+
+
+def test_the_fix_handler_files_completion_outcomes_under_the_configured_timezone(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    app = built(rig)
+    app.pipeline.handle(a_message("Ichiran ramen in Fukuoka", received_at=rig.now))
+    item = app.store.list_items()[0]
+    rig.now = LATE_EVENING_IN_LOS_ANGELES
+
+    # Execute
+    app.fixes.apply(FixAction(FixKind.DONE, item.id).encode())
+
+    # Assert
+    [outcome] = app.store.outcomes_for(item.id)
+    assert outcome.completed_on == date(2026, 11, 2)
     app.close()
 
 

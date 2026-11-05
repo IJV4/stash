@@ -2,8 +2,9 @@ from typing import Protocol
 
 from stash.capture.message import IncomingMessage
 from stash.capture.results import ProcessResult
-from stash.domain import CaptureStatus, Filing, Item, RawCapture
+from stash.domain import CaptureStatus, Filing, Item, Outcome, RawCapture
 from stash.enrich.links import LinkInfo
+from stash.lifecycle.results import Completion, ItemHistory
 
 
 class IntakeStore(Protocol):
@@ -28,6 +29,16 @@ class FixStore(Protocol):
     def get_capture(self, capture_id: str) -> RawCapture | None: ...
 
     def set_capture_status(self, capture_id: str, status: CaptureStatus) -> None: ...
+
+
+class LifecycleActions(Protocol):
+    def complete(self, item_id: str) -> Completion: ...
+
+    def rate(self, outcome_id: str, rating: int) -> Outcome: ...
+
+    def keep(self, item_id: str, kept: bool) -> Item: ...
+
+    def history(self, item_id: str) -> ItemHistory: ...
 
 
 class CaptureFiler(Protocol):

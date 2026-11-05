@@ -25,13 +25,15 @@ from stash.domain.item import (
     derive_title,
     lacks_required_date,
 )
-from stash.domain.outcome import Outcome
+from stash.domain.outcome import MAX_RATING, MIN_RATING, Outcome
 
 __all__ = [
     "DETAIL_KEY_LIMIT",
     "DETAIL_VALUE_LIMIT",
     "GROUPS_ONE_LEVEL_DEEP",
     "MAX_DETAILS",
+    "MAX_RATING",
+    "MIN_RATING",
     "CaptureStatus",
     "Filing",
     "Item",

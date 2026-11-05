@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 
+from stash.domain import MAX_RATING, MIN_RATING
 from stash.domain.wire import SEPARATOR, is_wire_safe
 
 TELEGRAM_CALLBACK_LIMIT = 64
@@ -15,10 +17,31 @@ class FixKind(StrEnum):
     SET_TYPE = "T"
     SET_STAGE = "S"
     QUESTION = "q"
+    DONE = "d"
+    RATE = "r"
+    KEEP = "k"
 
     @property
     def takes_argument(self) -> bool:
-        return self in (FixKind.SET_TYPE, FixKind.SET_STAGE)
+        return self in (FixKind.SET_TYPE, FixKind.SET_STAGE, FixKind.RATE, FixKind.KEEP)
+
+
+class KeepChoice(StrEnum):
+    KEEP = "1"
+    NOT_KEEPING = "0"
+
+    @property
+    def kept(self) -> bool:
+        return self is KeepChoice.KEEP
+
+
+RATING_ARGUMENTS = MappingProxyType[str, int](
+    {str(rating): rating for rating in range(MIN_RATING, MAX_RATING + 1)}
+)
+
+
+def rating_for(argument: str | None) -> int | None:
+    return None if argument is None else RATING_ARGUMENTS.get(argument)
 
 
 @dataclass(frozen=True, slots=True)

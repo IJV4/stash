@@ -1,19 +1,19 @@
 import logging
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
 from typing import assert_never
 
+from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import FixAction, FixKind
+from stash.capture.completion_buttons import CompletionButtons
 from stash.capture.menus import stage_menu, type_menu
-from stash.capture.ports import FixStore
+from stash.capture.ports import FixStore, LifecycleActions
 from stash.capture.replies import Reply, confirmation, gone
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
 
 logger = logging.getLogger(__name__)
-
-MAX_LOGGED_CALLBACK_CHARS = 64
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,14 +22,23 @@ class Reroute:
 
 
 class FixHandler:
-    def __init__(self, store: FixStore, clock: Callable[[], datetime]) -> None:
+    def __init__(
+        self, store: FixStore, lifecycle: LifecycleActions, clock: Callable[[], datetime]
+    ) -> None:
         self._store = store
+        self._log = CallbackLog(logger)
+        self._completion = CompletionButtons(store, lifecycle, self._log, clock)
         self._clock = clock
+        self._lock = threading.Lock()
 
     def apply(self, data: str) -> Reply | Reroute:
+        with self._lock:
+            return self._apply(data)
+
+    def _apply(self, data: str) -> Reply | Reroute:
         action = FixAction.parse(data)
         if action is None:
-            logger.warning("unparseable fix callback: %r", _logged(data))
+            self._log.unparseable(data)
             return gone()
         match action.kind:
             case FixKind.QUESTION:
@@ -46,20 +55,26 @@ class FixHandler:
                 return self._for_item(
                     action.subject_id, lambda item: self._move(item, action.argument)
                 )
+            case FixKind.DONE:
+                return self._completion.done(action.subject_id)
+            case FixKind.RATE:
+                return self._completion.rate(action.subject_id, action.argument)
+            case FixKind.KEEP:
+                return self._completion.keep(action.subject_id, action.argument)
             case _:
                 assert_never(action.kind)
 
     def _for_item(self, item_id: str, handle: Callable[[Item], Reply]) -> Reply:
         item = self._store.get_item(item_id)
         if item is None:
-            logger.info("fix callback for unknown item %s", _logged(item_id))
+            self._log.unknown(Subject.ITEM, item_id)
             return gone()
         return handle(item)
 
     def _retype(self, item: Item, argument: str | None) -> Reply:
         item_type = enum_member(ItemType, argument)
         if item_type is None:
-            _log_invalid(item, ItemType, argument)
+            self._log.invalid(Subject.ITEM, item.id, ItemType.__name__, argument)
             return gone()
         updated = item.retyped(item_type, self._clock())
         self._store.save_item(updated)
@@ -68,7 +83,7 @@ class FixHandler:
     def _move(self, item: Item, argument: str | None) -> Reply:
         stage = enum_member(Stage, argument)
         if stage is None:
-            _log_invalid(item, Stage, argument)
+            self._log.invalid(Subject.ITEM, item.id, Stage.__name__, argument)
             return stage_menu(item)
         if not item.can_move_to(stage):
             return stage_menu(item)
@@ -79,19 +94,9 @@ class FixHandler:
     def _question(self, capture_id: str) -> Reply | Reroute:
         capture = self._store.get_capture(capture_id)
         if capture is None or self._store.get_item(capture.item_id) is None:
-            logger.info("fix callback for unknown capture %s", _logged(capture_id))
+            self._log.unknown(Subject.CAPTURE, capture_id)
             return gone()
         self._store.set_capture_status(capture.id, CaptureStatus.REQUEST)
         self._store.delete_item(capture.item_id)
         logger.info("capture %s rerouted as a question", capture.id)
         return Reroute(capture.text)
-
-
-def _logged(value: str | None) -> str | None:
-    return None if value is None else value[:MAX_LOGGED_CALLBACK_CHARS]
-
-
-def _log_invalid(item: Item, kind: type[StrEnum], value: str | None) -> None:
-    logger.warning(
-        "fix callback for item %s has an invalid %s %r", item.id, kind.__name__, _logged(value)
-    )

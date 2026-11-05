@@ -2,14 +2,15 @@ import asyncio
 import logging
 import threading
 
-from builders import BASE, a_capture
+from builders import a_capture
 from capture_builders import store_with_filed_item
+from capture_rig import a_fix_handler
 from fakes.asked_assistant import AskedAssistant
 from fakes.edit_recording_outbox import EditFailed, EditRecordingOutbox
 from fakes.scripted_fixes import ScriptedFixes
 from log_records import recording_logs
 
-from stash.capture import FixHandler, type_menu
+from stash.capture import type_menu
 from stash.hermes_adapter.callbacks import CallbackPress, FixCallbacks
 from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.owners import Owners
@@ -29,7 +30,7 @@ class Harness:
         self, apply_failure: Exception | None = None, edit_failure: Exception | None = None
     ) -> None:
         self.store, self.item = store_with_filed_item()
-        self.fixes = ScriptedFixes(FixHandler(self.store, lambda: BASE), apply_failure)
+        self.fixes = ScriptedFixes(a_fix_handler(self.store), apply_failure)
         self.outbox = EditRecordingOutbox(edit_failure)
         self.assistant = AskedAssistant()
         self.callbacks = FixCallbacks(

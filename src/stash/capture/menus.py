@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from stash.capture.callbacks import FixAction, FixKind
-from stash.capture.replies import Button, Reply
+from stash.capture.replies import Button, Reply, done_rows
 from stash.domain import Item, ItemType
 
 TYPE_MENU_TEXT = "Pick a type:"
@@ -23,7 +23,7 @@ def stage_menu(item: Item) -> Reply:
         Button(stage.label, FixAction(FixKind.SET_STAGE, item.id, stage.value).encode())
         for stage in item.moveable_stages()
     ]
-    return Reply(STAGE_MENU_TEXT, _rows(buttons, STAGE_ROW_WIDTH))
+    return Reply(STAGE_MENU_TEXT, (*_rows(buttons, STAGE_ROW_WIDTH), *done_rows(item)))
 
 
 def _rows(buttons: Sequence[Button], width: int) -> tuple[tuple[Button, ...], ...]:

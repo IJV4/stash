@@ -66,12 +66,15 @@ def test_a_confirmation_without_any_detail_has_no_detail_segment() -> None:
     assert reply.text == "✅ Ideas · Want to"
 
 
-def test_a_sure_confirmation_offers_only_the_type_and_stage_buttons() -> None:
+def test_a_sure_confirmation_offers_the_type_and_stage_buttons_then_done() -> None:
     # Execute
     reply = confirmation(a_placed_item(), unsure=False)
 
     # Assert
-    assert reply.buttons == ((Button("Type", "stash:t:i1"), Button("Stage", "stash:s:i1")),)
+    assert reply.buttons == (
+        (Button("Type", "stash:t:i1"), Button("Stage", "stash:s:i1")),
+        (Button("Done ✓", "stash:d:i1"),),
+    )
 
 
 def test_an_unsure_confirmation_adds_a_that_was_a_question_row_for_the_capture() -> None:
@@ -79,7 +82,7 @@ def test_an_unsure_confirmation_adds_a_that_was_a_question_row_for_the_capture()
     reply = confirmation(a_placed_item(), unsure=True)
 
     # Assert
-    assert reply.buttons[1:] == ((Button("That was a question →", "stash:q:c1"),),)
+    assert reply.buttons[2:] == ((Button("That was a question →", "stash:q:c1"),),)
 
 
 @pytest.mark.parametrize(

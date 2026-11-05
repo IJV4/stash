@@ -1,15 +1,16 @@
 import logging
 
 import pytest
-from builders import BASE, LATER, minutes_after
+from builders import LATER, minutes_after
 from capture_builders import a_message, a_pipeline
+from capture_rig import a_fix_handler
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.failing_status_store import FailingStatusStore, StatusWriteFailed
 from fakes.link_inspector import FakeLinkInspector
 from fakes.memory_store import MemoryStore
 from log_records import recording_logs
 
-from stash.capture import Filed, FixHandler
+from stash.capture import Filed
 from stash.domain import CaptureStatus, ItemType
 
 PIPELINE_LOGGER = "stash.capture.pipeline"
@@ -131,7 +132,7 @@ def test_a_retry_does_not_overwrite_a_type_corrected_after_the_status_write_fail
     # Setup
     store, filer = failed_status_write_then_fixed_item()
     saved = store.list_items()[0]
-    FixHandler(store, lambda: BASE).apply(f"stash:T:{saved.id}:recipe")
+    a_fix_handler(store).apply(f"stash:T:{saved.id}:recipe")
 
     # Execute
     a_pipeline(store, FakeLinkInspector(), filer).retry_pending()

@@ -10,6 +10,8 @@ from stash.domain import Item, derive_title
 TELEGRAM_TEXT_LIMIT = 4096
 DETAIL_KEYS = ("city", "author", "platform")
 GONE_TEXT = "That item no longer exists."
+REFUSED_TEXT = "I can't do that: {message}"
+DONE_LABEL = "Done ✓"
 DEFERRED_TEXT = MappingProxyType[DeferralReason, str](
     {
         "gpu_busy": "📥 Saved — I'll file it when the GPU is free.",
@@ -51,10 +53,17 @@ def confirmation(item: Item, unsure: bool) -> Reply:
             Button("Stage", FixAction(FixKind.STAGE_MENU, item.id).encode()),
         )
     ]
+    rows.extend(done_rows(item))
     if unsure:
         question = FixAction(FixKind.QUESTION, item.capture_id).encode()
         rows.append((Button("That was a question →", question),))
     return Reply("✅ " + " · ".join(segments), tuple(rows))
+
+
+def done_rows(item: Item) -> tuple[tuple[Button, ...], ...]:
+    if item.is_done:
+        return ()
+    return ((Button(DONE_LABEL, FixAction(FixKind.DONE, item.id).encode()),),)
 
 
 def deferred(reason: DeferralReason) -> Reply:
@@ -63,6 +72,10 @@ def deferred(reason: DeferralReason) -> Reply:
 
 def gone() -> Reply:
     return Reply(GONE_TEXT)
+
+
+def refused(message: str) -> Reply:
+    return Reply(REFUSED_TEXT.format(message=message))
 
 
 def reply_for(result: Filed | Deferred) -> Reply:

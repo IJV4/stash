@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from builders import a_capture, a_source
+from capture_rig import a_fix_handler
 from config_builders import a_stash_config
 from fakes.backup_source import FakeBackupSource
 from fakes.busy import FakeBusy
@@ -15,7 +16,7 @@ from gate_rig import a_gate, a_sample
 from router_builders import default_thinking_models
 
 from stash.app import StashApp
-from stash.capture import BurstCoalescer, FixHandler
+from stash.capture import BurstCoalescer
 from stash.config import ProviderName, Thinking
 from stash.doctor import Doctor
 from stash.domain import Item
@@ -43,7 +44,7 @@ def an_app(**overrides: Any) -> StashApp:
         "config": config,
         "store": store,
         "pipeline": PendingIntake(),
-        "fixes": FixHandler(store, lambda: NOON),
+        "fixes": a_fix_handler(store, lambda: NOON),
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),
         "router": ModelRouter(

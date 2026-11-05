@@ -202,12 +202,12 @@ class Item:
         return replace(self, stage=stage, drop_reason=drop_reason, updated_at=now)
 
     def completed(self, now: dt.datetime) -> "Item":
-        if self.stage is Stage.DONE:
+        if self.is_done:
             raise ValueError("item is already done")
         return self.moved_to(Stage.DONE, now)
 
     def reopened(self, now: dt.datetime) -> "Item":
-        if self.stage is not Stage.DONE:
+        if not self.is_done:
             raise ValueError("only done items can be reopened")
         return self.moved_to(Stage.WANT_TO, now)
 
@@ -216,7 +216,7 @@ class Item:
 
     def kept_as(self, kept: bool, now: dt.datetime) -> "Item":
         # Unkeeping is allowed at any stage: a reopened item stays kept until unkept
-        if kept and self.stage is not Stage.DONE:
+        if kept and not self.is_done:
             raise ValueError("only done items can be kept")
         return replace(self, kept=kept, updated_at=now)
 
@@ -227,6 +227,10 @@ class Item:
 
     def ungrouped(self, now: dt.datetime) -> "Item":
         return replace(self, parent_id=None, updated_at=now)
+
+    @property
+    def is_done(self) -> bool:
+        return self.stage is Stage.DONE
 
     @property
     def in_library(self) -> bool:

@@ -27,7 +27,11 @@ def test_sharing_a_link_replies_with_a_confirmation_and_files_the_item_with_the_
     # Assert
     [item] = rig.store.list_items()
     assert reply.text == "✅ Places · Tokyo · Want to"
-    assert [button.label for row in reply.buttons for button in row] == ["Type", "Stage"]
+    assert [button.label for row in reply.buttons for button in row] == [
+        "Type",
+        "Stage",
+        "Done ✓",
+    ]
     assert item.stage is Stage.WANT_TO
     assert item.source_url == RAMEN_URL
     assert item.note == text

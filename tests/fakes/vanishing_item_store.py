@@ -8,12 +8,16 @@ class VanishingItemStore(MemoryStore):
         super().__init__()
         self._vanishing_items: set[str] = set()
         self._vanishing_outcomes: set[str] = set()
+        self._vanishing_after_saving: set[str] = set()
 
     def vanish_after_reading_item(self, item_id: str) -> None:
         self._vanishing_items.add(item_id)
 
     def vanish_item_after_reading_outcome(self, outcome_id: str) -> None:
         self._vanishing_outcomes.add(outcome_id)
+
+    def vanish_item_after_saving_outcome(self, outcome_id: str) -> None:
+        self._vanishing_after_saving.add(outcome_id)
 
     def get_item(self, item_id: str) -> Item | None:
         item = super().get_item(item_id)
@@ -28,3 +32,9 @@ class VanishingItemStore(MemoryStore):
             self._vanishing_outcomes.discard(outcome_id)
             self.delete_item(outcome.item_id)
         return outcome
+
+    def save_outcome(self, outcome: Outcome) -> None:
+        super().save_outcome(outcome)
+        if outcome.id in self._vanishing_after_saving:
+            self._vanishing_after_saving.discard(outcome.id)
+            self.delete_item(outcome.item_id)
