@@ -3,7 +3,7 @@ from collections import Counter
 from eval_files import SHIPPED_CASES, SHIPPED_IMAGES
 
 from stash.domain import Route
-from stash.evaluation import CaseKind, EvalCase, load_cases
+from stash.evaluation import CaseKind, EvalCase, EvalField, load_cases
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -12,9 +12,9 @@ def shipped_cases() -> list[EvalCase]:
     return load_cases(SHIPPED_CASES)
 
 
-def test_the_shipped_cases_file_holds_twenty_five_cases() -> None:
+def test_the_shipped_cases_file_holds_thirty_one_cases() -> None:
     # Execute / Assert
-    assert len(shipped_cases()) == 25
+    assert len(shipped_cases()) == 31
 
 
 def test_the_shipped_case_ids_are_unique() -> None:
@@ -25,28 +25,36 @@ def test_the_shipped_case_ids_are_unique() -> None:
     assert len(set(ids)) == len(ids)
 
 
+def is_text_filing(case: EvalCase) -> bool:
+    return case.kind is CaseKind.TEXT and case.expect.scored_fields() != {EvalField.ROUTE}
+
+
+def is_text_routing(case: EvalCase) -> bool:
+    return case.kind is CaseKind.TEXT and case.expect.scored_fields() == {EvalField.ROUTE}
+
+
 def test_seventeen_shipped_text_cases_are_filings() -> None:
     # Execute
-    filings = [
-        case
-        for case in shipped_cases()
-        if case.kind is CaseKind.TEXT and case.expect.route is Route.CAPTURE
-    ]
+    filings = [case for case in shipped_cases() if is_text_filing(case)]
 
     # Assert
     assert len(filings) == 17
 
 
-def test_five_shipped_text_cases_are_routing_questions_three_requests_and_two_unsure() -> None:
+def test_eleven_shipped_text_cases_are_routing_cases_scored_on_route_only() -> None:
     # Execute
-    routes = Counter(
-        case.expect.route
-        for case in shipped_cases()
-        if case.kind is CaseKind.TEXT and case.expect.route is not Route.CAPTURE
-    )
+    routing = [case for case in shipped_cases() if is_text_routing(case)]
 
     # Assert
-    assert routes == {Route.REQUEST: 3, Route.UNSURE: 2}
+    assert len(routing) == 11
+
+
+def test_the_shipped_routing_cases_expect_seven_requests_two_unsure_and_two_captures() -> None:
+    # Execute
+    routes = Counter(case.expect.route for case in shipped_cases() if is_text_routing(case))
+
+    # Assert
+    assert routes == {Route.REQUEST: 7, Route.UNSURE: 2, Route.CAPTURE: 2}
 
 
 def test_three_shipped_cases_are_images() -> None:

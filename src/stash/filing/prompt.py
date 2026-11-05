@@ -36,8 +36,12 @@ def _system_prompt() -> str:
         f"{Stage.PLANNED.value} only with an explicit date, resolved against today, "
         "as YYYY-MM-DD.\n"
         "Routes:\n"
-        f"- {Route.CAPTURE.value}: something to remember or do.\n"
-        f"- {Route.REQUEST.value}: asks the assistant to answer, suggest, list or find.\n"
+        f"- {Route.CAPTURE.value}: something to remember or do; "
+        f"a new thing stays a {Route.CAPTURE.value} even if it mentions finishing something else.\n"
+        f"- {Route.REQUEST.value}: asks the assistant to answer, suggest, list or find, "
+        'or reports progress on something already saved ("I finished…", '
+        '"we went to… it was great", "takeaways from…"), never a new '
+        f"{Route.CAPTURE.value}.\n"
         f"- {Route.UNSURE.value}: ambiguous. When unsure, choose {Route.UNSURE.value}.\n"
         "Details: use the key city for places, author for books, "
         "platform for media and links. Keep details, tags and people short.\n"

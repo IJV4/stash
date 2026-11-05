@@ -58,7 +58,7 @@ def test_comparing_two_models_on_every_arm_prints_one_table_per_arm_with_its_cas
 
     # Assert
     assert arm_headings(report) == [
-        "### text arm (22 cases)",
+        "### text arm (28 cases)",
         "### vision arm (3 cases)",
         "### ocr arm (3 cases)",
     ]
