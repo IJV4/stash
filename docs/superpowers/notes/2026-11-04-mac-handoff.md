@@ -5,6 +5,18 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-04, link inspection (#9) works, with one gap.** Instagram, YouTube, a web article and a
+  `localhost` link all went through the live bot; `localhost` is refused by `stash.enrich.html_meta`
+  ("page fetch skipped a non-public link"). Gap: uploader and duration are given to the model but are
+  stored only if the model writes them into `details` (YouTube omitted both). Save the link's title,
+  uploader and duration deterministically in the item. Link filing took 62-82 s with thinking on.
+- **2026-11-04, stash is not safe against a plugin hot-reload.** After any `hermes plugins enable/disable`
+  on a running gateway, Hermes re-runs `register()` but skips the Telegram handler factory (it dedupes
+  by plugin and function qualname), so the new `LateBoundOutbox` is never bound and every reply fails
+  with `OutboxUnavailable` until a gateway restart. Fix in the adapter: keep the outbox (and callbacks)
+  in state that survives re-registration, e.g. module-level singletons that `register()` reuses, or
+  re-bind from `register()` as well as from the factory. Add a test that calls `register_plugin` twice
+  on one context and checks that sends still work. ADR 0001, "stash breaks after a plugin hot-reload".
 - **2026-11-04, answer for Plan 3 Task 6 (ticker).** Use the plan's in-process `Ticker`, started from the
   platform-handler factory via `ctx.spawn_task` (verified live: running loop, supervised task survives).
   Requirements: (1) a **once-only guard**, because Hermes re-runs the factory on every rebuilt Telegram
