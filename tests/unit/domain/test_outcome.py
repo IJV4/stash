@@ -309,24 +309,20 @@ def test_an_outcome_with_naive_edited_at_raises_value_error() -> None:
         an_outcome(edited_at=NAIVE)
 
 
-def test_an_outcome_edited_before_it_was_recorded_raises_value_error() -> None:
-    # Execute / Assert
-    with pytest.raises(ValueError, match="edited_at must not be before recorded_at"):
-        an_outcome(recorded_at=LATER, edited_at=BASE)
-
-
-def test_an_outcome_edited_at_the_instant_it_was_recorded_is_accepted() -> None:
+def test_an_outcome_edited_before_it_was_recorded_is_accepted() -> None:
     # Execute
-    outcome = an_outcome(recorded_at=BASE, edited_at=BASE)
+    outcome = an_outcome(recorded_at=LATER, edited_at=BASE)
 
     # Assert
     assert outcome.edited_at == BASE
 
 
-def test_with_notes_dated_before_the_outcome_was_recorded_raises_value_error() -> None:
+def test_with_notes_dated_before_the_outcome_was_recorded_is_accepted() -> None:
     # Setup
     outcome = an_outcome(recorded_at=LATER)
 
-    # Execute / Assert
-    with pytest.raises(ValueError, match="edited_at must not be before recorded_at"):
-        outcome.with_notes("Better", (), BASE)
+    # Execute
+    edited = outcome.with_notes("Better", (), BASE)
+
+    # Assert
+    assert edited.edited_at == BASE

@@ -24,6 +24,9 @@ EARLIER_INSTANT_LATER_WALL_CLOCK = BASE.astimezone(PLUS_FIVE) - timedelta(minute
 PLANNED_FOR = date(2026, 11, 14)
 COMPLETED_ON = date(2026, 11, 2)
 NON_DONE_STAGES = tuple(stage for stage in Stage if stage is not Stage.DONE)
+BARE_STRING_TAKEAWAYS: Any = "Fear"
+BARE_STRING_REFUSAL = "separate items"
+NONE_TAKEAWAYS: Any = None
 
 
 def chat_body(content: str) -> dict[str, object]:
@@ -147,6 +150,18 @@ def stored(store: Store, item: Item) -> Item:
 
 def stored_item(store: Store, **overrides: Any) -> Item:
     return stored(store, an_item(**overrides))
+
+
+def fetched_item(store: Store, item_id: str) -> Item:
+    item = store.get_item(item_id)
+    assert item is not None
+    return item
+
+
+def fetched_outcome(store: Store, outcome_id: str) -> Outcome:
+    outcome = store.get_outcome(outcome_id)
+    assert outcome is not None
+    return outcome
 
 
 def stored_parent(store: Store) -> Item:

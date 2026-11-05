@@ -16,6 +16,7 @@ from stash.domain.failure import describe_failure
 from stash.domain.item import (
     DETAIL_KEY_LIMIT,
     DETAIL_VALUE_LIMIT,
+    GROUPS_ONE_LEVEL_DEEP,
     MAX_DETAILS,
     Filing,
     Item,
@@ -29,6 +30,7 @@ from stash.domain.outcome import Outcome
 __all__ = [
     "DETAIL_KEY_LIMIT",
     "DETAIL_VALUE_LIMIT",
+    "GROUPS_ONE_LEVEL_DEEP",
     "MAX_DETAILS",
     "CaptureStatus",
     "Filing",

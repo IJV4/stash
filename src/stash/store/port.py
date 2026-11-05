@@ -12,7 +12,9 @@ class UnknownCaptureError(Exception):
 
 
 class UnknownItemError(Exception):
-    pass
+    def __init__(self, item_id: str) -> None:
+        super().__init__(item_id)
+        self.item_id = item_id
 
 
 class DuplicateOutcomeError(ValueError):

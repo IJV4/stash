@@ -1,7 +1,7 @@
 import pytest
 from builders import COMPLETED_ON, an_item, an_outcome, days_after
 
-from stash.store import DuplicateOutcomeError
+from stash.store import DuplicateOutcomeError, UnknownItemError
 from stash.store.port import require_date_range, require_outcome_for_item
 
 
@@ -46,3 +46,19 @@ def test_a_duplicate_outcome_error_is_a_value_error() -> None:
 
     # Assert
     assert isinstance(error, ValueError)
+
+
+def test_an_unknown_item_error_carries_the_item_id() -> None:
+    # Execute
+    error = UnknownItemError("i7")
+
+    # Assert
+    assert error.item_id == "i7"
+
+
+def test_an_unknown_item_error_still_reads_as_the_item_id() -> None:
+    # Execute
+    error = UnknownItemError("i7")
+
+    # Assert
+    assert str(error) == "i7"

@@ -10,8 +10,6 @@ from fakes.store_factories import StoreFactory, all_stores
 
 from stash.domain import Stage
 
-DEFAULT_PAGE = 20
-
 
 @all_stores
 def test_done_between_lists_an_item_done_on_the_start_day(open_store: StoreFactory) -> None:

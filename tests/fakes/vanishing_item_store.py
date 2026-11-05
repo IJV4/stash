@@ -1,0 +1,30 @@
+from fakes.memory_store import MemoryStore
+
+from stash.domain import Item, Outcome
+
+
+class VanishingItemStore(MemoryStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self._vanishing_items: set[str] = set()
+        self._vanishing_outcomes: set[str] = set()
+
+    def vanish_after_reading_item(self, item_id: str) -> None:
+        self._vanishing_items.add(item_id)
+
+    def vanish_item_after_reading_outcome(self, outcome_id: str) -> None:
+        self._vanishing_outcomes.add(outcome_id)
+
+    def get_item(self, item_id: str) -> Item | None:
+        item = super().get_item(item_id)
+        if item_id in self._vanishing_items:
+            self._vanishing_items.discard(item_id)
+            self.delete_item(item_id)
+        return item
+
+    def get_outcome(self, outcome_id: str) -> Outcome | None:
+        outcome = super().get_outcome(outcome_id)
+        if outcome is not None and outcome_id in self._vanishing_outcomes:
+            self._vanishing_outcomes.discard(outcome_id)
+            self.delete_item(outcome.item_id)
+        return outcome

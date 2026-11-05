@@ -73,6 +73,21 @@ def test_an_outcome_with_non_utc_timestamps_reads_back_at_the_same_instants(
 
 
 @all_stores
+def test_an_outcome_edited_before_it_was_recorded_round_trips(open_store: StoreFactory) -> None:
+    # Setup
+    with open_store() as store:
+        stored_item(store)
+        outcome = an_outcome(recorded_at=LATER, edited_at=BASE)
+        store.add_outcome(outcome)
+
+        # Execute
+        found = store.get_outcome(outcome.id)
+
+        # Assert
+        assert found == outcome
+
+
+@all_stores
 def test_get_outcome_of_an_unknown_id_returns_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

@@ -15,7 +15,6 @@ MAX_TAKEAWAYS = 20
 TAKEAWAY_LIMIT = 500
 MIN_RATING = 1
 MAX_RATING = 5
-EDITED_BEFORE_RECORDED = "edited_at must not be before recorded_at"
 
 
 def _require_takeaways(takeaways: tuple[str, ...]) -> None:
@@ -24,16 +23,6 @@ def _require_takeaways(takeaways: tuple[str, ...]) -> None:
     for takeaway in takeaways:
         require_text("takeaway", takeaway)
         require_max_length("takeaway", takeaway, TAKEAWAY_LIMIT)
-
-
-def _require_edit_follows_recording(
-    recorded_at: dt.datetime, edited_at: dt.datetime | None
-) -> None:
-    if edited_at is None:
-        return
-    require_aware("edited_at", edited_at)
-    if edited_at < recorded_at:
-        raise ValueError(EDITED_BEFORE_RECORDED)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +41,8 @@ class Outcome:
         require_wire_safe_id("outcome item id", self.item_id)
         require_plain_date("completed_on", self.completed_on)
         require_aware("recorded_at", self.recorded_at)
-        _require_edit_follows_recording(self.recorded_at, self.edited_at)
+        if self.edited_at is not None:
+            require_aware("edited_at", self.edited_at)
         if self.rating is not None and not MIN_RATING <= self.rating <= MAX_RATING:
             raise ValueError(f"rating must be between {MIN_RATING} and {MAX_RATING}")
         require_max_length("notes", self.notes, OUTCOME_NOTES_LIMIT)
@@ -61,3 +51,6 @@ class Outcome:
 
     def with_notes(self, notes: str, takeaways: tuple[str, ...], now: dt.datetime) -> "Outcome":
         return replace(self, notes=notes, takeaways=takeaways, edited_at=now)
+
+    def with_rating(self, rating: int, now: dt.datetime) -> "Outcome":
+        return replace(self, rating=rating, edited_at=now)

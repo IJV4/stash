@@ -5,6 +5,8 @@ from builders import (
     an_item,
 )
 
+from stash.domain import GROUPS_ONE_LEVEL_DEEP
+
 
 def test_grouped_under_sets_the_parent_id_to_the_parents_id() -> None:
     # Setup
@@ -111,3 +113,13 @@ def test_ungrouped_on_an_item_without_a_parent_only_stamps_updated_at() -> None:
 
     # Assert
     assert ungrouped == an_item(updated_at=LATER)
+
+
+def test_a_grouping_refusal_starts_with_the_exported_one_level_deep_message() -> None:
+    # Setup
+    item = an_item(id="i1")
+    child_of_another = an_item(id="p1", parent_id="g1")
+
+    # Execute / Assert
+    with pytest.raises(ValueError, match=GROUPS_ONE_LEVEL_DEEP):
+        item.grouped_under(child_of_another, LATER)

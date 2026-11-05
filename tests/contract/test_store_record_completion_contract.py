@@ -6,6 +6,7 @@ from builders import (
     a_capture,
     an_item_at,
     an_outcome,
+    minutes_after,
     stored_item,
 )
 from fakes.store_factories import StoreFactory, all_stores
@@ -221,3 +222,44 @@ def test_record_completion_reports_a_missing_parent_before_a_stored_outcome_id(
             store.record_completion(
                 replace(item.completed(LATER), parent_id="p1"), an_outcome(notes="Again")
             )
+
+
+@all_stores
+def test_completing_a_reopened_item_again_lists_both_outcomes(open_store: StoreFactory) -> None:
+    # Setup
+    with open_store() as store:
+        item = stored_item(store, stage=Stage.DOING)
+        done = item.completed(LATER)
+        store.record_completion(done, an_outcome(id="o1"))
+        reopened = done.reopened(minutes_after(300))
+        store.save_item(reopened)
+
+        # Execute
+        store.record_completion(
+            reopened.completed(minutes_after(400)),
+            an_outcome(id="o2", recorded_at=minutes_after(400)),
+        )
+
+        # Assert
+        assert [outcome.id for outcome in store.outcomes_for("i1")] == ["o1", "o2"]
+
+
+@all_stores
+def test_completing_a_reopened_item_again_leaves_the_first_outcome_unchanged(
+    open_store: StoreFactory,
+) -> None:
+    # Setup
+    with open_store() as store:
+        item = stored_item(store, stage=Stage.DOING)
+        done = item.completed(LATER)
+        store.record_completion(done, an_outcome(id="o1"))
+        reopened = done.reopened(minutes_after(300))
+        store.save_item(reopened)
+
+        # Execute
+        store.record_completion(
+            reopened.completed(minutes_after(400)), an_outcome(id="o2", notes="Second time")
+        )
+
+        # Assert
+        assert store.get_outcome("o1") == an_outcome(id="o1")

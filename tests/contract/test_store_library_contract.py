@@ -12,8 +12,7 @@ from builders import (
 from fakes.store_factories import StoreFactory, all_stores
 
 from stash.domain import ItemType, Stage
-
-DEFAULT_PAGE = 20
+from stash.store.port import DEFAULT_PAGE_SIZE
 
 
 @all_stores
@@ -256,14 +255,14 @@ def test_library_offset_skips_the_most_recent(open_store: StoreFactory) -> None:
 def test_library_returns_twenty_by_default(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
-        for number in range(DEFAULT_PAGE + 1):
+        for number in range(DEFAULT_PAGE_SIZE + 1):
             stored_completion(store, f"i{number:02}", days_after(number), kept=True)
 
         # Execute
         listed = store.library()
 
         # Assert
-        assert len(listed) == DEFAULT_PAGE
+        assert len(listed) == DEFAULT_PAGE_SIZE
 
 
 @all_stores

@@ -801,6 +801,69 @@ Pinned by unit tests: a failed copy leaves no temporary file and keeps the
 previous backup; running twice on one day replaces that day's file; names that
 only look like backups are not touched.
 
+## Finishing things  [Plan 2 Task 3]
+
+`stash.lifecycle` completes, repeats, keeps, drops and groups items. It knows
+only the domain and a narrow store port; the buttons (Plan 2 Task 4) and the
+agent tools and CLI (Plan 2 Task 6) call it.
+
+    from stash.lifecycle import (
+        Completion, ItemHistory, Lifecycle, LifecycleError,
+        LifecycleRefused, UnknownItem, UnknownOutcome,
+    )
+
+    lifecycle = Lifecycle(store, new_id, clock, ZoneInfo("America/Los_Angeles"))
+
+    done = lifecycle.complete(item_id, rating=4, notes="", takeaways=("Start small",),
+                              keep=True, on=None)
+    # Completion(item, outcome, repeat); `on` defaults to the owner's local today
+    lifecycle.annotate(outcome_id, notes, takeaways)   # -> Outcome (edited_at = now)
+    lifecycle.rate(outcome_id, 5)                      # -> Outcome (edited_at = now)
+    lifecycle.keep(item_id, True)                      # -> Item; only Done items can be kept
+    lifecycle.reopen(item_id)                          # -> Item back to Want to, still kept
+    lifecycle.drop(item_id, "too expensive")           # -> Item; a blank reason is stored as none
+    lifecycle.group(child_id, parent_id)               # -> Item
+    lifecycle.ungroup(child_id)                        # -> Item
+    lifecycle.history(item_id)                         # -> ItemHistory(item, outcomes, children)
+
+Every refusal raises a `LifecycleError`: `UnknownItem(item_id)`,
+`UnknownOutcome(outcome_id)`, or `LifecycleRefused(message)` with a message the
+owner can read. A refused call writes nothing. Each statement below has one
+acceptance test in `tests/acceptance/test_lifecycle.py`:
+
+1. Finishing a book with rating 4 and two takeaways moves it to Done and
+   records exactly one outcome carrying the rating and both takeaways.
+2. Making a kept recipe again records a second outcome with `repeat=True`;
+   the first outcome is unchanged and the recipe is still kept.
+3. Dropping an item with the reason "too expensive" moves it to Dropped with
+   that reason, and it is still found by search.
+4. Grouping "Tokyo ramen" under "Japan trip" lists the ramen among the trip's
+   children.
+5. Grouping "Japan trip" under "Tokyo ramen", once the ramen is in the trip,
+   is refused with `LifecycleRefused` ("groups are one level deep") and
+   nothing changes.
+
+Pinned by unit tests: `repeat` is decided from the item's **stored** stage, so
+retrying a completion whose write failed is a first completion, not a repeat;
+a completion is one store write (`record_completion`); `keep=None` leaves
+`kept` as it was; ratings outside 1-5, more than 20 takeaways, a takeaway over
+500 characters or notes over 4000 characters are refused; keeping an item that
+is not Done, reopening an item that is not Done, a drop reason over 300
+characters, grouping an item under itself, under an item that is itself in a
+group, or grouping an item that already holds items are refused; takeaways
+given as one string instead of a list are refused; completing an item deleted
+between reading and writing (a concurrent `That was a question →`), annotating
+or rating an outcome whose item was deleted meanwhile, or grouping under a
+parent deleted meanwhile, is `UnknownItem`; Done is reached only through
+`complete`.
+
+Single writer assumed: `keep`, `reopen`, `drop`, `group` and `ungroup` read the
+item and then save it whole (`save_item` creates or replaces), so a change made
+by another caller in between is overwritten, and an item deleted in that instant
+is saved again. The grouping check (`children_of`) and its save are likewise not
+one transaction. Acceptable for one owner; an update-only store write would
+close it.
+
 ## Storage guarantees  [Tasks 2-3]
 
 These have no caller-visible surface yet; they are pinned by unit and contract

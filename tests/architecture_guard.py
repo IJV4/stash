@@ -77,6 +77,20 @@ def storage_dependencies_in(sources: dict[str, str]) -> list[str]:
     )
 
 
+def is_standard_library(module: str) -> bool:
+    return module.split(".")[0] in sys.stdlib_module_names
+
+
+def imports_outside_allowed(sources: dict[str, str], stash_allowed: tuple[str, ...]) -> list[str]:
+    return sorted(
+        f"{name} -> {module}"
+        for name, source in sources.items()
+        for module in imported_modules(source)
+        if not is_standard_library(module)
+        and not any(is_within(module, package) for package in stash_allowed)
+    )
+
+
 def importers_outside(target: str, allowed: tuple[str, ...], sources: dict[str, str]) -> list[str]:
     return [
         name
