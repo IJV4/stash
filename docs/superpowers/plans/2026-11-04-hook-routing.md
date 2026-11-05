@@ -1,4 +1,4 @@
-# Route questions inside the hook (spike #7 fix) — implementation plan
+# Hermes adapter fixes from the PC (spike #7, hot-reload, link details) — implementation plan
 
 > **For agentic workers:** Python is written as `CLAUDE.md` § "Writing Python" says for the
 > machine you are on (Mac: the `python-development` orchestrator; PC/WSL: subagent-driven
@@ -7,7 +7,7 @@
 > row 7; handoff note "Updates", 2026-11-04). Build **after** `2026-11-04-thinking-control.md`,
 > because the hook now waits for classification.
 
-**Goal:** Questions reach the Hermes agent again. The hook saves the message raw, classifies it,
+**Goal (Task 1):** Questions reach the Hermes agent again. The hook saves the message raw, classifies it,
 and answers `allow` for a request, so Hermes runs a normal agent turn on the owner's own message.
 It answers `skip` for everything else. Nothing is injected on the normal path.
 
@@ -92,3 +92,83 @@ saved raw and answered `allow` with no LLM call.
 - [ ] **Step 5:** Update the docs named above. Spike #23 covers: hook latency with thinking on and
   off, whether a long hook blocks a second message, and injection after an admitted message.
 - [ ] **Step 6: Commit** `fix(hermes): route questions with an allow verdict instead of injecting (spike #7)`.
+
+### Task 2: Survive a plugin hot-reload (outbox and buttons keep working)
+
+> From the PC, 2026-11-04 (ADR 0001, "stash breaks after a plugin hot-reload"). After any
+> `hermes plugins enable/disable` on a running gateway, Hermes re-runs `register()` but **skips**
+> stash's Telegram handler factory, because factories are deduplicated by `(plugin, function
+> qualname)`. The new `LateBoundOutbox` is never bound, and every reply fails with
+> `OutboxUnavailable` until a gateway restart. Buttons are probably dead too.
+
+**Files:**
+- Modify: `src/stash/hermes_adapter/plugin.py` and the state it builds (`wiring.py`,
+  `telegram_io.py` as needed).
+- Modify: `tests/fakes/hermes_ctx.py`.
+- Modify docs: `docs/usage.md` ("Telegram through Hermes"), `docs/spike-m0.md` (new #24).
+- Test: `tests/acceptance/test_hermes_registration.py` (additions).
+
+**Interfaces / behaviour:**
+- A second `register(ctx)` in the same process leaves stash fully working:
+  - The hook in force after the second `register` can send replies.
+  - Button presses are handled.
+  - Commands answer.
+  
+  This holds even though the Telegram factory is **not** called again.
+- Fix direction (implementer's choice of mechanism): keep the outbox binding and the button
+  attachment in process-wide adapter state that a later `register()` reuses, or re-bind from
+  `register()` itself when a Telegram application is already known. Either way:
+  - At most one `StashApp` (one database connection) stays open after re-registration. Close
+    or reuse the old one, and never leak it.
+  - This state is the same place Plan 3 Task 6's once-only ticker guard will live, so keep it
+    a small named object, not scattered module globals.
+- The fake context models Hermes's dedupe. `register_platform_handler` ignores a factory whose
+  `(plugin, qualname)` was already registered, and a test helper simulates "connect" by calling
+  the stored factories once. Without this, an offline test can pass while the live bot fails.
+- [ ] **Step 1: Failing acceptance test:**
+  - `register` → connect (factory called) → `register` again on the same context. The deduped
+    factory is not called again.
+  - A captured message's confirmation is delivered, and a button press edits its message.
+  - One app is open.
+- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement. **Step 4:** `make check`.
+- [ ] **Step 5:** Docs:
+  - Usage: re-registration is safe.
+  - Spike #24: `hermes plugins enable <other>` on the running gateway, then send a link. The
+    confirmation arrives and its buttons work, with no restart. Until #24 passes, the deploy doc's
+    "restart after plugins enable/disable" stays (ADR 0005).
+- [ ] **Step 6: Commit** `fix(hermes): keep the outbox and buttons bound across a plugin hot-reload`.
+
+### Task 3: Save link title, uploader and duration deterministically
+
+> From the PC, 2026-11-04 (spike #9). The link inspector finds the title, uploader and duration,
+> but they reach the item only if the model copies them into `details`. On YouTube it omitted
+> both.
+
+**Files:**
+- Modify: `src/stash/capture/pipeline.py`, or the filing step that turns a `Filing` plus
+  `LinkInfo` into an `Item` (wherever the item is built).
+- Modify: `src/stash/domain` only if a named key constant is needed.
+- Modify docs: `docs/usage.md` (the link section).
+- Test: `tests/acceptance/test_link_inspection_app.py` (additions) and a unit test next to the
+  code that merges the values.
+
+**Interfaces / behaviour:**
+- When a capture has a link and inspection returned values, the saved item's `details` gets:
+  - `link_title`, from `LinkInfo.title`;
+  - `uploader`, from `LinkInfo.uploader`;
+  - `duration`, from `LinkInfo.duration_s`, formatted `H:MM:SS`, or `M:SS` under an hour.
+  
+  Each key is added only if the value is known.
+- These values **override** any model-written value for the same key, because they are facts
+  from the source. The model's own `title` field is unchanged.
+- The values are untrusted. `LinkInfo` already clamps them; also apply the existing details
+  value limit and the collapse-whitespace rule. A 0-second duration is stored as `0:00`.
+- No link, or `LinkInfo.unknown` → `details` are exactly what the model returned.
+- [ ] **Step 1: Failing tests:**
+  - A fake YouTube inspection (title "Knife skills 101", uploader "Test Kitchen", 754 s), with
+    the model omitting all three, gives details `link_title`, `uploader` and `duration="12:34"`.
+  - The model writing `uploader="someone else"` is overridden.
+  - 3 723 s → `"1:02:03"`.
+  - Unknown link → details unchanged.
+- [ ] **Step 2:** Run → FAIL. **Step 3:** Implement. **Step 4:** `make check`.
+- [ ] **Step 5: Commit** `feat(capture): keep link title, uploader and duration on the item`.

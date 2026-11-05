@@ -18,8 +18,8 @@ sent in one catch-up message when it starts. Backup health shows up in `doctor`.
 - `stash.planning` for step proposals and `stash.suggestions` for picks and
   digest suggestions. Both are LLM features on `LlmTask.SUGGESTIONS` and follow
   the filer's schema/prompt/parse pattern.
-- `stash tick`, triggered every minute by a Hermes cron job with no agent (spike #2), sends
-  through the Telegram Bot API itself so nudges keep their buttons (amended 2026-11-04).
+- A tick runner in the Hermes adapter, started once via `ctx.spawn_task` (spike #2b). `stash tick`
+  under a no-agent Hermes cron job is the fallback (spike #2c).
 
 **Tech Stack:** unchanged (no new dependencies).
 
@@ -267,73 +267,72 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 - [ ] **Step 2–4:** Implement; `make check`.
 - [ ] **Step 5: Commit** `feat(suggestions): weekly digest and on-demand picks`.
 
-### Task 6: `stash tick` (Hermes cron, no agent) + direct Bot API delivery + proposals on plan
+### Task 6: Tick runner (Hermes) + `stash tick` + proposals on plan
 
-> **Amended 2026-11-04 (owner-approved, replaces the in-process Ticker).** Spike #2 proved Hermes
-> cron `--no-agent --script` runs code without an LLM turn, but its stdout delivery has no buttons
-> and adds a "Cronjob Response" header/footer. So cron only **triggers** `stash tick`; stash sends
-> the messages itself through the Telegram Bot API, with buttons. Taps come back through Hermes's
-> gateway to stash's existing `CallbackQueryHandler` (pattern `^stash:`), because Telegram delivers
-> callback queries to whoever polls the bot token. **Unverified, PC must check (spike #22):** a tap
-> on a message stash sent directly reaches that handler; the cron job runs with the Hermes env
-> (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USERS`); a script that prints nothing sends nothing.
+> **Settled by the PC, 2026-11-04 (ADR 0001 rows 2, 2b, 2c; handoff "answer for Plan 3 Task 6").**
+> Build the in-process `Ticker` below, started from the Telegram platform-handler factory via
+> `ctx.spawn_task`. Verified live: the factory runs in a running event loop, and the supervised task
+> survives. This replaces the 2026-11-04 Mac amendment (cron + direct Bot API send), which the PC
+> ruled out: **do not build a cron-plus-direct-send variant.** Requirements:
+> 1. **Once-only guard.** Hermes re-runs the factory whenever the Telegram client is rebuilt
+>    (reconnect, plugin hot-reload), so a second factory call must reuse the running ticker, not
+>    start another. Not tested live: a real reconnect. Spike-m0 must check it.
+> 2. Cancel cleanly on unload. `spawn_task` tasks are cancelled by Hermes; the ticker must not
+>    leave a held lock or a half-marked batch.
+> 3. Keep `stash tick` (cron `--no-agent`) as the fallback. It **prints nothing when nothing is
+>    due**, and Hermes then stays silent (verified, row 2c). Its output has no buttons and gets
+>    Hermes's "Cronjob Response" wrapper. Deliver to `telegram:<owner id>`, because there is no
+>    home channel.
+> 4. Carried from the Plan 2 Task 2 review: the SQLite `immediate_transaction` may mask a failed
+>    COMMIT with a ROLLBACK error, and `record_completion` holds the in-process lock while
+>    `BEGIN IMMEDIATE` waits. A ticker thread plus a cron fallback is the first time two writers
+>    meet. Pin both before relying on them.
 
 **Files:**
-- Create `src/stash/tick/{__init__,runner,ports}.py` (feature) and
-  `src/stash/telegram_api/{__init__,sender}.py` (adapter, httpx).
-- Modify `src/stash/cli/*` (`tick` command), `src/stash/app/*` (wire Planning, Nudger,
-  DigestBuilder, SuggestionEngine, BotApiSender, TickRunner), `src/stash/store/backup.py` and the
-  doctor checks (`backup` line), architecture guard.
-- Add `deploy/hermes-scripts/stash_tick.sh` (runs `stash tick` from the repo venv; copied into
-  `~/.hermes/scripts/` by the deploy doc).
-- Tests: `tests/unit/tick/test_runner.py`, `tests/contract/test_bot_api_sender.py`
-  (MockTransport), `tests/acceptance/test_cli_tick.py`.
+- Create `src/stash/hermes_adapter/ticker.py`.
+- Modify `wiring.py`, `plugin.py`, `telegram_io.py`, `callbacks.py`.
+- Modify `src/stash/cli/*` (new `tick` command) and `src/stash/app/*` (wire
+  Planning, Nudger, DigestBuilder, SuggestionEngine).
+- Tests: `tests/unit/hermes_adapter/test_ticker.py`,
+  `tests/acceptance/test_hermes_nudges.py`, `tests/acceptance/test_cli_tick.py`.
 
 **Interfaces:**
-- `NudgeSender(Protocol)` in `stash.tick.ports`: `send(chat_id: str, reply: Reply) -> None`
-  (sync; raises `SendFailed` on any failure).
-- `BotApiSender(token: str, client: httpx.Client)`: `POST https://api.telegram.org/bot<token>/sendMessage`
-  with `chat_id`, `text` and, when the reply has buttons,
-  `reply_markup = {"inline_keyboard": [[{"text", "callback_data"}, …], …]}` (the same layout
-  `hermes_adapter.telegram_io.to_keyboard` builds). HTTP error, `{"ok": false}`, or a network
-  error → `SendFailed`. **The token is part of the URL: it must never appear in a log line,
-  exception text or `repr`** (redact like `llm.openai_compat._Failures`).
-- `TickRunner(nudger, batcher, digest, renderer, planning, sender: NudgeSender, owner_chat: str, lock)`:
-  `run_once(now) -> TickReport(sent: int, failed: int, proposals: int)`. One tick runs `due` →
-  batch → send each message → `mark_sent` only for messages that were sent (RF4). Then
-  `planning.propose_for` for ≤ 3 items where `needs_proposal` is true, each sent as a
-  `proposal_reply`. A proposal that cannot be sent is discarded, so the next tick proposes again.
-- Ticks never overlap: `lock` is an exclusive non-blocking file lock on `data_dir/tick.lock`
-  (`fcntl.flock`). If the lock is held, `run_once` returns at once with nothing sent.
-- The owner chat is the first id in `TELEGRAM_ALLOWED_USERS` (a Telegram DM chat id == user id).
-  A missing `TELEGRAM_BOT_TOKEN` or owner → `stash tick` exits 2 with a message naming the variable.
-- `stash tick [--dry-run]`: it prints nothing on success (so a cron job never posts output) and
-  writes a one-line summary to stderr. `--dry-run` prints the rendered messages to stdout and sends
-  and marks nothing.
-- Hermes job (documented, not run here):
-  `hermes cron create "every 1m" --no-agent --script stash_tick.sh`. Use **no `--deliver`**
-  unless the PC shows it is required. If it is, deliver to `telegram:<owner id>` and rely on
-  the empty output.
+- `Ticker(nudger, batcher, digest, renderer, planning, sender: ReplySender,
+  owner_chat: str, scheduler, interval_s)`.
+  - `async run_forever()`: each tick runs `due` → batch → send → `mark_sent`,
+    with blocking work in `asyncio.to_thread`. A failed send is logged and the
+    nudge left unsent (RF4). The ticker holds one lock, so ticks never overlap.
+  - Each tick also runs `planning.propose_for` for items where `needs_proposal`
+    is true (≤ 3 per tick), then sends the `proposal_reply`.
+  - Ticks never overlap within the process (one lock) **and** the factory's once-only guard means one
+    ticker per process.
+  - The owner chat id: Telegram DM chat id == user id. Use the first owner id
+    from `TELEGRAM_ALLOWED_USERS`, overridable with
+    `plugins.entries.stash.settings.owner_chat_id`.
+- Started from the Telegram platform-handler factory: the first connect spawns
+  it (`ctx.spawn_task`, verified in spike #2b), and later connects reuse it.
+  **Fallback (built too, documented, off by default):** `stash tick` (CLI) runs one tick, prints
+  the rendered messages as plain text to stdout, and marks them sent. The Hermes cron job is
+  `hermes cron create "every 1m" --no-agent --script stash_tick.sh --deliver telegram:<owner id>`.
+  The fallback has no buttons. Use it only if the in-process ticker is not running; both share the
+  sent-nudge ledger, so neither repeats what the other sent.
+- `stash tick [--dry-run]`: prints the rendered messages (nothing at all when nothing is due) and marks them sent; `--dry-run` prints without marking anything sent.
 - `doctor` gains a `backup` line: OK if the last successful `stash backup` is
   < 48 h old. `Backups.write` records the setting `backup.last_success`.
 - [ ] **Step 1: Failing tests:**
-  - The runner sends the catch-up once and then nothing.
-  - A send failure leaves the nudge unsent, and the next tick sends it.
-  - A held lock → nothing sent.
-  - `stash tick --dry-run` marks nothing.
-  - The sender's request body is `inline_keyboard` with `stash:` callback data ≤ 64 bytes.
-  - `{"ok": false}` → `SendFailed`, and the token is absent from the exception text and the
-    captured logs.
+  - The ticker sends the catch-up once and then nothing.
+  - A send failure is retried next tick.
+  - Ticks never overlap.
+  - Calling the factory twice starts one ticker (once-only guard).
+  - `stash tick` with nothing due prints nothing; `stash tick --dry-run` marks nothing.
   - doctor shows `! backup — last success 3 days ago`.
-- [ ] **Step 2–4:** Implement; extend the architecture guard for the new packages
-  (`tick`, planning, nudges and suggestions are features; `telegram_api` is an adapter that only
-  `stash.app` imports); `make check`.
-- [ ] **Step 5:** Update the docs:
-  - `docs/usage.md`: "Planning ahead", "Reminders", "Weekly digest", "Suggestions".
-  - `docs/deploy/wsl-setup.md`: the cron job, the script, and the env it needs.
-  - `docs/spike-m0.md`: #22 covers the direct-sent buttons reaching the handler, the cron env,
-    and the empty-output behaviour.
-- [ ] **Step 6: Commit** `feat: reminders, digest and follow-ups sent by stash tick`.
+- [ ] **Step 2–4:** Implement; extend the architecture guard for the new
+  packages (planning, nudges and suggestions are features); `make check`.
+- [ ] **Step 5:** Update `docs/usage.md` ("Planning ahead", "Reminders",
+  "Weekly digest", "Suggestions"), `docs/deploy/wsl-setup.md` (the cron
+  fallback) and `docs/spike-m0.md` (a check that the ticker starts and survives
+  reconnects).
+- [ ] **Step 6: Commit** `feat: reminders, digest and follow-ups delivered by the ticker`.
 
 ### Task 7: Purchase cool-off (spec: optional, off by default)
 
