@@ -325,6 +325,16 @@ acceptance test in `tests/acceptance/test_link_inspection.py`.
    extractor or page), the result is unknown and the capture is filed from the
    owner's own words. Acceptance test in the same file (an app built with a
    hung extractor and a 5 ms deadline).
+7. When a link was described, the saved item's `details` gain `link_title`,
+   `uploader` and `duration` (`H:MM:SS`, or `M:SS` under an hour; a 0-second
+   video is `0:00`), each only when known. They are facts from the source and
+   override a model-written detail with the same key; the model's own `title`
+   is unchanged. Each value has non-printable characters replaced by spaces,
+   whitespace collapsed and is clipped to the details value limit. The facts
+   count toward the 20-detail cap: when the model filled it, its last details
+   make room. A message without a link, or a link that is unknown, keeps
+   exactly the details the model wrote. Acceptance test in `tests/acceptance/test_link_inspection_app.py`
+   (a youtube link whose model answer wrote its own `uploader`).
 
 Pinned by unit tests: hosts disguised with non-ASCII dots (`127。0。0。1`) or
 IPv6 translation prefixes (NAT64, 6to4) are judged by the address they really

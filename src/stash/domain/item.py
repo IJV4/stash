@@ -19,6 +19,9 @@ TITLE_LIMIT = 120
 ELLIPSIS = "…"
 UNTITLED = "Untitled"
 DROP_REASON_LIMIT = 300
+DETAIL_KEY_LIMIT = 50
+DETAIL_VALUE_LIMIT = 300
+MAX_DETAILS = 20
 GROUPS_ONE_LEVEL_DEEP = "groups are one level deep"
 OWN_PARENT = f"{GROUPS_ONE_LEVEL_DEEP}: an item cannot be its own parent"
 DROP_REASON_ONLY_WHEN_DROPPED = "drop_reason is only for dropped items"
@@ -125,6 +128,11 @@ class Filing:
     def __post_init__(self) -> None:
         _require_fileable(self.title, self.stage, self.date)
         _freeze(self)
+
+    def with_facts(self, facts: Mapping[str, str]) -> "Filing":
+        room = MAX_DETAILS - len(facts)
+        kept = [(key, text) for key, text in self.details.items() if key not in facts]
+        return replace(self, details={**dict(kept[:room]), **facts})
 
 
 @dataclass(frozen=True, slots=True)

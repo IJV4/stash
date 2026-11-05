@@ -1,12 +1,23 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, Self
 
-from stash.domain import collapse_and_clip, require_http_url
+from stash.domain import (
+    DETAIL_VALUE_LIMIT,
+    collapse_and_clip,
+    printable_and_clip,
+    require_http_url,
+)
 from stash.enrich.urls import PLATFORMS, platform_of
 
 TITLE_LIMIT = 300
 DESCRIPTION_LIMIT = 2000
 UPLOADER_LIMIT = 200
+TITLE_FACT = "link_title"
+UPLOADER_FACT = "uploader"
+DURATION_FACT = "duration"
+SECONDS_PER_MINUTE = 60
+MINUTES_PER_HOUR = 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +39,28 @@ class LinkInfo:
         object.__setattr__(self, "title", _clamped(self.title, TITLE_LIMIT))
         object.__setattr__(self, "description", _clamped(self.description, DESCRIPTION_LIMIT))
         object.__setattr__(self, "uploader", _clamped(self.uploader, UPLOADER_LIMIT))
+
+    def facts(self) -> Mapping[str, str]:
+        known = {
+            TITLE_FACT: self.title,
+            UPLOADER_FACT: self.uploader,
+            DURATION_FACT: self._duration_text(),
+        }
+        printable = {
+            name: printable_and_clip(text, DETAIL_VALUE_LIMIT)
+            for name, text in known.items()
+            if text is not None
+        }
+        return {name: text for name, text in printable.items() if text}
+
+    def _duration_text(self) -> str | None:
+        if self.duration_s is None:
+            return None
+        total_minutes, seconds = divmod(self.duration_s, SECONDS_PER_MINUTE)
+        hours, minutes = divmod(total_minutes, MINUTES_PER_HOUR)
+        if hours:
+            return f"{hours}:{minutes:02}:{seconds:02}"
+        return f"{minutes}:{seconds:02}"
 
     @classmethod
     def unknown(cls, url: str) -> Self:

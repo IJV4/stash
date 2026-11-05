@@ -13,10 +13,23 @@ from stash.domain._validation import (
 from stash.domain.capture import CaptureStatus, RawCapture, Route, SourceRef
 from stash.domain.coercion import enum_member
 from stash.domain.failure import describe_failure
-from stash.domain.item import Filing, Item, ItemType, Stage, derive_title, lacks_required_date
+from stash.domain.item import (
+    DETAIL_KEY_LIMIT,
+    DETAIL_VALUE_LIMIT,
+    MAX_DETAILS,
+    Filing,
+    Item,
+    ItemType,
+    Stage,
+    derive_title,
+    lacks_required_date,
+)
 from stash.domain.outcome import Outcome
 
 __all__ = [
+    "DETAIL_KEY_LIMIT",
+    "DETAIL_VALUE_LIMIT",
+    "MAX_DETAILS",
     "CaptureStatus",
     "Filing",
     "Item",

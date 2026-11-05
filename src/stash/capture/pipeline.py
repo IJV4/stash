@@ -66,7 +66,8 @@ class CapturePipeline:
             return Deferred(capture, "ai_unavailable")
         if filing.route is Route.REQUEST:
             return self._request(capture)
-        return self._filed(capture, filing, first_url)
+        facts = {} if link is None else link.facts()
+        return self._filed(capture, filing.with_facts(facts), first_url)
 
     def handle(self, message: IncomingMessage) -> ProcessResult:
         capture = self.receive(message)

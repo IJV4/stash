@@ -3,6 +3,9 @@ import re
 from collections.abc import Mapping
 
 from stash.domain import (
+    DETAIL_KEY_LIMIT,
+    DETAIL_VALUE_LIMIT,
+    MAX_DETAILS,
     Filing,
     ItemType,
     Route,
@@ -14,9 +17,6 @@ from stash.domain import (
 )
 from stash.filing.schema import DATE_PATTERN, FILEABLE_STAGES
 
-DETAIL_KEY_LIMIT = 50
-DETAIL_VALUE_LIMIT = 300
-MAX_DETAILS = 20
 TAG_LIMIT = 40
 MAX_TAGS = 10
 PERSON_LIMIT = 80

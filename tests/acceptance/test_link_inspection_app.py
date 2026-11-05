@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from capture_builders import a_message
+from capture_builders import a_filing_answer, a_message
 from cli_rig import CliRig, build_cli_rig
 from fakes.hanging_extract import HangingExtract
 from fakes.recording_extract import RecordingExtract
@@ -81,4 +81,27 @@ def test_a_link_whose_extractor_hangs_is_filed_from_the_owners_own_words_within_
 
     # Assert
     assert (type(result), "title: unknown" in prompt_sent_to_the_model(rig)) == (Filed, True)
+    app.close()
+
+
+def test_a_youtube_links_title_uploader_and_duration_are_saved_on_the_item_over_the_models_own(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    rig.providers.answer = a_filing_answer(details={"uploader": "someone else"})
+    extract = RecordingExtract("Knife skills 101", uploader="Test Kitchen", duration=754.0)
+    app = app_with(rig, extract=extract)
+
+    # Execute
+    result = app.pipeline.handle(a_message(VIDEO_URL, received_at=rig.now))
+
+    # Assert
+    assert isinstance(result, Filed)
+    saved = app.store.get_item(result.item.capture_id)
+    assert saved is not None and dict(saved.details) == {
+        "link_title": "Knife skills 101",
+        "uploader": "Test Kitchen",
+        "duration": "12:34",
+    }
     app.close()
