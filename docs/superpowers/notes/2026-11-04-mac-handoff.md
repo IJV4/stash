@@ -5,6 +5,10 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-04, how the PC runs stash now (ADR 0005).** stash lives in its own Hermes profile `stash`
+  as a hardened systemd user service; the owner's default Hermes was restored. Nothing in the code
+  changes, but note for deploy docs: restart the service after any `hermes plugins enable/disable`
+  (the hot-reload bug above), and the saved unit drop-in is `deploy/systemd/hermes-gateway-stash.hardening.conf`.
 - **2026-11-04, link inspection (#9) works, with one gap.** Instagram, YouTube, a web article and a
   `localhost` link all went through the live bot; `localhost` is refused by `stash.enrich.html_meta`
   ("page fetch skipped a non-public link"). Gap: uploader and duration are given to the model but are

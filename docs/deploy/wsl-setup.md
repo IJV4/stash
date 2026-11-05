@@ -72,6 +72,13 @@ If WSL has `HTTP_PROXY`/`HTTPS_PROXY` set, also set
 `NO_PROXY=localhost,127.0.0.1` — stash's HTTP client honours proxy env vars, and
 local Ollama traffic must not go through a proxy.
 
+> **Update 2026-11-04 (ADR 0005):** do not edit your default Hermes. Create a dedicated profile
+> (`hermes profile create stash --no-alias --no-skills`), put the model, toolset, plugin and
+> Telegram settings in it (`hermes -p stash ...`, plus `gateway.standalone true`), then
+> `hermes -p stash gateway install` and add `deploy/systemd/hermes-gateway-stash.hardening.conf`
+> as a drop-in under `~/.config/systemd/user/hermes-gateway-stash.service.d/`. Sections 6-7 below
+> describe the original default-profile setup.
+
 ## 6. Hermes Agent (pinned v0.22.6)
 
 ```bash
