@@ -436,6 +436,14 @@ Send `what can I do Saturday afternoon?`.
    `That was a question →` button; pressing it deletes the item, marks the
    capture as a request and hands the original text to the assistant. Pressing
    it a second time answers `That item no longer exists.`
+   [Plan 2 final fixes] The button never destroys history: once the item has
+   an outcome or a grouped child, or is Done or kept, pressing an old
+   `That was a question →` changes nothing (the item, its outcomes and its
+   children stay as they are) and answers `That item has a history now, so I
+   kept it — send the question again starting with ? to ask.`
+   (`tests/acceptance/test_capture_requests_and_fixes.py`: an unsure item
+   completed ⭐5 with a takeaway, kept, with two children, is refused; an
+   unsure item with no history still reroutes.)
 3. A message that starts with `?` (after leading whitespace) is a request
    without asking the AI: no link is inspected, no model is called, no item is
    created and the capture is marked as a request. `?` alone qualifies;
@@ -498,7 +506,9 @@ same rating twice leaves the rating and the single outcome unchanged; a
 rating outside 1-5, or a keep value other than `1`/`0`, answers
 `That item no longer exists.` and is logged; an unknown item or outcome
 answers the same; keeping an item that is no longer Done is refused with the
-lifecycle's message; the stage menu offers `Done ✓` only for items that are
+lifecycle's message; `Keep 📚` or `Not keeping` pressed before any rating
+keeps the `⭐1`-`⭐5` row for the latest outcome in its reply (the row is left
+out once that outcome has a rating); the stage menu offers `Done ✓` only for items that are
 not Done.
 
 Presses are applied one at a time (`FixHandler.apply` holds one in-process
@@ -936,8 +946,9 @@ Rich text (notes, takeaways) arrives through the agent, which calls these tools
 | Tool | Arguments | Answers |
 |---|---|---|
 | `stash_get` | `item_id` | `{"item", "outcomes", "children"}` |
-| `stash_complete` | `item_id`, `rating?` (1-5), `notes?`, `takeaways?` (list), `keep?` (bool), `completed_on?` (`YYYY-MM-DD`, default local today) | `{"item", "outcome", "repeat"}` |
-| `stash_annotate` | `outcome_id`, `notes`, `takeaways?` (omitted keeps the current list) | `{"outcome"}` |
+| `stash_complete` | `item_id`, `rating?` (1-5), `notes?`, `takeaways?` (list), `keep?` (bool), `completed_on?` (`YYYY-MM-DD`, default local today, at most one day after it) | `{"item", "outcome", "repeat"}` |
+| `stash_annotate` | `outcome_id`, `notes?` (omitted keeps the current notes), `takeaways?` (omitted keeps the current list), `rating?` (1-5); at least one of the three | `{"outcome"}` |
+| `stash_capture` | `text`, `note?` (the two joined by a newline, at most 4096 characters, as one Telegram message) | `{"item_id", "title", "item_type", "stage"}`, or `{"saved": true, "pending": true}` when the AI is unavailable or filing fails after the raw capture is saved (it is then filed by `/retry`) |
 | `stash_set_stage` | `item_id`, `stage`, `reason?` (only with `dropped`) | `{"item"}` |
 | `stash_keep` | `item_id`, `kept` (bool) | `{"item"}` |
 | `stash_group` | `child_id`, `parent_id` (an id, or `null` to ungroup) | `{"item"}` |
@@ -948,12 +959,48 @@ An `item` is `{"id", "type", "title", "stage", "date", "kept", "in_library",
 the link facts (`link_title`, `uploader`, `duration`). An `outcome` is `{"id",
 "completed_on", "rating", "notes", "takeaways"}`; `children` are list entries
 (`{"id", "type", "title", "stage", "date"}`). `stash_annotate` replaces the
-notes (and the takeaways when given), so the agent passes the full text.
-`stash_set_stage` offers only the stages an owner can move to; `done` is
-refused (`done is reached by completing an item`, the same rule the buttons
-follow) and its description tells the agent to call `stash_complete` instead;
-`dropped` takes the optional `reason`; the other stages move
-the item as the stage buttons do (Planned needs a date).
+notes when `notes` is given (so the agent passes the full text) and keeps them
+otherwise; takeaways are replaced only when given; `rating` sets the outcome's
+rating (the rule `Lifecycle.rate` applies) in the same single save as the notes
+and takeaways (`Lifecycle.annotate(outcome_id, notes=, takeaways=, rating=)`:
+one read, one write). It needs at least one of the three. The
+descriptions of `stash_complete` and `stash_annotate` both say: "If the item is
+already done and the owner is describing that same completion (notes,
+takeaways, a rating), call stash_get and stash_annotate its latest outcome.
+stash_complete on a done item records a new completion — only when they did it
+again." A `completed_on` more than one day after the owner's local today
+(`config.timezone`) is refused, by `Lifecycle.complete` as `LifecycleRefused`
+and so by the tool as `{"error"}`.
+`stash_set_stage` offers only the stages an owner can move to; asking for
+`done` answers `{"error": "use stash_complete to finish an item"}` and its
+description tells the agent to call `stash_complete` instead; an unknown stage
+lists only the moveable stages as valid; `dropped` takes the optional
+`reason`; the other stages move the item as the stage buttons do (Planned
+needs a date).
+
+`stash_capture` saves something new the owner mentions that is not in stash
+yet. It takes the raw-capture-first path every Telegram message takes: the raw
+capture is saved (source `SourceRef.agent(...)`, chat id `agent`, never a
+Telegram chat) before any AI step, then filed through `app.pipeline`, so it
+waits its turn behind Telegram captures. It is
+always filed as a capture, never routed as a request — the agent already
+decided — including text starting with `?`, an AI answer of `request` (filed
+as unsure) and a later `/retry` of it while pending. The hook never sees it:
+Hermes does not dispatch tool calls through `pre_gateway_dispatch`; and a
+gateway event from a chat whose id is `agent` passes through without being
+captured, so no Telegram message can claim the agent's origin. The `?` text and
+the AI-says-`request` cases have acceptance tests in
+`tests/acceptance/test_hermes_capture_tool.py`; the `/retry` case
+(`tests/unit/capture/test_pipeline_agent.py`), waiting its turn
+(`tests/unit/capture/test_serial.py`, `tests/unit/app/test_build_app_agent_capture.py`)
+and the origin surviving SQLite (`tests/contract/test_store_agent_source_contract.py`)
+are pinned below the acceptance tier.
+
+    filed = app.agent_capture.file("Tidewater Notes, a novel", note="loved the ending")
+    # stash.capture.AgentCapture over app.pipeline -> Filed(item, unsure) | Deferred(capture, reason)
+    tools = CaptureTools(app.agent_capture)          # stash.hermes_adapter.capture_tools
+    tools.capture({"text": "Tidewater Notes, a novel"})
+    # -> '{"item_id": "...", "title": "Tidewater Notes", "item_type": "book", "stage": "inbox"}'
 
 Each statement has one acceptance test in `tests/acceptance/test_hermes_tools.py`:
 
@@ -964,6 +1011,19 @@ Each statement has one acceptance test in `tests/acceptance/test_hermes_tools.py
 2. `stash_get` shows the item's link details, its outcomes with their
    takeaways, and its children.
 3. A call with bad arguments answers `{"error": ...}` and changes nothing.
+4. [Plan 2 final fixes] "I finished Tidewater Notes, loved it" about an unsaved
+   book: `stash_search {"query": "tidewater"}` finds nothing,
+   `stash_capture {"text": "Tidewater Notes, a novel"}` saves and files it and
+   returns its `item_id`, and `stash_complete {item_id, "rating": 5}` leaves the
+   book Done with exactly one outcome.
+5. [Plan 2 final fixes] A `stash_capture` made while the AI is unavailable
+   answers `{"saved": true, "pending": true}` and the raw capture is in
+   `pending_captures`, with no item yet.
+   (Statements 4 and 5: `tests/acceptance/test_hermes_capture_tool.py`.)
+6. [Plan 2 final fixes] After `Done ✓`, "4 stars, takeaways: …" is added to
+   that completion: `stash_annotate {outcome_id, "rating": 4, "takeaways": [...]}`
+   on the latest outcome leaves exactly one outcome with the rating and the
+   takeaways, and its notes unchanged.
 
 Review Focus 5, pinned by unit tests (`tests/unit/hermes_adapter/test_tools_lifecycle_refusals.py`
 for each tool, `test_tool_arguments.py` for each argument rule):
@@ -976,7 +1036,11 @@ string, containing a non-string, more than 20 entries or one over 500
 characters; `notes` that are not text or over 4000 characters; a `reason` that
 is not text, over 300 characters, or given with a stage other than `dropped`;
 an unknown `stage` or `item_type`; a `limit` that is not an integer in 1-50; a
-`parent_id` that is neither text nor `null`. A store that fails answers
+`parent_id` that is neither text nor `null`; a `stash_annotate` with none of
+`notes`, `takeaways` and `rating`; a `completed_on` two or more days after
+the local today (one day after is allowed); a `stash_capture` `text` that is
+missing, not text or blank, a `note` that is not text, or the two joined over
+4096 characters. A store that fails answers
 `{"error": ...}` and is logged; nothing raises out of a tool.
 
 ## Your library  [Plan 2 Task 6]
@@ -994,8 +1058,9 @@ is left out when the latest outcome has none).
    (`tests/acceptance/test_hermes_commands.py`). Pinned by unit tests
    (`tests/unit/hermes_adapter/test_commands.py`): bare `/library` lists every
    type; it is bounded like `/list` (20 lines, `…and N more`, at most 4096
-   characters); with nothing to show it says `No items.`; an unknown type lists
-   the valid ones.
+   characters); with nothing to show it says `No items.`; the type is an item
+   type (`recipe`) or the label the lines print (`recipes`, `Learning`), in any
+   case; an unknown type lists the labels in plain words (`places, recipes, …`).
 2. `stash library [--type T] [--limit N]` prints the same lines, each prefixed
    with the item id and two spaces so it can be passed to `stash show`; with
    nothing kept it prints `No items.` (`tests/acceptance/test_cli_library.py`;

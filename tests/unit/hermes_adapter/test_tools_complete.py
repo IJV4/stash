@@ -1,5 +1,6 @@
 from typing import Any
 
+from clocks import EVENING_IN_LOS_ANGELES
 from fakes.memory_store import MemoryStore
 from tool_rig import (
     DONE_ITEM,
@@ -140,3 +141,35 @@ def test_completing_with_a_takeaway_that_is_too_long_answers_the_domains_refusal
 
     # Assert
     assert answer == {"error": "takeaway must be at most 500 characters"}
+
+
+def completed_in_the_evening(completed_on: str, store: MemoryStore) -> dict[str, Any]:
+    tools = lifecycle_tools_over(store, clock=lambda: EVENING_IN_LOS_ANGELES)
+    return answer_of(tools.complete({"item_id": WANT_TO_ITEM, "completed_on": completed_on}))
+
+
+def test_complete_dated_the_day_after_the_local_today_is_recorded() -> None:
+    # Execute
+    answer = completed_in_the_evening("2026-11-03", a_tool_store())
+
+    # Assert
+    assert answer["outcome"]["completed_on"] == "2026-11-03"
+
+
+def test_complete_dated_two_days_after_the_local_today_answers_an_error() -> None:
+    # Execute
+    answer = completed_in_the_evening("2026-11-04", a_tool_store())
+
+    # Assert
+    assert answer == {"error": "completed_on 2026-11-04 is after tomorrow"}
+
+
+def test_complete_dated_in_the_future_records_no_outcome() -> None:
+    # Setup
+    store = a_tool_store()
+
+    # Execute
+    completed_in_the_evening("2026-11-04", store)
+
+    # Assert
+    assert store.outcomes_for(WANT_TO_ITEM) == []

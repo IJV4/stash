@@ -3,6 +3,7 @@ import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from agent_capture_rig import a_filing_intake
 from app_builders import NOON, an_app, stored
 from builders import an_item, stored_completion
 from capture_builders import a_filing_answer, sequential_ids
@@ -140,7 +141,7 @@ def handler_named(app: StashApp, name: str) -> Callable[..., str]:
     return next(spec.handler for spec in build_tools(app) if spec.schema["name"] == name)
 
 
-def test_the_tools_are_search_list_and_the_seven_lifecycle_tools() -> None:
+def test_the_tools_are_search_list_the_seven_lifecycle_tools_and_capture() -> None:
     # Execute
     specs = build_tools(an_app())
 
@@ -155,6 +156,7 @@ def test_the_tools_are_search_list_and_the_seven_lifecycle_tools() -> None:
         "stash_keep",
         "stash_group",
         "stash_library",
+        "stash_capture",
     ]
 
 
@@ -193,3 +195,15 @@ def test_the_library_command_lists_the_kept_items_of_the_app_lifecycle() -> None
 
     # Assert
     assert text == "📚 Places: Dune · ⭐4"
+
+
+def test_the_capture_tool_files_through_the_agent_capture_of_the_app() -> None:
+    # Setup
+    intake = a_filing_intake()
+    capture = handler_named(an_app(pipeline=intake), "stash_capture")
+
+    # Execute
+    capture({"text": "Tidewater Notes, a novel"})
+
+    # Assert
+    assert [message.source.is_agent for message in intake.messages] == [True]

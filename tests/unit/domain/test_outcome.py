@@ -345,3 +345,30 @@ def test_with_notes_without_takeaways_still_replaces_the_notes() -> None:
 
     # Assert
     assert edited.notes == "Better"
+
+
+def test_with_notes_without_notes_keeps_the_current_notes() -> None:
+    # Setup
+    outcome = an_outcome(notes="Great")
+
+    # Execute
+    edited = outcome.with_notes(None, ("Less salt",), LATER)
+
+    # Assert
+    assert (edited.notes, edited.takeaways) == ("Great", ("Less salt",))
+
+
+def test_an_outcome_with_a_rating_is_rated() -> None:
+    # Execute
+    outcome = an_outcome(rating=4)
+
+    # Assert
+    assert outcome.is_rated is True
+
+
+def test_an_outcome_without_a_rating_is_not_rated() -> None:
+    # Execute
+    outcome = an_outcome(rating=None)
+
+    # Assert
+    assert outcome.is_rated is False

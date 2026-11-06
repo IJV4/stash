@@ -3,46 +3,33 @@ from collections.abc import Callable
 
 import pytest
 from builders import a_capture
-from capture_builders import FORCED_QUESTION, a_message, a_pipeline
+from capture_builders import FORCED_QUESTION, a_message, a_pipeline, an_agent_capture
 from fakes.blocking_intake import BlockingIntake
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
 from fakes.memory_store import MemoryStore
 from fakes.recording_intake import RecordingIntake
-from threads import run_in_thread
+from threads import (
+    OVERLAP_GRACE_SECONDS,
+    WAIT_LIMIT_SECONDS,
+    await_signal,
+    run_in_thread,
+    start,
+    start_announcing,
+)
 
 from stash.capture import Duplicate, IsRequest
 from stash.capture.serial import SerializedPipeline
 from stash.domain import CaptureStatus
 
-WAIT_LIMIT_SECONDS = 1.0
-OVERLAP_GRACE_SECONDS = 0.005
 NO_WAIT_SECONDS = 0.2
 Call = Callable[[SerializedPipeline], object]
 CALLS: dict[str, Call] = {
     "handle": lambda pipeline: pipeline.handle(a_message()),
     "process": lambda pipeline: pipeline.process(a_capture()),
+    "process_agent": lambda pipeline: pipeline.process_agent(an_agent_capture()),
     "retry_pending": lambda pipeline: pipeline.retry_pending(),
 }
-
-
-def start(action: Callable[[], object]) -> threading.Thread:
-    thread = threading.Thread(target=action, daemon=True)
-    thread.start()
-    return thread
-
-
-def await_signal(signal: threading.Event) -> None:
-    if not signal.wait(WAIT_LIMIT_SECONDS):
-        raise AssertionError("the signal never came")
-
-
-def start_announcing(announce: threading.Event, action: Callable[[], object]) -> threading.Thread:
-    def announce_then_act() -> None:
-        announce.set()
-        action()
-
-    return start(announce_then_act)
 
 
 def test_receive_hands_the_message_to_the_inner_pipeline_and_returns_its_capture() -> None:
@@ -87,6 +74,17 @@ def test_retry_pending_is_the_inner_pipelines_own_retry_pending() -> None:
 
     # Assert
     assert (results, inner.calls) == ([inner.result], ["retry_pending"])
+
+
+def test_process_agent_hands_the_capture_to_the_inner_pipeline_and_returns_its_result() -> None:
+    # Setup
+    inner = RecordingIntake()
+
+    # Execute
+    result = SerializedPipeline(inner).process_agent(inner.capture)
+
+    # Assert
+    assert (result, inner.calls) == (inner.agent_result, ["process_agent"])
 
 
 def test_receive_does_not_wait_for_a_call_that_is_holding_the_turn() -> None:
@@ -143,6 +141,10 @@ def test_retry_pending_over_a_pipeline_whose_retry_calls_its_own_process_does_no
         ("handle", "retry_pending"),
         ("process", "handle"),
         ("retry_pending", "process"),
+        ("process_agent", "process_agent"),
+        ("process_agent", "process"),
+        ("process", "process_agent"),
+        ("handle", "process_agent"),
     ],
 )
 def test_two_calls_from_different_threads_never_run_inside_the_inner_pipeline_together(
@@ -207,3 +209,27 @@ def test_processing_a_forcing_capture_does_not_wait_for_a_call_holding_the_turn(
 
     # Assert
     assert result == IsRequest(forced.with_status(CaptureStatus.REQUEST))
+
+
+def test_processing_an_agent_capture_starting_with_a_question_mark_waits_for_the_turn() -> None:
+    # Setup
+    inner = BlockingIntake()
+    pipeline = SerializedPipeline(inner)
+    contending = threading.Event()
+    threads = [start(lambda: pipeline.process(a_capture()))]
+    await_signal(inner.entered)
+    threads.append(
+        start_announcing(
+            contending, lambda: pipeline.process(an_agent_capture(text=FORCED_QUESTION))
+        )
+    )
+    await_signal(contending)
+    inner.overlapped.wait(OVERLAP_GRACE_SECONDS)
+
+    # Execute
+    inner.release.set()
+    for thread in threads:
+        thread.join(WAIT_LIMIT_SECONDS)
+
+    # Assert
+    assert inner.max_inside == 1

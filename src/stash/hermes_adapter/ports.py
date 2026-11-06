@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Protocol
 
-from stash.capture import IncomingMessage, ProcessResult, Reply, Reroute
+from stash.capture import Deferred, Filed, IncomingMessage, ProcessResult, Reply, Reroute
 from stash.domain import Item, ItemType, Outcome, RawCapture, Stage
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
@@ -13,6 +13,10 @@ class IntakeSteps(Protocol):
     def receive(self, message: IncomingMessage) -> RawCapture | None: ...
 
     def process(self, capture: RawCapture) -> ProcessResult: ...
+
+
+class AgentCapturer(Protocol):
+    def file(self, text: str, note: str | None = None) -> Filed | Deferred: ...
 
 
 class Retrier(Protocol):
@@ -60,7 +64,12 @@ class ItemLifecycle(LibraryReader, Protocol):
     ) -> Completion: ...
 
     def annotate(
-        self, outcome_id: str, notes: str, takeaways: Sequence[str] | None = None
+        self,
+        outcome_id: str,
+        *,
+        notes: str | None = None,
+        takeaways: Sequence[str] | None = None,
+        rating: int | None = None,
     ) -> Outcome: ...
 
     def keep(self, item_id: str, kept: bool) -> Item: ...

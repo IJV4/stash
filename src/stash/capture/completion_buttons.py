@@ -52,9 +52,9 @@ class CompletionButtons:
         return done_reply(self._lifecycle.complete(item_id))
 
     def _double_tap_of(self, history: ItemHistory) -> Completion | None:
-        if not history.item.is_done or not history.outcomes:
+        latest = history.latest_recorded
+        if not history.item.is_done or latest is None:
             return None
-        latest = max(history.outcomes, key=lambda outcome: outcome.recorded_at)
         elapsed = self._clock() - latest.recorded_at
         if not timedelta(0) <= elapsed < DOUBLE_TAP_WINDOW:
             return None
@@ -69,7 +69,8 @@ class CompletionButtons:
         return rated_reply(item, rating)
 
     def _kept(self, item_id: str, choice: KeepChoice) -> Reply:
-        return kept_reply(self._lifecycle.keep(item_id, choice.kept))
+        self._lifecycle.keep(item_id, choice.kept)
+        return kept_reply(self._lifecycle.history(item_id))
 
     def _answering(self, build_reply: Callable[[], Reply]) -> Reply:
         try:

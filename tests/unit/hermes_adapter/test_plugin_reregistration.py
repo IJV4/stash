@@ -67,7 +67,7 @@ def test_a_second_register_registers_the_hook_the_commands_and_the_tools_in_its_
     )
 
 
-def test_a_second_register_registers_all_nine_tools_in_its_context() -> None:
+def test_a_second_register_registers_all_ten_tools_in_its_context() -> None:
     # Setup
     plugin = register_stash_over(OpenedApps(build_rig()))
 
@@ -75,7 +75,7 @@ def test_a_second_register_registers_all_nine_tools_in_its_context() -> None:
     reloaded = plugin.reloaded().ctx
 
     # Assert
-    assert len(reloaded.tools) == 9
+    assert len(reloaded.tools) == 10
 
 
 def test_a_lifecycle_tool_registered_by_a_second_register_acts_on_the_same_store() -> None:

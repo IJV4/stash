@@ -14,7 +14,8 @@ from stash.capture import (
     Reply,
     Reroute,
 )
-from stash.domain import CaptureStatus, Item, ItemType, RawCapture, Stage
+from stash.capture.callbacks import RATING_ARGUMENTS, FixAction, FixKind
+from stash.domain import CaptureStatus, Item, ItemType, RawCapture, SourceRef, Stage
 from stash.enrich.links import LinkInspector
 
 RAMEN_URL = "https://example.com/ramen-tokyo"
@@ -44,6 +45,16 @@ def a_message(
         text=text,
         media_paths=media_paths,
         received_at=received_at,
+    )
+
+
+def an_agent_capture(**overrides: Any) -> RawCapture:
+    return a_capture(**{"source": SourceRef.agent("a1"), **overrides})
+
+
+def an_agent_message(text: str = SAMPLE_TEXT, message_id: str = "a1") -> IncomingMessage:
+    return IncomingMessage(
+        source=SourceRef.agent(message_id), text=text, media_paths=(), received_at=BASE
     )
 
 
@@ -134,3 +145,7 @@ def a_store_with_a_completed_item(**item_overrides: Any) -> MemoryStore:
 def text_of(answer: Reply | Reroute) -> str:
     assert isinstance(answer, Reply)
     return answer.text
+
+
+def rating_row_data(outcome_id: str) -> list[str]:
+    return [FixAction(FixKind.RATE, outcome_id, argument).encode() for argument in RATING_ARGUMENTS]

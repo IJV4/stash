@@ -306,7 +306,45 @@ def test_item_type_from_text_ignores_case_and_surrounding_space(raw: str) -> Non
     assert item_type is ItemType.RECIPE
 
 
-def test_item_type_from_text_with_an_unknown_type_names_it_and_lists_the_valid_ones() -> None:
+LABEL_SPELLINGS = [
+    ("recipes", ItemType.RECIPE),
+    (" RECIPES ", ItemType.RECIPE),
+    ("Learning", ItemType.LEARN),
+    ("learning", ItemType.LEARN),
+    ("learn", ItemType.LEARN),
+    ("Activities", ItemType.ACTIVITY),
+    ("activity", ItemType.ACTIVITY),
+    ("Other", ItemType.OTHER),
+]
+
+
+@pytest.mark.parametrize(("raw", "expected"), LABEL_SPELLINGS)
+def test_item_type_from_text_accepts_the_value_or_the_label_the_library_prints(
+    raw: str, expected: ItemType
+) -> None:
+    # Execute
+    item_type = item_type_from_text(raw)
+
+    # Assert
+    assert item_type is expected
+
+
+def test_item_type_from_text_with_an_unknown_type_lists_the_labels_in_plain_words() -> None:
     # Execute / Assert
-    with pytest.raises(ValueError, match=r"unknown item_type 'spaceship' \(valid: place, recipe"):
+    with pytest.raises(ValueError) as refusal:
         item_type_from_text("spaceship")
+
+    # Assert
+    assert str(refusal.value) == (
+        "unknown type 'spaceship' (try: places, recipes, purchases, learning, books, media, "
+        "ideas, plans, activities, gifts, other)"
+    )
+
+
+def test_item_type_from_text_echoes_an_overlong_unknown_type_cut_to_40_and_an_ellipsis() -> None:
+    # Execute
+    with pytest.raises(ValueError) as refusal:
+        item_type_from_text("y" * 5000)
+
+    # Assert
+    assert str(refusal.value).startswith(f"unknown type '{'y' * 40}…' (try:")

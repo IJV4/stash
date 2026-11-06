@@ -1,7 +1,7 @@
 import threading
 
 import pytest
-from threads import run_concurrently, run_in_thread
+from threads import OverlapGate, await_signal, run_concurrently, run_in_thread, start
 
 QUICK_TIMEOUT_SECONDS = 0.001
 
@@ -54,3 +54,58 @@ def test_run_concurrently_raises_assertion_error_when_a_worker_does_not_finish()
     with pytest.raises(AssertionError, match="worker did not finish"):
         run_concurrently(1, lambda worker: release.wait(), timeout=QUICK_TIMEOUT_SECONDS)
     release.set()
+
+
+def test_a_gate_reports_when_two_holders_are_inside_at_once() -> None:
+    # Setup
+    gate = OverlapGate()
+    first = start(gate.hold)
+    await_signal(gate.entered)
+
+    # Execute
+    second = start(gate.hold)
+    await_signal(gate.overlapped)
+    gate.release.set()
+    first.join()
+    second.join()
+
+    # Assert
+    assert gate.max_inside == 2
+
+
+def test_a_gate_counts_one_inside_for_holders_that_never_overlap() -> None:
+    # Setup
+    gate = OverlapGate()
+    gate.release.set()
+
+    # Execute
+    gate.hold()
+    gate.hold()
+
+    # Assert
+    assert gate.max_inside == 1
+
+
+def test_a_gate_does_not_signal_overlap_for_holders_that_never_overlap() -> None:
+    # Setup
+    gate = OverlapGate()
+    gate.release.set()
+
+    # Execute
+    gate.hold()
+    gate.hold()
+
+    # Assert
+    assert not gate.overlapped.is_set()
+
+
+def test_a_gate_signals_entered_when_a_holder_arrives() -> None:
+    # Setup
+    gate = OverlapGate()
+    gate.release.set()
+
+    # Execute
+    gate.hold()
+
+    # Assert
+    assert gate.entered.is_set()

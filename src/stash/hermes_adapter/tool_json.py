@@ -3,6 +3,7 @@ import logging
 from collections.abc import Callable, Iterable
 from typing import Any
 
+from stash.capture import Deferred, Filed
 from stash.domain import Item, Outcome
 from stash.hermes_adapter.tool_arguments import ToolArguments
 from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LifecycleError
@@ -107,3 +108,17 @@ def item_answer(item: Item) -> str:
 
 def outcome_answer(outcome: Outcome) -> str:
     return dump({"outcome": outcome_payload(outcome)})
+
+
+def capture_answer(result: Filed | Deferred) -> str:
+    if isinstance(result, Deferred):
+        return dump({"saved": True, "pending": True})
+    item = result.item
+    return dump(
+        {
+            "item_id": item.id,
+            "title": item.title,
+            "item_type": item.item_type.value,
+            "stage": item.stage.value,
+        }
+    )

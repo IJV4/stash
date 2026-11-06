@@ -20,7 +20,13 @@ from stash.app.providers import (
     own_vram_usage,
     vision_models,
 )
-from stash.capture import BurstCoalescer, CapturePipeline, FixHandler, SerializedPipeline
+from stash.capture import (
+    AgentCapture,
+    BurstCoalescer,
+    CapturePipeline,
+    FixHandler,
+    SerializedPipeline,
+)
 from stash.config import StashConfig
 from stash.enrich.ytdlp import default_ytdlp_extract
 from stash.filing import Filer
@@ -60,18 +66,21 @@ def build_app(
         gate = GpuGate(gpu_probe, own_vram_usage(config.llm, http), sqlite, config.gpu)
         models = chat_models(config.llm, http)
         router = ModelRouter(config.llm, models, gate)
-        pipeline = CapturePipeline(
-            sqlite,
-            build_inspector(http, extract, inspection_deadline_seconds),
-            Filer(router, clock, config.timezone),
-            _new_id,
-            clock,
+        pipeline = SerializedPipeline(
+            CapturePipeline(
+                sqlite,
+                build_inspector(http, extract, inspection_deadline_seconds),
+                Filer(router, clock, config.timezone),
+                _new_id,
+                clock,
+            )
         )
         lifecycle = Lifecycle(sqlite, _new_id, clock, config.timezone)
         return StashApp(
             config=config,
             store=sqlite,
-            pipeline=SerializedPipeline(pipeline),
+            pipeline=pipeline,
+            agent_capture=AgentCapture(pipeline, _new_id, clock),
             fixes=FixHandler(sqlite, lifecycle, clock),
             lifecycle=lifecycle,
             gpu=gate,

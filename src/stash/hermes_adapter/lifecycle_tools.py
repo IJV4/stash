@@ -1,5 +1,6 @@
 import logging
 
+from stash.domain import MOVEABLE_STAGES
 from stash.hermes_adapter.lifecycle_schemas import (
     ANNOTATE_SCHEMA,
     COMPLETE_SCHEMA,
@@ -25,6 +26,8 @@ from stash.hermes_adapter.tool_spec import ToolSpec
 from stash.lifecycle import LibraryQuery
 
 logger = logging.getLogger(__name__)
+
+USE_STASH_COMPLETE = "use stash_complete to finish an item"
 
 
 class LifecycleTools:
@@ -80,16 +83,18 @@ class LifecycleTools:
     def _annotate(self, arguments: ToolArguments) -> str:
         outcome = self._lifecycle.annotate(
             arguments.required_id("outcome_id"),
-            arguments.required_text("notes"),
-            arguments.optional_takeaways(),
+            notes=arguments.nullable_text("notes"),
+            takeaways=arguments.optional_takeaways(),
+            rating=arguments.optional_rating(),
         )
         return outcome_answer(outcome)
 
     def _set_stage(self, arguments: ToolArguments) -> str:
-        changed = self._lifecycle.set_stage(
-            arguments.required_id("item_id"), arguments.stage(), arguments.optional_reason()
-        )
-        return item_answer(changed)
+        item_id = arguments.required_id("item_id")
+        stage = arguments.stage()
+        if stage not in MOVEABLE_STAGES:
+            raise ValueError(USE_STASH_COMPLETE)
+        return item_answer(self._lifecycle.set_stage(item_id, stage, arguments.optional_reason()))
 
     def _keep(self, arguments: ToolArguments) -> str:
         kept = self._lifecycle.keep(

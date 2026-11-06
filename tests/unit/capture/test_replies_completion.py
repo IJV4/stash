@@ -1,13 +1,20 @@
 import pytest
-from builders import MAX_LENGTH_ID, NON_DONE_STAGES, an_item, an_item_at, an_outcome
-from capture_builders import button_labels
+from builders import (
+    MAX_LENGTH_ID,
+    NON_DONE_STAGES,
+    an_item,
+    an_item_at,
+    an_outcome,
+    minutes_after,
+)
+from capture_builders import button_labels, rating_row_data
 
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT
 from stash.capture.completion_replies import done_reply, kept_reply, rated_reply
 from stash.capture.menus import stage_menu
 from stash.capture.replies import Button, Reply, confirmation, refused
-from stash.domain import Stage
-from stash.lifecycle.results import Completion
+from stash.domain import Outcome, Stage
+from stash.lifecycle.results import Completion, ItemHistory
 
 FOOTER = "Tell me notes or takeaways any time."
 KEEP_ROW = (Button("Keep 📚", "stash:k:i1:1"), Button("Not keeping", "stash:k:i1:0"))
@@ -17,6 +24,11 @@ DONE_ROW = (Button("Done ✓", "stash:d:i1"),)
 def a_completion(repeat: bool = False, **item_overrides: object) -> Completion:
     item = an_item(id="i1", stage=Stage.DONE, **item_overrides)
     return Completion(item, an_outcome(id="o1", item_id="i1"), repeat)
+
+
+def a_history(*outcomes: Outcome, **item_overrides: object) -> ItemHistory:
+    item = an_item(id="i1", stage=Stage.DONE, **item_overrides)
+    return ItemHistory(item, outcomes, ())
 
 
 def test_a_done_reply_celebrates_the_title_and_invites_notes_in_a_footer() -> None:
@@ -102,7 +114,7 @@ def test_a_rated_reply_keeps_only_the_keep_row() -> None:
 
 def test_a_kept_item_is_celebrated_with_its_title_and_no_buttons() -> None:
     # Execute
-    reply = kept_reply(a_completion(kept=True).item)
+    reply = kept_reply(a_history(kept=True))
 
     # Assert
     assert reply == Reply("📚 Kept: Ramen in Shibuya", ())
@@ -110,10 +122,64 @@ def test_a_kept_item_is_celebrated_with_its_title_and_no_buttons() -> None:
 
 def test_an_item_the_owner_is_not_keeping_gets_a_plain_acknowledgement_and_no_buttons() -> None:
     # Execute
-    reply = kept_reply(a_completion(kept=False).item)
+    reply = kept_reply(a_history(kept=False))
 
     # Assert
     assert reply == Reply("Okay, not keeping Ramen in Shibuya.", ())
+
+
+def test_a_kept_reply_keeps_the_rating_row_when_the_latest_outcome_has_no_rating() -> None:
+    # Execute
+    reply = kept_reply(a_history(an_outcome(id="o1", rating=None), kept=True))
+
+    # Assert
+    assert reply == Reply("📚 Kept: Ramen in Shibuya", (done_reply(a_completion()).buttons[0],))
+
+
+def test_a_not_keeping_reply_keeps_the_rating_row_when_the_latest_outcome_has_no_rating() -> None:
+    # Execute
+    reply = kept_reply(a_history(an_outcome(id="o1", rating=None), kept=False))
+
+    # Assert
+    assert reply.buttons == (done_reply(a_completion()).buttons[0],)
+
+
+def test_a_kept_reply_has_no_rating_row_when_the_latest_outcome_is_rated() -> None:
+    # Execute
+    reply = kept_reply(a_history(an_outcome(id="o1", rating=3), kept=True))
+
+    # Assert
+    assert reply.buttons == ()
+
+
+def test_a_kept_reply_offers_the_rating_row_for_the_most_recently_recorded_outcome() -> None:
+    # Setup
+    history = a_history(
+        an_outcome(id="o2", rating=None, recorded_at=minutes_after(5)),
+        an_outcome(id="o1", rating=None, recorded_at=minutes_after(0)),
+        kept=True,
+    )
+
+    # Execute
+    reply = kept_reply(history)
+
+    # Assert
+    assert [button.data for button in reply.buttons[0]] == rating_row_data("o2")
+
+
+def test_a_kept_reply_has_no_rating_row_when_only_an_older_outcome_is_unrated() -> None:
+    # Setup
+    history = a_history(
+        an_outcome(id="o1", rating=None, recorded_at=minutes_after(0)),
+        an_outcome(id="o2", rating=5, recorded_at=minutes_after(5)),
+        kept=True,
+    )
+
+    # Execute
+    reply = kept_reply(history)
+
+    # Assert
+    assert reply.buttons == ()
 
 
 def test_a_refusal_quotes_the_reason_and_has_no_buttons() -> None:

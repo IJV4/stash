@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from builders import a_capture, a_source
+from capture_builders import sequential_ids
 from config_builders import a_stash_config
 from fakes.backup_source import FakeBackupSource
 from fakes.busy import FakeBusy
@@ -16,7 +17,7 @@ from lifecycle_rig import a_lifecycle
 from router_builders import default_thinking_models
 
 from stash.app import StashApp
-from stash.capture import BurstCoalescer, FixHandler
+from stash.capture import AgentCapture, BurstCoalescer, FixHandler
 from stash.config import ProviderName, Thinking
 from stash.doctor import Doctor
 from stash.domain import Item
@@ -42,10 +43,12 @@ def an_app(**overrides: Any) -> StashApp:
     clock = overrides.get("clock", lambda: NOON)
     lifecycle = overrides.get("lifecycle", a_lifecycle(store, clock))
     gate = a_gate(a_sample(), store=store)
+    pipeline = overrides.get("pipeline", PendingIntake())
     fields: dict[str, Any] = {
         "config": config,
         "store": store,
-        "pipeline": PendingIntake(),
+        "pipeline": pipeline,
+        "agent_capture": AgentCapture(pipeline, sequential_ids(), clock),
         "fixes": FixHandler(store, lifecycle, clock),
         "lifecycle": lifecycle,
         "gpu": gate,

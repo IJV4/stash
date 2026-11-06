@@ -1,9 +1,17 @@
 import asyncio
 import logging
 from collections.abc import Coroutine
-from typing import Final, assert_never
+from typing import assert_never
 
-from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult, Reply
+from stash.capture import (
+    UNEXPECTED_FAILURE_REASON,
+    Deferred,
+    Duplicate,
+    Filed,
+    IsRequest,
+    ProcessResult,
+    Reply,
+)
 from stash.domain import RawCapture
 from stash.hermes_adapter.bursts import Bursts
 from stash.hermes_adapter.events import (
@@ -22,7 +30,6 @@ logger = logging.getLogger(__name__)
 SAVE_FAILED = Reply("⚠️ I could not save that message — please send it again.")
 PROCESSING_FAILED_LOG = "processing capture %s failed"
 QUEUE_FAILED_LOG = "could not queue the saved reply for capture %s"
-UNEXPECTED_FAILURE_REASON: Final = "ai_unavailable"
 
 
 class MessageIntake:

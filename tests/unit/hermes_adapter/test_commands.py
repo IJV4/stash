@@ -562,15 +562,38 @@ def test_library_with_nothing_to_show_says_no_items() -> None:
     assert text == "No items."
 
 
-def test_library_with_an_unknown_type_names_it_and_lists_the_valid_ones() -> None:
+def test_library_with_an_unknown_type_names_it_and_lists_the_labels_in_plain_words() -> None:
     # Execute
     text = run(a_library_command(MemoryStore()), "spaceship")
 
     # Assert
     assert text == (
-        "unknown item_type 'spaceship' "
-        "(valid: place, recipe, purchase, learn, book, media, idea, plan, activity, gift, other)"
+        "unknown type 'spaceship' "
+        "(try: places, recipes, purchases, learning, books, media, ideas, plans, activities, "
+        "gifts, other)"
     )
+
+
+def test_library_accepts_the_plural_label_the_lines_print() -> None:
+    # Setup
+    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
+
+    # Execute
+    text = run(a_library_command(store), "recipes")
+
+    # Assert
+    assert text == "📚 Recipes: Miso soup · ⭐4"
+
+
+def test_library_accepts_the_label_of_a_type_whose_value_differs_in_any_case() -> None:
+    # Setup
+    store = kept_items(("Course", ItemType.LEARN), ("Dune", ItemType.BOOK))
+
+    # Execute
+    text = run(a_library_command(store), " LEARNING ")
+
+    # Assert
+    assert text == "📚 Learning: Course · ⭐4"
 
 
 def test_library_with_a_5000_character_argument_answers_within_the_telegram_limit() -> None:

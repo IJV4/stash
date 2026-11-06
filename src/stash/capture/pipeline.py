@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from stash.capture.message import IncomingMessage
@@ -11,13 +12,24 @@ from stash.capture.results import (
     IsRequest,
     ProcessResult,
 )
-from stash.capture.routing import forces_request
+from stash.capture.routing import is_forced_request
 from stash.domain import CaptureStatus, Filing, Item, RawCapture, Route
 from stash.enrich.links import LinkInspector
 from stash.enrich.urls import extract_urls
 from stash.llm.errors import LlmDeferred, LlmError
 
 logger = logging.getLogger(__name__)
+
+NOT_AN_AGENT_CAPTURE = "only a capture from the agent can be processed as an agent capture"
+
+
+@dataclass(frozen=True, slots=True)
+class _Classified:
+    filing: Filing
+    source_url: str | None
+
+    def without_request(self) -> "_Classified":
+        return replace(self, filing=self.filing.without_request())
 
 
 class CapturePipeline:
@@ -47,27 +59,30 @@ class CapturePipeline:
         return capture if self._store.add_capture(capture) else None
 
     def process(self, capture: RawCapture) -> ProcessResult:
+        if capture.source.is_agent:
+            return self.process_agent(capture)
         existing = self._store.get_item(capture.item_id)
         if existing is not None:
             return self._resumed(capture, existing)
-        if forces_request(capture.text):
+        if is_forced_request(capture):
             return self._request(capture)
-        urls = extract_urls(capture.text)
-        first_url = urls[0] if urls else None
-        link = None if first_url is None else self._inspector.inspect(first_url)
-        try:
-            filing = self._filer.file(capture.text, link)
-        except LlmDeferred:
-            return self._gpu_busy(capture)
-        except LlmError as error:
-            logger.warning(
-                "capture %s deferred: ai_unavailable (%s)", capture.id, type(error).__name__
-            )
-            return Deferred(capture, "ai_unavailable")
-        if filing.route is Route.REQUEST:
+        classified = self._classified(capture)
+        if isinstance(classified, Deferred):
+            return classified
+        if classified.filing.route is Route.REQUEST:
             return self._request(capture)
-        facts = {} if link is None else link.facts()
-        return self._filed(capture, filing.with_facts(facts), first_url)
+        return self._filed(capture, classified)
+
+    def process_agent(self, capture: RawCapture) -> Filed | Deferred:
+        if not capture.source.is_agent:
+            raise ValueError(NOT_AN_AGENT_CAPTURE)
+        existing = self._store.get_item(capture.item_id)
+        if existing is not None:
+            return self._resumed(capture, existing)
+        classified = self._classified(capture)
+        if isinstance(classified, Deferred):
+            return classified
+        return self._filed(capture, classified.without_request())
 
     def handle(self, message: IncomingMessage) -> ProcessResult:
         capture = self.receive(message)
@@ -82,6 +97,22 @@ class CapturePipeline:
                 logger.exception("capture %s failed unexpectedly; left pending", capture.id)
         return results
 
+    def _classified(self, capture: RawCapture) -> _Classified | Deferred:
+        urls = extract_urls(capture.text)
+        first_url = urls[0] if urls else None
+        link = None if first_url is None else self._inspector.inspect(first_url)
+        try:
+            filing = self._filer.file(capture.text, link)
+        except LlmDeferred:
+            return self._gpu_busy(capture)
+        except LlmError as error:
+            logger.warning(
+                "capture %s deferred: ai_unavailable (%s)", capture.id, type(error).__name__
+            )
+            return Deferred(capture, "ai_unavailable")
+        facts = {} if link is None else link.facts()
+        return _Classified(filing.with_facts(facts), first_url)
+
     def _gpu_busy(self, capture: RawCapture) -> Deferred:
         logger.info("capture %s deferred: gpu_busy", capture.id)
         return Deferred(capture, "gpu_busy")
@@ -94,8 +125,11 @@ class CapturePipeline:
         self._store.set_capture_status(capture.id, CaptureStatus.REQUEST)
         return IsRequest(capture.with_status(CaptureStatus.REQUEST))
 
-    def _filed(self, capture: RawCapture, filing: Filing, source_url: str | None) -> Filed:
-        item = Item.from_filing(capture.item_id, capture, filing, source_url, self._clock())
+    def _filed(self, capture: RawCapture, classified: _Classified) -> Filed:
+        filing = classified.filing
+        item = Item.from_filing(
+            capture.item_id, capture, filing, classified.source_url, self._clock()
+        )
         self._store.save_item(item)
         self._store.set_capture_status(capture.id, CaptureStatus.FILED)
         return Filed(item, unsure=filing.route is Route.UNSURE)

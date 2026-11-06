@@ -17,6 +17,7 @@ from log_records import recording_logs
 
 from stash.capture import IncomingMessage
 from stash.domain import SourceRef
+from stash.domain.capture import AGENT_CHAT_ID
 from stash.hermes_adapter.events import (
     Chat,
     EventTranslator,
@@ -338,6 +339,18 @@ def test_an_owner_event_with_a_blank_chat_id_is_left_to_hermes() -> None:
     # Setup
     translator = a_translator()
     event = FakeEvent(source=FakeSource(chat_id="  ", user_id=OWNER))
+
+    # Execute
+    outcome = translator.read(event)
+
+    # Assert
+    assert outcome == Passthrough()
+
+
+def test_an_owner_event_from_the_reserved_agent_chat_is_left_to_hermes() -> None:
+    # Setup
+    translator = a_translator()
+    event = FakeEvent(source=FakeSource(chat_id=AGENT_CHAT_ID, user_id=OWNER))
 
     # Execute
     outcome = translator.read(event)

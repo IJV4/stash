@@ -76,6 +76,14 @@ class MemoryStore:
             self._ungroup_children_of(item_id)
             self._drop_outcomes_of(item_id)
 
+    def delete_item_if_untouched(self, item_id: str) -> bool:
+        with self._lock:
+            item = self._items.get(item_id)
+            if item is None or item.is_done or item.kept or self._has_history(item_id):
+                return False
+            self.delete_item(item_id)
+            return True
+
     def list_items(
         self,
         stage: Stage | None = None,
@@ -203,6 +211,11 @@ class MemoryStore:
     def _ungroup_children_of(self, parent_id: str) -> None:
         for child in [item for item in self._items.values() if item.parent_id == parent_id]:
             self._items[child.id] = replace(child, parent_id=None)
+
+    def _has_history(self, item_id: str) -> bool:
+        return any(outcome.item_id == item_id for outcome in self._outcomes.values()) or any(
+            item.parent_id == item_id for item in self._items.values()
+        )
 
     def _drop_outcomes_of(self, item_id: str) -> None:
         self._outcomes = {

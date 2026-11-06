@@ -130,6 +130,11 @@ class Filing:
         _require_fileable(self.title, self.stage, self.date)
         _freeze(self)
 
+    def without_request(self) -> "Filing":
+        if self.route is not Route.REQUEST:
+            return self
+        return replace(self, route=Route.UNSURE)
+
     def with_facts(self, facts: Mapping[str, str]) -> "Filing":
         room = MAX_DETAILS - len(facts)
         kept = [(key, text) for key, text in self.details.items() if key not in facts]

@@ -18,7 +18,7 @@ OPERATIONS: dict[str, Callable[[Lifecycle], object]] = {
     "drop": lambda lifecycle: lifecycle.drop("i1", "why"),
     "group": lambda lifecycle: lifecycle.group("i1", "p1"),
     "ungroup": lambda lifecycle: lifecycle.ungroup("i1"),
-    "annotate": lambda lifecycle: lifecycle.annotate("o-i1", "notes", ()),
+    "annotate": lambda lifecycle: lifecycle.annotate("o-i1", notes="notes"),
     "rate": lambda lifecycle: lifecycle.rate("o-i1", 3),
 }
 

@@ -14,9 +14,11 @@ from capture_builders import (
 )
 from capture_rig import CaptureRig, build_rig
 from clocks import SettableClock
+from lifecycle_rig import a_lifecycle
 from link_builders import a_link_info
 
 from stash.capture import Filed, IsRequest, Reply, Reroute, gone, reply_for
+from stash.capture.fixes import HISTORY_KEPT
 from stash.domain import CaptureStatus, Item, ItemType, Stage
 
 
@@ -74,6 +76,41 @@ def test_an_unsure_ai_files_the_item_and_the_question_button_reroutes_it_exactly
         [],
         CaptureStatus.REQUEST,
         gone(),
+    )
+
+
+def test_the_question_button_of_a_completed_kept_item_with_children_changes_nothing() -> None:
+    # Setup
+    clock = SettableClock()
+    rig = build_rig(answer=an_unsure_answer(), clock=clock)
+    result = rig.pipeline.handle(a_message(QUESTION))
+    assert isinstance(result, Filed)
+    question_button = button_data(reply_for(result), "That was a question →")
+    done = pressed(rig, reply_for(result), "Done ✓")
+    kept = pressed(rig, pressed(rig, done, "⭐5"), "Keep 📚")
+    assert kept.text == f"📚 Kept: {result.item.title}"
+    lifecycle = a_lifecycle(rig.store, clock=clock)
+    [outcome] = rig.store.outcomes_for(result.item.id)
+    lifecycle.annotate(outcome.id, takeaways=["Ask first"])
+    for message_id in ("m2", "m3"):
+        child = rig.pipeline.handle(a_message("a side note", message_id=message_id))
+        assert isinstance(child, Filed)
+        lifecycle.group(child.item.id, result.item.id)
+    before = group_snapshot(rig, result.item)
+
+    # Execute
+    answer = rig.fixes.apply(question_button)
+
+    # Assert
+    assert (answer, group_snapshot(rig, result.item)) == (Reply(HISTORY_KEPT), before)
+
+
+def group_snapshot(rig: CaptureRig, item: Item) -> tuple[object, ...]:
+    return (
+        rig.store.get_item(item.id),
+        rig.store.outcomes_for(item.id),
+        rig.store.children_of(item.id),
+        rig.store.get_capture(item.capture_id),
     )
 
 
@@ -180,7 +217,11 @@ def test_pressing_keep_keeps_the_item_and_answers_that_it_is_kept() -> None:
 
     # Assert
     kept = rig.store.get_item(item.id)
-    assert (kept and kept.kept, reply.text) == (True, f"📚 Kept: {FILED_TITLE}")
+    assert (kept and kept.kept, reply.text, button_labels(reply.buttons)) == (
+        True,
+        f"📚 Kept: {FILED_TITLE}",
+        [RATING_LABELS],
+    )
 
 
 def test_pressing_done_a_minute_later_records_a_second_outcome_and_answers_again() -> None:

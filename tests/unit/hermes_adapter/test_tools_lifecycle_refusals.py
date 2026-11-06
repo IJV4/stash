@@ -23,6 +23,8 @@ UNKNOWN_ITEM_TYPE = (
     "unknown item_type 'spaceship' (valid: place, recipe, purchase, learn, book, media, idea, "
     "plan, activity, gift, other)"
 )
+NOTHING_TO_ANNOTATE = "give notes, takeaways or a rating"
+USE_STASH_COMPLETE = "use stash_complete to finish an item"
 NOT_WIRE_SAFE_MESSAGE = "must be non-blank, printable ASCII, without whitespace or ':'"
 
 COMPLETE = {"item_id": WANT_TO_ITEM}
@@ -81,9 +83,16 @@ REFUSED_CALLS: list[Row] = [
         ["yesterday", "2026-13-01"],
         "completed_on must be a date like 2026-11-05",
     ),
+    *refusing(
+        "complete",
+        COMPLETE,
+        "completed_on",
+        ["2026-11-04"],
+        "completed_on 2026-11-04 is after tomorrow",
+    ),
     *bad_ids("annotate", ANNOTATE, "outcome_id"),
     ("annotate", {**ANNOTATE, "outcome_id": "zz"}, "no outcome 'zz'"),
-    *refusing("annotate", ANNOTATE, "notes", [None, 5, ["a"]], "notes must be text"),
+    *refusing("annotate", ANNOTATE, "notes", [5, ["a"]], "notes must be text"),
     *refusing("annotate", ANNOTATE, "notes", ["x" * 4001], "notes must be at most 4000 characters"),
     *refusing(
         "annotate",
@@ -98,7 +107,10 @@ REFUSED_CALLS: list[Row] = [
     *refusing(
         "annotate", ANNOTATE, "takeaways", [["x" * 501]], "takeaway must be at most 500 characters"
     ),
-    ("annotate", {"outcome_id": DONE_ITEM_OUTCOME}, "notes must be text"),
+    ("annotate", {"outcome_id": DONE_ITEM_OUTCOME}, NOTHING_TO_ANNOTATE),
+    ("annotate", {"outcome_id": DONE_ITEM_OUTCOME, "notes": None}, NOTHING_TO_ANNOTATE),
+    *refusing("annotate", ANNOTATE, "rating", [True, False, 4.0, "4"], "rating must be an integer"),
+    *refusing("annotate", ANNOTATE, "rating", [0, 6, -1], "rating must be between 1 and 5"),
     *bad_ids("set_stage", SET_STAGE, "item_id"),
     ("set_stage", {**SET_STAGE, "item_id": "zz"}, "no item 'zz'"),
     *refusing(
@@ -106,9 +118,9 @@ REFUSED_CALLS: list[Row] = [
         SET_STAGE,
         "stage",
         ["soonish"],
-        "unknown stage 'soonish' (valid: inbox, want_to, planned, doing, done, dropped)",
+        "unknown stage 'soonish' (valid: inbox, want_to, planned, doing, dropped)",
     ),
-    *refusing("set_stage", SET_STAGE, "stage", ["done"], "done is reached by completing an item"),
+    *refusing("set_stage", SET_STAGE, "stage", ["done"], USE_STASH_COMPLETE),
     *refusing("set_stage", SET_STAGE, "stage", [None, 5], "stage must be text"),
     *refusing("set_stage", SET_STAGE, "reason", NOT_TEXT, "reason must be text"),
     *refusing(

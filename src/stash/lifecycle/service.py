@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item, Outcome, Stage, frozen_strings
@@ -12,6 +12,10 @@ from stash.store.port import UnknownItemError
 
 REASON_ONLY_FOR_DROPPING = "a reason is only for dropping an item"
 TAKEAWAYS_NOT_A_LIST = "takeaways must be a list of separate items, not one piece of text"
+NOTHING_TO_ANNOTATE = "give notes, takeaways or a rating"
+
+COMPLETED_AFTER_TOMORROW = "completed_on {on} is after tomorrow"
+COMPLETION_DATE_SLACK = timedelta(days=1)
 
 
 @contextmanager
@@ -56,6 +60,7 @@ class Lifecycle:
         item = self._item(item_id)
         outcome_id = self._new_id()
         now = self._clock()
+        self._refuse_a_date_after_tomorrow(on, now)
         repeat = item.is_done
         with _refusing_what_the_domain_refuses():
             outcome = Outcome(
@@ -120,13 +125,22 @@ class Lifecycle:
         return self._saved(child.ungrouped(now))
 
     def annotate(
-        self, outcome_id: str, notes: str, takeaways: Sequence[str] | None = None
+        self,
+        outcome_id: str,
+        *,
+        notes: str | None = None,
+        takeaways: Sequence[str] | None = None,
+        rating: int | None = None,
     ) -> Outcome:
+        if notes is None and takeaways is None and rating is None:
+            raise LifecycleRefused(NOTHING_TO_ANNOTATE)
         outcome = self._outcome(outcome_id)
         now = self._clock()
         kept_or_replaced = None if takeaways is None else _takeaway_list(takeaways)
         with _refusing_what_the_domain_refuses():
             changed = outcome.with_notes(notes, kept_or_replaced, now)
+            if rating is not None:
+                changed = changed.with_rating(rating, now)
         return self._saved_outcome(changed)
 
     def rate(self, outcome_id: str, rating: int) -> Outcome:
@@ -143,9 +157,9 @@ class Lifecycle:
 
     def library(self, query: LibraryQuery = DEFAULT_LIBRARY_QUERY) -> tuple[LibraryEntry, ...]:
         items = self._store.library(query.item_type, query.limit)
-        return tuple(LibraryEntry(item, self._last_outcome(item)) for item in items)
+        return tuple(LibraryEntry(item, self._last_finished(item)) for item in items)
 
-    def _last_outcome(self, item: Item) -> Outcome | None:
+    def _last_finished(self, item: Item) -> Outcome | None:
         outcomes = self._store.outcomes_for(item.id)
         return outcomes[-1] if outcomes else None
 
@@ -170,6 +184,10 @@ class Lifecycle:
         if outcome is None:
             raise UnknownOutcome(outcome_id)
         return outcome
+
+    def _refuse_a_date_after_tomorrow(self, on: date | None, now: datetime) -> None:
+        if on is not None and on > self._today(now) + COMPLETION_DATE_SLACK:
+            raise LifecycleRefused(COMPLETED_AFTER_TOMORROW.format(on=on))
 
     def _today(self, now: datetime) -> date:
         return now.astimezone(self._timezone).date()

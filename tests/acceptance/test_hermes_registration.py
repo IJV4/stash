@@ -46,6 +46,7 @@ def test_register_adds_the_hook_the_telegram_handler_the_commands_and_the_tools(
         "commands": ["gpu", "library", "list", "retry"],
         "tools": {
             "stash_annotate": ("stash", "stash_annotate"),
+            "stash_capture": ("stash", "stash_capture"),
             "stash_complete": ("stash", "stash_complete"),
             "stash_get": ("stash", "stash_get"),
             "stash_group": ("stash", "stash_group"),

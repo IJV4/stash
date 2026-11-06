@@ -97,6 +97,8 @@ class EventTranslator:
         chat_id = event.source.chat_id
         if user_id is None or not self._owners.admits_user(user_id) or not chat_id.strip():
             return None
+        if SourceRef.is_agent_chat(chat_id):
+            return None
         return Chat(chat_id, user_id)
 
     def _message(self, event: HermesEvent, chat: Chat, text: str) -> IncomingMessage:

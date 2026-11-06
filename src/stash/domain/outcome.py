@@ -49,11 +49,16 @@ class Outcome:
         object.__setattr__(self, "takeaways", frozen_strings("takeaways", self.takeaways))
         _require_takeaways(self.takeaways)
 
+    @property
+    def is_rated(self) -> bool:
+        return self.rating is not None
+
     def with_notes(
-        self, notes: str, takeaways: tuple[str, ...] | None, now: dt.datetime
+        self, notes: str | None, takeaways: tuple[str, ...] | None, now: dt.datetime
     ) -> "Outcome":
-        kept = self.takeaways if takeaways is None else takeaways
-        return replace(self, notes=notes, takeaways=kept, edited_at=now)
+        kept_notes = self.notes if notes is None else notes
+        kept_takeaways = self.takeaways if takeaways is None else takeaways
+        return replace(self, notes=kept_notes, takeaways=kept_takeaways, edited_at=now)
 
     def with_rating(self, rating: int, now: dt.datetime) -> "Outcome":
         return replace(self, rating=rating, edited_at=now)

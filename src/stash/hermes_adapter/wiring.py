@@ -4,6 +4,7 @@ from stash.app import StashApp
 from stash.hermes_adapter.assistant import Assistant
 from stash.hermes_adapter.bursts import Bursts
 from stash.hermes_adapter.callbacks import FixCallbacks
+from stash.hermes_adapter.capture_tools import CaptureTools
 from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
 from stash.hermes_adapter.events import EventTranslator
 from stash.hermes_adapter.intake import MessageIntake
@@ -43,7 +44,11 @@ def build_callbacks(
 
 
 def build_tools(app: StashApp) -> tuple[ToolSpec, ...]:
-    return (*StashTools(app.store).specs(), *LifecycleTools(app.lifecycle).specs())
+    return (
+        *StashTools(app.store).specs(),
+        *LifecycleTools(app.lifecycle).specs(),
+        *CaptureTools(app.agent_capture).specs(),
+    )
 
 
 def build_commands(app: StashApp) -> dict[str, Command]:

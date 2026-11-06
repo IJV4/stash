@@ -1,11 +1,11 @@
 import re
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 from typing import TypeVar
 
-from stash.domain import ItemType, Stage
+from stash.domain import MOVEABLE_STAGES, ItemType, Stage
 from stash.domain.wire import require_wire_safe_id
 from stash.store.port import DEFAULT_PAGE_SIZE
 
@@ -18,17 +18,17 @@ DATE_EXAMPLE = "2026-11-05"
 _E = TypeVar("_E", bound=StrEnum)
 
 
-def _echoed(raw: str) -> str:
+def echoed(raw: str) -> str:
     text = raw.strip()
     return text if len(text) <= ECHO_LIMIT else f"{text[:ECHO_LIMIT]}{ELLIPSIS}"
 
 
-def parse_member(kind: type[_E], name: str, raw: str) -> _E:
+def parse_member(kind: type[_E], name: str, raw: str, listed: Collection[_E] | None = None) -> _E:
     try:
         return kind(_SEPARATORS.sub("_", raw.strip().casefold()))
     except ValueError:
-        valid = ", ".join(member.value for member in kind)
-        raise ValueError(f"unknown {name} {_echoed(raw)!r} (valid: {valid})") from None
+        valid = ", ".join(member.value for member in (kind if listed is None else listed))
+        raise ValueError(f"unknown {name} {echoed(raw)!r} (valid: {valid})") from None
 
 
 def _not_text(name: str) -> ValueError:
@@ -64,8 +64,11 @@ class ToolArguments:
     def optional_text(self, name: str) -> str:
         return "" if self.values.get(name) is None else self.required_text(name)
 
+    def nullable_text(self, name: str) -> str | None:
+        return None if self.values.get(name) is None else self.required_text(name)
+
     def optional_reason(self) -> str | None:
-        return None if self.values.get("reason") is None else self.required_text("reason")
+        return self.nullable_text("reason")
 
     def optional_rating(self) -> int | None:
         return self._optional_int("rating")
@@ -102,7 +105,7 @@ class ToolArguments:
         return parsed
 
     def stage(self) -> Stage:
-        return parse_member(Stage, "stage", self.required_text("stage"))
+        return parse_member(Stage, "stage", self.required_text("stage"), listed=MOVEABLE_STAGES)
 
     def optional_stage(self) -> Stage | None:
         return self._optional_member(Stage, "stage")

@@ -129,6 +129,11 @@ class SqliteStore:
         with self._lock:
             self._connection.execute("DELETE FROM items WHERE id = ?", (item_id,))
 
+    def delete_item_if_untouched(self, item_id: str) -> bool:
+        parameters = {"item_id": item_id, "done": Stage.DONE.value}
+        with self._lock:
+            return self._connection.execute(sql.DELETE_ITEM_IF_UNTOUCHED, parameters).rowcount > 0
+
     def list_items(
         self,
         stage: Stage | None = None,

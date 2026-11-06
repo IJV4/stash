@@ -1,46 +1,48 @@
 import threading
 
 from builders import a_capture
+from threads import OverlapGate
 
-from stash.capture import Duplicate, IncomingMessage, IsRequest, ProcessResult, forces_request
+from stash.capture import (
+    Deferred,
+    Duplicate,
+    Filed,
+    IncomingMessage,
+    IsRequest,
+    ProcessResult,
+    is_forced_request,
+)
 from stash.domain import CaptureStatus, RawCapture
-
-HOLD_LIMIT_SECONDS = 1.0
 
 
 class BlockingIntake:
     def __init__(self) -> None:
-        self.release = threading.Event()
-        self.entered = threading.Event()
-        self.overlapped = threading.Event()
-        self.max_inside = 0
-        self._inside = 0
-        self._counting = threading.Lock()
+        self._gate = OverlapGate()
+        self.release: threading.Event = self._gate.release
+        self.entered: threading.Event = self._gate.entered
+        self.overlapped: threading.Event = self._gate.overlapped
+
+    @property
+    def max_inside(self) -> int:
+        return self._gate.max_inside
 
     def receive(self, message: IncomingMessage) -> RawCapture | None:
         return a_capture()
 
     def process(self, capture: RawCapture) -> ProcessResult:
-        if forces_request(capture.text):
+        if is_forced_request(capture):
             return IsRequest(capture.with_status(CaptureStatus.REQUEST))
-        self._hold()
+        self._gate.hold()
         return Duplicate()
 
+    def process_agent(self, capture: RawCapture) -> Filed | Deferred:
+        self._gate.hold()
+        return Deferred(capture, "ai_unavailable")
+
     def handle(self, message: IncomingMessage) -> ProcessResult:
-        self._hold()
+        self._gate.hold()
         return Duplicate()
 
     def retry_pending(self) -> list[ProcessResult]:
-        self._hold()
+        self._gate.hold()
         return []
-
-    def _hold(self) -> None:
-        with self._counting:
-            self._inside += 1
-            self.max_inside = max(self.max_inside, self._inside)
-            if self._inside > 1:
-                self.overlapped.set()
-        self.entered.set()
-        self.release.wait(HOLD_LIMIT_SECONDS)
-        with self._counting:
-            self._inside -= 1

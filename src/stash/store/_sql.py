@@ -110,3 +110,10 @@ SELECT items.* FROM items
 JOIN in_range ON in_range.item_id = items.id AND in_range.recency = 1
 ORDER BY in_range.completed_on DESC, in_range.recorded_at DESC, items.id DESC
 """
+
+DELETE_ITEM_IF_UNTOUCHED = """
+DELETE FROM items
+WHERE id = :item_id AND stage <> :done AND kept = 0
+  AND NOT EXISTS (SELECT 1 FROM outcomes WHERE outcomes.item_id = items.id)
+  AND NOT EXISTS (SELECT 1 FROM items AS child WHERE child.parent_id = items.id)
+"""

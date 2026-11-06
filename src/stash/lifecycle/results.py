@@ -17,6 +17,10 @@ class ItemHistory:
     outcomes: tuple[Outcome, ...]
     children: tuple[Item, ...]
 
+    @property
+    def latest_recorded(self) -> Outcome | None:
+        return max(self.outcomes, key=lambda outcome: outcome.recorded_at, default=None)
+
 
 @dataclass(frozen=True, slots=True)
 class LibraryEntry:

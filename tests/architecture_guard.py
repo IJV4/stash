@@ -109,6 +109,22 @@ def forbidden_imports_in(sources: dict[str, str], forbidden: tuple[str, ...]) ->
     )
 
 
+def method_callers_outside(
+    method: str, allowed: tuple[str, ...], sources: dict[str, str]
+) -> list[str]:
+    return sorted(
+        name
+        for name, source in sources.items()
+        if not any(is_within(name, root) for root in allowed)
+        and any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == method
+            for node in ast.walk(ast.parse(source))
+        )
+    )
+
+
 def sources_named(*modules: str) -> dict[str, str]:
     everything = project_sources()
     missing = [module for module in modules if module not in everything]

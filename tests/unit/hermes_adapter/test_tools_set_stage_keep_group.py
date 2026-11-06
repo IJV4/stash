@@ -57,12 +57,12 @@ def test_set_stage_dropped_without_a_reason_drops_the_item_all_the_same() -> Non
     assert (answer["item"]["stage"], answer["item"]["drop_reason"]) == ("dropped", None)
 
 
-def test_set_stage_done_answers_the_domains_refusal() -> None:
+def test_set_stage_done_sends_the_agent_to_stash_complete() -> None:
     # Execute
     answer = staged({"stage": "done"})
 
     # Assert
-    assert answer == {"error": "done is reached by completing an item"}
+    assert answer == {"error": "use stash_complete to finish an item"}
 
 
 def test_set_stage_done_leaves_the_store_as_it_was() -> None:
@@ -93,12 +93,14 @@ def test_set_stage_planned_for_an_item_without_a_date_answers_the_domains_refusa
     assert answer == {"error": "planned items need a date"}
 
 
-def test_set_stage_with_an_unknown_stage_lists_the_valid_ones() -> None:
+def test_set_stage_with_an_unknown_stage_lists_only_the_stages_it_can_move_to() -> None:
     # Execute
     answer = staged({"stage": "soonish"})
 
     # Assert
-    assert answer["error"].startswith("unknown stage 'soonish' (valid: inbox, want_to")
+    assert answer == {
+        "error": "unknown stage 'soonish' (valid: inbox, want_to, planned, doing, dropped)"
+    }
 
 
 def kept(arguments: dict[str, Any], item_id: str = DONE_ITEM) -> dict[str, Any]:

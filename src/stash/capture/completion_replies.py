@@ -3,7 +3,7 @@ from types import MappingProxyType
 from stash.capture.callbacks import RATING_ARGUMENTS, FixAction, FixKind, KeepChoice
 from stash.capture.replies import Button, Reply
 from stash.domain import Item
-from stash.lifecycle.results import Completion
+from stash.lifecycle.results import Completion, ItemHistory
 
 DONE_TEXT = "🎉 Done: {title}"
 AGAIN_SUFFIX = " (again)"
@@ -32,8 +32,13 @@ def rated_reply(item: Item, rating: int) -> Reply:
     return Reply(text, (_keep_row(item),))
 
 
-def kept_reply(item: Item) -> Reply:
-    return Reply((KEPT_TEXT if item.kept else NOT_KEPT_TEXT).format(title=item.title))
+def kept_reply(history: ItemHistory) -> Reply:
+    item = history.item
+    text = (KEPT_TEXT if item.kept else NOT_KEPT_TEXT).format(title=item.title)
+    latest = history.latest_recorded
+    if latest is None or latest.is_rated:
+        return Reply(text)
+    return Reply(text, (_rating_row(latest.id),))
 
 
 def _rating_row(outcome_id: str) -> tuple[Button, ...]:

@@ -11,9 +11,15 @@ from stash.capture.completion_buttons import CompletionButtons
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.ports import FixStore, LifecycleActions
 from stash.capture.replies import Reply, confirmation, gone
+from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
 
 logger = logging.getLogger(__name__)
+
+HISTORY_KEPT = (
+    "That item has a history now, so I kept it — "
+    f"send the question again starting with {QUESTION_PREFIX} to ask."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +103,8 @@ class FixHandler:
             self._log.unknown(Subject.CAPTURE, capture_id)
             return gone()
         self._store.set_capture_status(capture.id, CaptureStatus.REQUEST)
-        self._store.delete_item(capture.item_id)
+        if not self._store.delete_item_if_untouched(capture.item_id):
+            self._store.set_capture_status(capture.id, capture.status)
+            return Reply(HISTORY_KEPT)
         logger.info("capture %s rerouted as a question", capture.id)
         return Reroute(capture.text)

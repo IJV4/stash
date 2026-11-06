@@ -6,6 +6,8 @@ from stash.domain._validation import require_aware
 from stash.domain.media import safe_media_paths
 from stash.domain.wire import require_wire_safe_id
 
+AGENT_CHAT_ID = "agent"
+
 
 class Route(StrEnum):
     CAPTURE = "capture"
@@ -23,6 +25,18 @@ class CaptureStatus(StrEnum):
 class SourceRef:
     chat_id: str
     message_id: str
+
+    @classmethod
+    def agent(cls, message_id: str) -> "SourceRef":
+        return cls(chat_id=AGENT_CHAT_ID, message_id=message_id)
+
+    @staticmethod
+    def is_agent_chat(chat_id: str) -> bool:
+        return chat_id == AGENT_CHAT_ID
+
+    @property
+    def is_agent(self) -> bool:
+        return self.is_agent_chat(self.chat_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +56,10 @@ class RawCapture:
     @property
     def item_id(self) -> str:
         return self.id
+
+    @property
+    def may_be_a_request(self) -> bool:
+        return not self.source.is_agent
 
     def with_status(self, status: CaptureStatus) -> "RawCapture":
         return replace(self, status=status)

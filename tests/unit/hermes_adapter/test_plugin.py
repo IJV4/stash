@@ -21,6 +21,7 @@ from log_records import recording_logs
 
 from stash.app import StashApp
 from stash.config import ConfigError, StashConfig
+from stash.hermes_adapter.capture_tools import CAPTURE_SCHEMA
 from stash.hermes_adapter.lifecycle_schemas import (
     ANNOTATE_SCHEMA,
     COMPLETE_SCHEMA,
@@ -398,6 +399,7 @@ def test_tools_are_registered_with_the_description_of_their_schema() -> None:
         "stash_search": SEARCH_SCHEMA["description"],
         "stash_list": LIST_SCHEMA["description"],
         **{schema["name"]: schema["description"] for schema in LIFECYCLE_SCHEMAS},
+        "stash_capture": CAPTURE_SCHEMA["description"],
     }
 
 

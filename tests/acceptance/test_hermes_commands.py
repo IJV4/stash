@@ -121,3 +121,28 @@ def test_library_with_a_type_lists_only_the_kept_items_of_that_type_with_their_r
 
     # Assert
     assert text == "📚 Recipes: Miso soup · ⭐4"
+
+
+def test_library_with_a_plural_label_lists_only_the_kept_items_of_that_type() -> None:
+    # Setup
+    kept_soup = an_item(
+        id="r1",
+        capture_id="c1",
+        item_type=ItemType.RECIPE,
+        title="Miso soup",
+        stage=Stage.DONE,
+        kept=True,
+    )
+    kept_book = an_item(
+        id="b1", capture_id="c3", item_type=ItemType.BOOK, title="Dune", stage=Stage.DONE, kept=True
+    )
+    store = stored(kept_soup, kept_book)
+    for item in (kept_soup, kept_book):
+        store.add_outcome(an_outcome(id=f"o-{item.id}", item_id=item.id, rating=4))
+    plugin = register_stash(an_app(store=store))
+
+    # Execute
+    text = asyncio.run(called(plugin.ctx.commands["library"], "recipes"))
+
+    # Assert
+    assert text == "📚 Recipes: Miso soup · ⭐4"

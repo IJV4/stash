@@ -1,4 +1,4 @@
-from typing import Any
+from functools import partial
 
 from stash.domain import (
     DROP_REASON_LIMIT,
@@ -9,11 +9,11 @@ from stash.domain import (
     OUTCOME_NOTES_LIMIT,
     TAKEAWAY_LIMIT,
 )
-from stash.hermes_adapter.tool_schema import ITEM_TYPE, limit_property, owners_data
+from stash.hermes_adapter.tool_schema import ITEM_TYPE, limit_property, tool_schema
 from stash.lifecycle import MAX_LIBRARY_LIMIT, MIN_LIBRARY_LIMIT
 
 FIND_THE_ID = "Call stash_search (or stash_list) first to find the id."
-OWNERS_DATA = owners_data("Titles, notes and details")
+OWNERS_DATA_SUBJECT = "Titles, notes and details"
 ITEM_ID = {"type": "string", "description": "The item's id, from stash_search."}
 OUTCOME_ID = {"type": "string", "description": "The outcome's id, from stash_get."}
 NOTES = {
@@ -21,6 +21,17 @@ NOTES = {
     "maxLength": OUTCOME_NOTES_LIMIT,
     "description": "The owner's own words about it.",
 }
+RATING = {
+    "type": "integer",
+    "minimum": MIN_RATING,
+    "maximum": MAX_RATING,
+    "description": "Stars.",
+}
+ADD_TO_EXISTING_COMPLETION = (
+    "If the item is already done and the owner is describing that same completion (notes, "
+    "takeaways, a rating), call stash_get and stash_annotate its latest outcome. "
+    "stash_complete on a done item records a new completion — only when they did it again."
+)
 TAKEAWAYS = {
     "type": "array",
     "items": {"type": "string", "maxLength": TAKEAWAY_LIMIT},
@@ -30,13 +41,7 @@ TAKEAWAYS = {
 _MOVEABLE_STAGE_VALUES = [stage.value for stage in MOVEABLE_STAGES]
 
 
-def _schema(
-    name: str, description: str, properties: dict[str, Any], required: list[str]
-) -> dict[str, Any]:
-    parameters: dict[str, Any] = {"type": "object", "properties": properties}
-    if required:
-        parameters["required"] = required
-    return {"name": name, "description": f"{description} {OWNERS_DATA}", "parameters": parameters}
+_schema = partial(tool_schema, subject=OWNERS_DATA_SUBJECT)
 
 
 GET_SCHEMA = _schema(
@@ -50,22 +55,17 @@ GET_SCHEMA = _schema(
 COMPLETE_SCHEMA = _schema(
     "stash_complete",
     f"Mark an item done, recording one outcome: a rating, notes and takeaways, and whether to "
-    f"keep it in the library. Completing a done item again records another outcome. {FIND_THE_ID}",
+    f"keep it in the library. {ADD_TO_EXISTING_COMPLETION} {FIND_THE_ID}",
     {
         "item_id": ITEM_ID,
-        "rating": {
-            "type": "integer",
-            "minimum": MIN_RATING,
-            "maximum": MAX_RATING,
-            "description": "Stars.",
-        },
+        "rating": RATING,
         "notes": NOTES,
         "takeaways": TAKEAWAYS,
         "keep": {"type": "boolean", "description": "Keep it in the library."},
         "completed_on": {
             "type": "string",
             "format": "date",
-            "description": "YYYY-MM-DD; today when omitted.",
+            "description": "YYYY-MM-DD; today when omitted; at most one day after today.",
         },
     },
     ["item_id"],
@@ -73,10 +73,12 @@ COMPLETE_SCHEMA = _schema(
 
 ANNOTATE_SCHEMA = _schema(
     "stash_annotate",
-    "Edit an outcome. This replaces the notes, so pass the full text; takeaways are replaced "
-    "only when given. Find the outcome_id with stash_get after stash_search finds the item.",
-    {"outcome_id": OUTCOME_ID, "notes": NOTES, "takeaways": TAKEAWAYS},
-    ["outcome_id", "notes"],
+    f"Edit an outcome: its notes, takeaways or rating, at least one. Given notes replace the "
+    f"current ones, so pass the full text; this replaces the notes only when given, and "
+    f"likewise the takeaways. {ADD_TO_EXISTING_COMPLETION} Find the outcome_id with stash_get "
+    f"after stash_search finds the item.",
+    {"outcome_id": OUTCOME_ID, "notes": NOTES, "takeaways": TAKEAWAYS, "rating": RATING},
+    ["outcome_id"],
 )
 
 SET_STAGE_SCHEMA = _schema(

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from stash.capture import BurstCoalescer, CaptureIntake, FixHandler
+from stash.capture import AgentCapture, BurstCoalescer, CaptureIntake, FixHandler
 from stash.config import StashConfig
 from stash.doctor import Doctor
 from stash.evaluation import EvalTargets, Ocr
@@ -18,6 +18,7 @@ class StashApp:
     config: StashConfig
     store: Store
     pipeline: CaptureIntake
+    agent_capture: AgentCapture
     fixes: FixHandler
     lifecycle: Lifecycle
     gpu: GpuGate

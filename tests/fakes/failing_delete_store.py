@@ -10,8 +10,8 @@ class FailingDeleteStore(MemoryStore):
         super().__init__()
         self.fail_next_delete = True
 
-    def delete_item(self, item_id: str) -> None:
+    def delete_item_if_untouched(self, item_id: str) -> bool:
         if self.fail_next_delete:
             self.fail_next_delete = False
             raise DeleteFailed(item_id)
-        super().delete_item(item_id)
+        return super().delete_item_if_untouched(item_id)

@@ -3,12 +3,19 @@ from typing import Self
 
 from stash.domain import Item, ItemType, Stage
 from stash.hermes_adapter.ports import ItemReader
-from stash.hermes_adapter.tool_arguments import ToolArguments, parse_member
+from stash.hermes_adapter.tool_arguments import ToolArguments, echoed, parse_member
 from stash.store.port import DEFAULT_PAGE_SIZE
 
 DEFAULT_LIMIT = DEFAULT_PAGE_SIZE
 MIN_LIMIT = 1
 MAX_LIMIT = 50
+UNKNOWN_TYPE = "unknown type {raw!r} (try: {labels})"
+_ITEM_TYPES_BY_NAME = {
+    name.casefold(): item_type
+    for item_type in ItemType
+    for name in (item_type.value, item_type.label)
+}
+_TYPE_LABELS = ", ".join(item_type.label.casefold() for item_type in ItemType)
 
 
 def checked_limit(limit: int) -> int:
@@ -18,7 +25,13 @@ def checked_limit(limit: int) -> int:
 
 
 def item_type_from_text(raw: str) -> ItemType | None:
-    return parse_member(ItemType, "item_type", raw) if raw.strip() else None
+    text = raw.strip().casefold()
+    if not text:
+        return None
+    item_type = _ITEM_TYPES_BY_NAME.get(text)
+    if item_type is None:
+        raise ValueError(UNKNOWN_TYPE.format(raw=echoed(raw), labels=_TYPE_LABELS))
+    return item_type
 
 
 @dataclass(frozen=True, slots=True)

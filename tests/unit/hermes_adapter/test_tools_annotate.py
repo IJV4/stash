@@ -73,3 +73,38 @@ def test_annotating_an_unknown_outcome_answers_an_error_naming_it() -> None:
 
     # Assert
     assert answer == {"error": "no outcome 'zz'"}
+
+
+def test_annotate_without_notes_keeps_the_current_notes() -> None:
+    # Execute
+    answer = annotated({"rating": 3})
+
+    # Assert
+    assert answer["outcome"]["notes"] == "Great"
+
+
+def test_annotate_with_only_a_rating_sets_it_and_keeps_the_takeaways() -> None:
+    # Execute
+    answer = annotated({"rating": 3})
+
+    # Assert
+    assert (answer["outcome"]["rating"], answer["outcome"]["takeaways"]) == (3, ["Salt early"])
+
+
+def test_annotate_with_only_notes_keeps_the_rating() -> None:
+    # Execute
+    answer = annotated({"notes": "New notes"})
+
+    # Assert
+    assert answer["outcome"]["rating"] == 4
+
+
+def test_annotate_with_a_rating_saves_it_in_the_store_as_the_only_outcome() -> None:
+    # Setup
+    store = a_tool_store()
+
+    # Execute
+    lifecycle_tools_over(store).annotate({"outcome_id": DONE_ITEM_OUTCOME, "rating": 1})
+
+    # Assert
+    assert [outcome.rating for outcome in store.outcomes_for(DONE_ITEM)] == [1]

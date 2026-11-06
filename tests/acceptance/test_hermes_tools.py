@@ -1,11 +1,10 @@
 import json
-from typing import Any
 
 from app_builders import an_app, stored
 from builders import BASE, an_item, an_outcome, minutes_after
 from fakes.failing_list_store import FailingListStore
 from hermes_registration_rig import register_stash
-from tool_rig import answer_of, store_snapshot
+from tool_rig import answer_of, calling, store_snapshot
 
 from stash.domain import ItemType, Stage
 
@@ -87,12 +86,10 @@ def test_finishing_a_book_through_the_tools_records_keeps_and_lists_it_in_the_li
     store.add_outcome(an_outcome(id="o-r1", item_id="r1", rating=5))
     tools = register_stash(an_app(store=store)).ctx.tools
 
-    def call(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        return answer_of(tools[name].handler(arguments))
-
     # Execute
-    [found] = call("stash_search", {"query": "dune"})["items"]
-    call(
+    [found] = calling(tools, "stash_search", {"query": "dune"})["items"]
+    calling(
+        tools,
         "stash_complete",
         {
             "item_id": found["id"],
@@ -101,8 +98,8 @@ def test_finishing_a_book_through_the_tools_records_keeps_and_lists_it_in_the_li
             "keep": True,
         },
     )
-    library = call("stash_library", {"item_type": "book"})
-    shown = call("stash_get", {"item_id": found["id"]})
+    library = calling(tools, "stash_library", {"item_type": "book"})
+    shown = calling(tools, "stash_get", {"item_id": found["id"]})
 
     # Assert
     assert (
@@ -155,3 +152,31 @@ def test_a_tool_call_with_bad_arguments_answers_an_error_and_changes_nothing() -
 
     # Assert
     assert (list(answer), store_snapshot(store)) == (["error"], before)
+
+
+def test_annotating_the_latest_outcome_adds_a_rating_and_takeaways_to_the_one_completion() -> None:
+    # Setup
+    dune = an_item(
+        id="b1", capture_id="c1", item_type=ItemType.BOOK, title="Dune", stage=Stage.DONE
+    )
+    store = stored(dune)
+    store.add_outcome(
+        an_outcome(
+            id="o-b1", item_id="b1", rating=None, notes="Finished on the train", takeaways=()
+        )
+    )
+    tools = register_stash(an_app(store=store)).ctx.tools
+
+    # Execute
+    latest = calling(tools, "stash_get", {"item_id": "b1"})["outcomes"][-1]
+    calling(
+        tools,
+        "stash_annotate",
+        {"outcome_id": latest["id"], "rating": 4, "takeaways": ["Start small", "Fear"]},
+    )
+    shown = calling(tools, "stash_get", {"item_id": "b1"})
+
+    # Assert
+    assert [
+        (outcome["rating"], outcome["takeaways"], outcome["notes"]) for outcome in shown["outcomes"]
+    ] == [(4, ["Start small", "Fear"], "Finished on the train")]

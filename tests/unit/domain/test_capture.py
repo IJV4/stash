@@ -1,7 +1,7 @@
 import pytest
-from builders import NAIVE, a_capture
+from builders import NAIVE, a_capture, a_source
 
-from stash.domain.capture import CaptureStatus, RawCapture, Route
+from stash.domain.capture import AGENT_CHAT_ID, CaptureStatus, RawCapture, Route, SourceRef
 
 
 def test_raw_capture_with_naive_received_at_raises_value_error() -> None:
@@ -149,3 +149,62 @@ def test_raw_capture_refuses_forty_non_ascii_characters_because_telegram_counts_
     # Execute / Assert
     with pytest.raises(ValueError, match="capture id"):
         a_capture(id="é" * 40)
+
+
+def test_an_agent_source_is_an_agent_source() -> None:
+    # Execute
+    source = SourceRef.agent("m1")
+
+    # Assert
+    assert source.is_agent is True
+
+
+def test_an_agent_source_carries_the_message_id_under_the_agent_chat() -> None:
+    # Execute
+    source = SourceRef.agent("m7")
+
+    # Assert
+    assert source == SourceRef(chat_id=AGENT_CHAT_ID, message_id="m7")
+
+
+def test_an_ordinary_source_is_not_an_agent_source() -> None:
+    # Execute
+    source = a_source()
+
+    # Assert
+    assert source.is_agent is False
+
+
+def test_a_telegram_capture_may_be_a_request() -> None:
+    # Execute
+    capture = a_capture()
+
+    # Assert
+    assert capture.may_be_a_request is True
+
+
+def test_an_agent_capture_may_not_be_a_request() -> None:
+    # Execute
+    capture = a_capture(source=SourceRef.agent("m1"))
+
+    # Assert
+    assert capture.may_be_a_request is False
+
+
+def test_the_agent_chat_id_is_recognised_as_the_agent_chat() -> None:
+    # Assert
+    assert SourceRef.is_agent_chat(AGENT_CHAT_ID) is True
+
+
+def test_an_ordinary_chat_id_is_not_the_agent_chat() -> None:
+    # Assert
+    assert SourceRef.is_agent_chat("chat-1") is False
+
+
+@pytest.mark.parametrize(
+    "chat_id",
+    ["agent-2", "agents", "Agent", "AGENT", " agent", "agent ", "", "-100123", "a"],
+)
+def test_a_chat_id_that_only_resembles_the_agent_chat_is_not_the_agent_chat(chat_id: str) -> None:
+    # Assert
+    assert SourceRef.is_agent_chat(chat_id) is False
