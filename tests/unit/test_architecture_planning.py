@@ -15,8 +15,11 @@ PLANNING_IMPORTERS = (
     "stash.capture.planning_replies",
     "stash.capture.planning_buttons",
     "stash.app.build",
+    "stash.app.app",
+    "stash.hermes_adapter.tool_json",
 )
 CAPTURE_MAY_IMPORT_FROM_PLANNING = ("stash.planning.errors", "stash.planning.results")
+HERMES_MAY_IMPORT_FROM_PLANNING = ("stash.planning.errors",)
 PLANNING_MAY_IMPORT = (
     "stash.domain",
     "stash.store.port",
@@ -27,14 +30,21 @@ PLANNING_MAY_IMPORT = (
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 
 
-def planning_imports_beyond_its_shared_vocabulary(sources: dict[str, str]) -> list[str]:
+def planning_imports_beyond(sources: dict[str, str], shared: tuple[str, ...]) -> list[str]:
     return sorted(
         f"{name} -> {module}"
         for name, source in sources.items()
         for module in imported_modules(source)
-        if is_within(module, PLANNING)
-        and not any(is_within(module, shared) for shared in CAPTURE_MAY_IMPORT_FROM_PLANNING)
+        if is_within(module, PLANNING) and not any(is_within(module, allowed) for allowed in shared)
     )
+
+
+def planning_imports_beyond_its_shared_vocabulary(sources: dict[str, str]) -> list[str]:
+    return planning_imports_beyond(sources, CAPTURE_MAY_IMPORT_FROM_PLANNING)
+
+
+def hermes_imports_beyond_the_planning_errors(sources: dict[str, str]) -> list[str]:
+    return planning_imports_beyond(sources, HERMES_MAY_IMPORT_FROM_PLANNING)
 
 
 def test_the_planning_package_imports_only_the_standard_library_and_the_layers_below_it() -> None:
@@ -186,3 +196,63 @@ def test_a_planning_import_from_an_unlisted_module_is_reported_as_an_importer_ou
 
     # Assert
     assert offenders == ["stash.capture.fixes"]
+
+
+def test_nothing_in_the_hermes_adapter_imports_the_planning_beyond_its_errors() -> None:
+    # Execute
+    offenders = hermes_imports_beyond_the_planning_errors(project_sources("hermes_adapter"))
+
+    # Assert
+    assert offenders == []
+
+
+def test_a_hermes_import_of_the_planning_errors_is_not_reported() -> None:
+    # Setup
+    sources = {"stash.hermes_adapter.x": "from stash.planning.errors import PlanningError"}
+
+    # Execute
+    offenders = hermes_imports_beyond_the_planning_errors(sources)
+
+    # Assert
+    assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "from stash.planning.results import Proposal",
+        "from stash.planning.service import Planning",
+        "from stash.planning import PlanningError",
+    ],
+)
+def test_a_hermes_import_of_anything_else_from_the_planning_is_reported(statement: str) -> None:
+    # Setup
+    sources = {"stash.hermes_adapter.x": statement}
+
+    # Execute
+    offenders = hermes_imports_beyond_the_planning_errors(sources)
+
+    # Assert
+    assert offenders != []
+
+
+def test_a_hermes_module_other_than_the_tool_json_importing_the_planning_is_reported() -> None:
+    # Setup
+    sources = {"stash.hermes_adapter.step_tools": "from stash.planning.errors import UnknownStep"}
+
+    # Execute
+    offenders = importers_outside(PLANNING, PLANNING_IMPORTERS, sources)
+
+    # Assert
+    assert offenders == ["stash.hermes_adapter.step_tools"]
+
+
+def test_the_hermes_tool_json_importing_the_planning_errors_is_not_reported() -> None:
+    # Setup
+    sources = {"stash.hermes_adapter.tool_json": "from stash.planning.errors import PlanningError"}
+
+    # Execute
+    offenders = importers_outside(PLANNING, PLANNING_IMPORTERS, sources)
+
+    # Assert
+    assert offenders == []

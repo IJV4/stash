@@ -38,6 +38,7 @@ from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
 from stash.planning import Declines, Planning, StepProposer
 from stash.store.backup import Backups
+from stash.suggestions import SuggestionDesk, SuggestionEngine
 
 
 def _utc_now() -> datetime:
@@ -91,6 +92,8 @@ def build_app(
             agent_capture=AgentCapture(pipeline, _new_id, clock),
             fixes=FixHandler(sqlite, lifecycle, planning, clock),
             lifecycle=lifecycle,
+            planning=planning,
+            suggestions=SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone)),
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),
             router=router,

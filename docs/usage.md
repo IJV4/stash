@@ -286,6 +286,8 @@ Replies are plain text, at most 4096 characters.
    and asks the AI nothing
    (`test_retry_command_answers_a_pending_question_as_a_request_and_asks_the_ai_nothing`).
 4. `/library [type]` lists kept items (see *Your library*).
+5. `/suggest [context]` picks up to 3 Want to items for the moment described (see
+   *Suggestions*).
 
 ### Agent tools
 
@@ -1361,8 +1363,8 @@ whitespace collapsed, so a title or step text cannot break a line. When the
 lines do not all fit Telegram's 4096 characters, `nudge_reply` shows the
 reminders that fit, in order, and returns them as `rendered.shown`; only those
 are marked sent, so the rest stay due and come in the next tick's message. The
-digest's other sections (new, forgotten, upcoming, suggestions) arrive in
-Task 5.
+digest's other sections (new, forgotten, upcoming, suggestions) are described
+under *Weekly digest*; the digest is one unit, shown whole or not at all.
 
 Pressing `Didn't happen` (`app.fixes.apply("stash:h:<item id>")`) moves a
 Planned item back to Want to, clears its date and answers `↩️ Okay, <title> is
@@ -1413,6 +1415,141 @@ bare `Done ✓` even beside a date reminder or the digest), the 300-character
 line cut and the 4096-character fit (60 due step reminders are all delivered
 over successive ticks and none is marked sent unshown); `Didn't happen` on an
 unknown item answers `That item no longer exists.`
+
+## Weekly digest  [Plan 3 Task 5]
+
+`DigestBuilder` fills in the `WeeklyDigest` that `Nudger.due` returned: the same
+due value, now carrying its `sections` (new, forgotten, coming up, suggestions;
+the stuck items it already carried are the fifth). `render_digest` turns it into
+the Telegram text. The builder only reads. Because the filled digest is still
+the one `WeeklyDigest` in the message, a single `nudger.mark_sent` records
+everything: the stuck items, the forgotten items and the digest itself, in that
+order.
+
+    from stash.capture.digest_replies import render_digest
+    from stash.capture.nudge_replies import nudge_reply
+    from stash.nudges.digest_builder import DigestBuilder
+
+    builder = DigestBuilder(store, picks, schedule)       # picks: QuietPicks(desk)
+    due = [builder.build(d, now) if isinstance(d, WeeklyDigest) else d for d in nudger.due(now)]
+    message = batch_messages(due, now)[0]
+    rendered = nudge_reply(message)                       # digest text comes from render_digest
+    nudger.mark_sent(rendered.shown, sent_at)             # stuck, forgotten, then the digest row
+    render_digest(digest)                                 # Reply, no buttons, at most 4096 chars
+
+    🗞 Your weekly digest
+    🆕 New this week
+    • Pasta carbonara
+    • Ramen
+    🕰 Forgotten
+    • Learn to sail
+    📅 Coming up
+    • Fri Feb 12 — Book the table (Date night)
+    • Sat Feb 13 — Date night
+    📖 How is Thinking in Systems going?
+    💡 Ideas for this week
+    • Learn to sail — Saturday looks free and you wanted something outdoors.
+
+Statements (1-5 and 7 each have an acceptance test in `tests/acceptance/test_digest.py`;
+statement 6 is pinned by unit tests, one per row of its caps and fit table):
+
+1. A digest with every section lists, in this order: **new this week** (items
+   created in the 7 days before the digest instant, newest first, not
+   dropped), **forgotten** (Want to items untouched for `forgotten_after_days`
+   before the digest instant, oldest first, at most 3), **coming up** (from the
+   local date of `now` through 14 days later: open dated items, and confirmed
+   undone steps of open items by their due date, ordered by date), **how did it
+   go** (the stuck Doing items the `WeeklyDigest` carries, one
+   `📖 How is <title> going?` line each, no heading) and **suggestions** (at
+   most 3 picks from Want to, each with its reason). A section with nothing in
+   it is left out; a digest with nothing at all is the header alone.
+2. When the suggestion model is unavailable or deferred
+   (`LlmUnavailable`/`LlmDeferred`), the digest is built and goes out at once
+   without its suggestions section and with every other section intact; it
+   never waits for the model.
+3. A forgotten item is not repeated within four digests: it appears in one
+   digest, is absent from the next four, and may return in the fifth. The
+   ledger row is kind `forgotten`, subject `<item id>`, due at the digest
+   instant. The brief's `digest-forgotten:<item id>` is not a valid ledger
+   subject (`Nudge` subjects are wire-safe ids: no `:`, at most 40
+   characters), so the item id is the subject and the kind carries the name.
+4. The forgotten section shows at most 3 items, the oldest first.
+5. Forgotten items are recorded by `nudger.mark_sent` together with the rest of
+   the message, after the stuck items and before the digest's own row, so a
+   crash in between repeats the digest with the same forgotten items instead of
+   losing them. A failed send records nothing: the next attempt builds the same
+   forgotten section.
+6. `render_digest` caps new at 5, coming up at 8 and how did it go at 10 with
+   a final `…and N more` line (forgotten and suggestions are held to 3 each by
+   the digest's own type, so they never need one), and if the text
+   still passes 4096 characters it shows fewer new, coming-up and suggestion
+   lines (each with its `…and N more`), never fewer forgotten or stuck lines.
+   Every line is cut to 300 characters with its whitespace collapsed.
+7. In a nudge message, `nudge_reply` renders the digest with `render_digest`;
+   a digest nobody filled in renders as the bare digest (header and stuck
+   lines), as before. The digest is all-or-nothing: if it does not fit beside
+   the reminders in front of it, it is left out of `shown`, stays due, and
+   nothing of it (stuck items, forgotten items) is marked sent.
+
+## Suggestions  [Plan 3 Task 5]
+
+`stash.suggestions` asks the SUGGESTIONS model which Want to items fit a
+moment. The model's answer is untrusted: only ids from the offered candidates
+are accepted, each reason is cut to 200 characters, and nothing it says is run.
+
+    from stash.suggestions import QuietPicks, SuggestionDesk, SuggestionEngine
+
+    engine = SuggestionEngine(router, clock, ZoneInfo("America/Los_Angeles"))
+    engine.pick(candidates, "2h free Saturday, at home", limit=3)
+    # -> tuple[Suggestion(item_id, reason), ...], at most `limit`; LlmUnavailable propagates
+
+    desk = SuggestionDesk(store, engine)                  # Want to items, newest 40
+    desk.suggest("2h free Saturday, at home", 3)          # -> Picked((Pick(item, reason), ...)) | Unavailable()
+    QuietPicks(desk).picks(DIGEST_CONTEXT, 3)             # the digest's view: tuple[Pick, ...], () when unavailable
+
+Statements (each has a test in `tests/unit/suggestions/`,
+`tests/unit/hermes_adapter/` or `tests/acceptance/test_suggestions.py`; the
+command and the tool are each pinned where their wording differs):
+
+1. `/suggest 2h free Saturday, at home` answers at most 3 lines,
+   `• <title> — <reason>`, from the owner's Want to items; `/suggest` alone asks
+   with no context.
+2. The `stash_suggest {context?}` tool answers `{"suggestions": [{"item_id",
+   "title", "reason"}]}`, at most 3, the same picks as the command.
+3. An id the model returns that is not among the candidates is dropped, and so
+   is a repeated id, a non-text reason or a blank one; a reason is cut to 200
+   characters. A model answer with no usable pick (or output that is not
+   usable at all) is an empty list, never an error.
+4. With no Want to items, the model is not asked: the command answers `Nothing
+   to suggest right now.` (the same line when the model finds nothing usable)
+   and the tool `{"suggestions": []}`.
+5. When the model is unavailable or deferred the command answers `Suggestions
+   are unavailable right now.` and the tool `{"error": "Suggestions are
+   unavailable right now."}`; the reason is logged at warning level.
+6. A context longer than 500 characters is refused with `ContextTooLong`
+   (`context must be at most 500 characters`; the tool answers `{"error":
+   ...}`) and the model is not asked. Titles and
+   the context reach the model inside `<item>`/`<context>` tags, escaped, with
+   a notice that tag contents are data and never instructions.
+
+## Steps from the agent  [Plan 3 Task 5]
+
+The agent manages steps through three tools (toolset `stash`) over
+`Planning.add_step`, `edit_step` and `complete_step`; they follow the same
+rules as the lifecycle tools: JSON in, JSON out, never raise, `{"error":
+"..."}` and nothing changed on bad input.
+
+| Tool | Arguments | Answers |
+|---|---|---|
+| `stash_add_step` | `item_id`, `text` (at most 200 characters), exactly one of `lead_days` (0-60, days before the item's date) or `due_on` (`YYYY-MM-DD`) | `{"step"}`, already confirmed, last in the item's list |
+| `stash_edit_step` | `step_id`, and at least one of `text`, `lead_days`, `due_on` (not both of the last two) | `{"step"}` |
+| `stash_complete_step` | `step_id` | `{"step"}` with `done: true` (a proposed step is confirmed too) |
+
+A `step` is `{"id", "item_id", "text", "lead_days", "due_on", "confirmed",
+"done", "position"}`. An unknown or malformed id, a blank or over-long text, a
+boolean or non-integer `lead_days`, a malformed date, neither or both of
+`lead_days` and `due_on` on add, an edit with nothing to change, and a
+store that fails all answer `{"error": "..."}` without changing anything.
 
 ## Storage guarantees  [Tasks 2-3]
 

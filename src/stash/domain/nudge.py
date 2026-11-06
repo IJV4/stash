@@ -1,17 +1,11 @@
 import datetime as dt
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import NamedTuple
+from typing import NamedTuple, Self
 
 from stash.domain._validation import require_aware, require_text
 from stash.domain.instant import utc_text
 from stash.domain.wire import require_wire_safe_id
-
-
-class NudgeKey(NamedTuple):
-    kind: str
-    subject_id: str
-    due_at: str
 
 
 class NudgeKind(StrEnum):
@@ -20,6 +14,17 @@ class NudgeKind(StrEnum):
     FOLLOWUP = "followup"
     DIGEST = "digest"
     STUCK = "stuck"
+    FORGOTTEN = "forgotten"
+
+
+class NudgeKey(NamedTuple):
+    kind: str
+    subject_id: str
+    due_at: str
+
+    @classmethod
+    def of(cls, kind: NudgeKind, subject_id: str, at: dt.datetime) -> Self:
+        return cls(kind.value, subject_id, utc_text(at))
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,4 +41,4 @@ class Nudge:
 
     @property
     def key(self) -> NudgeKey:
-        return NudgeKey(self.kind.value, self.subject_id, utc_text(self.due_at))
+        return NudgeKey.of(self.kind, self.subject_id, self.due_at)

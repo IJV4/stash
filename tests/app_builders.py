@@ -8,6 +8,7 @@ from fakes.backup_source import FakeBackupSource
 from fakes.busy import FakeBusy
 from fakes.chat_model import FakeChatModel
 from fakes.close_counter import CloseCounter
+from fakes.fake_suggestion_picker import FakeSuggestionPicker
 from fakes.memory_store import MemoryStore
 from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
@@ -26,6 +27,7 @@ from stash.evaluation import EvalTargets
 from stash.gpu_switch import GpuSwitch
 from stash.llm import ModelRouter
 from stash.store.backup import Backups
+from stash.suggestions import SuggestionDesk
 
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 
@@ -44,14 +46,17 @@ def an_app(**overrides: Any) -> StashApp:
     clock = overrides.get("clock", lambda: NOON)
     lifecycle = overrides.get("lifecycle", a_lifecycle(store, clock))
     gate = a_gate(a_sample(), store=store)
+    planning = overrides.get("planning", a_planning(store, FakeChatModel(), clock))
     pipeline = overrides.get("pipeline", PendingIntake())
     fields: dict[str, Any] = {
         "config": config,
         "store": store,
         "pipeline": pipeline,
         "agent_capture": AgentCapture(pipeline, sequential_ids(), clock),
-        "fixes": FixHandler(store, lifecycle, a_planning(store, FakeChatModel(), clock), clock),
+        "fixes": FixHandler(store, lifecycle, planning, clock),
         "lifecycle": lifecycle,
+        "planning": planning,
+        "suggestions": SuggestionDesk(store, FakeSuggestionPicker()),
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),
         "router": ModelRouter(

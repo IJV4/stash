@@ -71,3 +71,29 @@ def test_the_apps_fixes_record_a_no_steps_press_as_a_decline_in_the_apps_store(
 
         # Assert
         assert Declines(app.store).is_declined(item) is True
+
+
+def test_the_apps_planning_adds_confirmed_steps_to_the_items_of_the_apps_store(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    with open_app(tmp_path) as app:
+        stored_date_night(app.store)
+
+        # Execute
+        step = app.planning.add_step(DATE_NIGHT_ID, "Book the table", lead_days=7)
+
+        # Assert
+        assert app.store.steps_for(DATE_NIGHT_ID) == [step]
+
+
+def test_the_apps_planning_stamps_steps_with_the_apps_clock(tmp_path: Path) -> None:
+    # Setup
+    with open_app(tmp_path) as app:
+        stored_date_night(app.store)
+
+        # Execute
+        step = app.planning.add_step(DATE_NIGHT_ID, "Book the table", lead_days=7)
+
+        # Assert
+        assert step.created_at == app.clock()

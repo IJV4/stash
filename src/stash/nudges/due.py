@@ -2,6 +2,7 @@ import datetime as dt
 from dataclasses import dataclass
 
 from stash.domain import Item, Nudge, NudgeKind, Step, require_aware
+from stash.nudges.digest import EMPTY_SECTIONS, DigestSections
 
 DIGEST_SUBJECT = "weekly"
 DIGEST_TITLE = "Weekly digest"
@@ -69,6 +70,7 @@ class StuckItem:
 class WeeklyDigest:
     due_at: dt.datetime
     stuck: tuple[StuckItem, ...]
+    sections: DigestSections = EMPTY_SECTIONS
 
     def __post_init__(self) -> None:
         require_aware("due_at", self.due_at)
@@ -81,7 +83,14 @@ class WeeklyDigest:
 
     @property
     def nudges(self) -> tuple[Nudge, ...]:
-        return (*(stuck.nudge for stuck in self.stuck), self.nudge)
+        return (*(stuck.nudge for stuck in self.stuck), *self._forgotten_nudges, self.nudge)
+
+    @property
+    def _forgotten_nudges(self) -> tuple[Nudge, ...]:
+        return tuple(
+            Nudge(NudgeKind.FORGOTTEN, item.id, self.due_at, item.title)
+            for item in self.sections.forgotten
+        )
 
 
 DueNudge = StepReminder | DateReminder | FollowUp | WeeklyDigest

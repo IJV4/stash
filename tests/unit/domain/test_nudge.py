@@ -20,6 +20,7 @@ NUDGE_KIND_VALUES = [
     (NudgeKind.FOLLOWUP, "followup"),
     (NudgeKind.DIGEST, "digest"),
     (NudgeKind.STUCK, "stuck"),
+    (NudgeKind.FORGOTTEN, "forgotten"),
 ]
 
 
@@ -33,7 +34,7 @@ def test_each_nudge_kind_is_written_as_its_lowercase_name(kind: NudgeKind, value
     assert kind.value == value
 
 
-def test_there_are_exactly_five_nudge_kinds() -> None:
+def test_there_are_exactly_six_nudge_kinds() -> None:
     # Assert
     assert len(NudgeKind) == len(NUDGE_KIND_VALUES)
 
@@ -156,3 +157,30 @@ def test_a_nudge_refuses_a_blank_title(title: str) -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="title must not be blank"):
         a_nudge(title=title)
+
+
+def test_a_key_built_from_its_parts_is_the_key_of_the_matching_nudge() -> None:
+    # Setup
+    nudge = a_nudge(kind=NudgeKind.FORGOTTEN, subject_id="i7")
+
+    # Execute
+    key = NudgeKey.of(NudgeKind.FORGOTTEN, "i7", DUE_AT)
+
+    # Assert
+    assert key == nudge.key
+
+
+def test_a_key_carries_the_name_of_its_kind() -> None:
+    # Execute
+    key = NudgeKey.of(NudgeKind.FORGOTTEN, "i7", DUE_AT)
+
+    # Assert
+    assert key.kind == "forgotten"
+
+
+def test_a_key_writes_the_instant_in_utc() -> None:
+    # Execute
+    key = NudgeKey.of(NudgeKind.STEP, "s1", in_los_angeles(date(2026, 11, 2), 9))
+
+    # Assert
+    assert key.due_at == "2026-11-02T17:00:00.000000+00:00"

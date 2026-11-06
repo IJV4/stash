@@ -38,6 +38,9 @@ class Schedule:
     def stuck_cutoff(self, at: dt.datetime) -> dt.datetime:
         return at - dt.timedelta(days=self.config.stuck_doing_days)
 
+    def forgotten_cutoff(self, at: dt.datetime) -> dt.datetime:
+        return at - dt.timedelta(days=self.config.forgotten_after_days)
+
     def digest_instants_between(self, start: dt.datetime, end: dt.datetime) -> list[dt.datetime]:
         first, last = self.local_date(start), self.local_date(end)
         days = (first + dt.timedelta(days=offset) for offset in range((last - first).days + 1))

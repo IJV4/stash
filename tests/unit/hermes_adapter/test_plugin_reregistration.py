@@ -5,13 +5,15 @@ from builders import stored_item
 from capture_builders import QUESTION, a_request_answer, an_unsure_answer
 from capture_rig import build_rig
 from config_builders import a_stash_config
+from fakes.fake_suggestion_desk import FakeSuggestionDesk
 from fakes.recording_loader import RecordingLoader
 from hermes_events import SKIP, an_event
 from hermes_registration_rig import OpenedApps, register_stash, register_stash_over
-from hermes_rig import app_over, instant_bursts, until
+from hermes_rig import app_over, called, instant_bursts, until
 
 from stash.domain import Stage
 from stash.hermes_adapter.plugin import PROCESS_STATE, register
+from stash.suggestions import Picked
 
 QUESTION_BUTTON = "That was a question →"
 NEW_OWNER_ID = "77"
@@ -67,7 +69,7 @@ def test_a_second_register_registers_the_hook_the_commands_and_the_tools_in_its_
     )
 
 
-def test_a_second_register_registers_all_ten_tools_in_its_context() -> None:
+def test_a_second_register_registers_all_fourteen_tools_in_its_context() -> None:
     # Setup
     plugin = register_stash_over(OpenedApps(build_rig()))
 
@@ -75,7 +77,7 @@ def test_a_second_register_registers_all_ten_tools_in_its_context() -> None:
     reloaded = plugin.reloaded().ctx
 
     # Assert
-    assert len(reloaded.tools) == 10
+    assert len(reloaded.tools) == 14
 
 
 def test_a_lifecycle_tool_registered_by_a_second_register_acts_on_the_same_store() -> None:
@@ -91,6 +93,34 @@ def test_a_lifecycle_tool_registered_by_a_second_register_acts_on_the_same_store
 
     # Assert
     assert [outcome.rating for outcome in store.outcomes_for("w1")] == [2]
+
+
+def test_a_step_tool_registered_by_a_second_register_acts_on_the_same_store() -> None:
+    # Setup
+    rig = build_rig()
+    store = rig.store
+    stored_item(store, id="w1", stage=Stage.WANT_TO)
+    plugin = register_stash(app_over(rig))
+    reloaded = plugin.reloaded().ctx
+
+    # Execute
+    reloaded.tools["stash_add_step"].handler({"item_id": "w1", "text": "Book", "lead_days": 2})
+
+    # Assert
+    assert [step.text for step in store.steps_for("w1")] == ["Book"]
+
+
+def test_the_suggest_command_registered_by_a_second_register_asks_the_same_suggestions() -> None:
+    # Setup
+    desk = FakeSuggestionDesk(Picked(()))
+    plugin = register_stash(app_over(build_rig(), suggestions=desk))
+    reloaded = plugin.reloaded().ctx
+
+    # Execute
+    asyncio.run(called(reloaded.commands["suggest"], "at home"))
+
+    # Assert
+    assert desk.asked == [("at home", 3)]
 
 
 def test_a_press_after_a_second_register_injects_into_the_newest_context() -> None:

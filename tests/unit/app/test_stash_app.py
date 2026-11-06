@@ -140,3 +140,15 @@ def test_the_default_fix_handler_uses_an_explicit_lifecycle() -> None:
 
     # Assert
     assert [outcome.id for outcome in store.outcomes_for("a")] == ["fixed-id"]
+
+
+def test_the_default_planning_works_on_the_store_the_app_was_given() -> None:
+    # Setup
+    store = stored(an_item(id="a", capture_id="ca"))
+    app = an_app(store=store)
+
+    # Execute
+    step = app.planning.add_step("a", "Book the table", lead_days=2)
+
+    # Assert
+    assert store.steps_for("a") == [step]

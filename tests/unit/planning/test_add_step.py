@@ -5,6 +5,7 @@ from fakes.watched_step_store import WatchedStepStore
 from planning_rig import planning_over
 from step_edit_rig import DATE_NIGHT_ID, LATER, NEW_DAY, date_night_with, existing
 
+from stash.domain import STEP_TEXT_LIMIT
 from stash.planning import PlanningRefused, UnknownItem
 
 
@@ -108,6 +109,15 @@ def test_adding_a_step_with_blank_text_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(PlanningRefused):
         planning.add_step(DATE_NIGHT_ID, "  ", lead_days=10)
+
+
+def test_adding_a_step_with_text_over_the_limit_is_refused() -> None:
+    # Setup
+    planning = date_night_with(MemoryStore())
+
+    # Execute / Assert
+    with pytest.raises(PlanningRefused):
+        planning.add_step(DATE_NIGHT_ID, "x" * (STEP_TEXT_LIMIT + 1), lead_days=10)
 
 
 def test_adding_a_step_with_both_a_lead_time_and_a_date_is_refused() -> None:

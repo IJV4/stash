@@ -10,7 +10,9 @@ from stash.gpu import GpuGate
 from stash.gpu_switch import GpuSwitch
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
+from stash.planning import Planning
 from stash.store import BackupWriter, Closeable, Store
+from stash.suggestions import SuggestionDesk
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +23,8 @@ class StashApp:
     agent_capture: AgentCapture
     fixes: FixHandler
     lifecycle: Lifecycle
+    planning: Planning
+    suggestions: SuggestionDesk
     gpu: GpuGate
     gpu_switch: GpuSwitch
     router: ModelRouter

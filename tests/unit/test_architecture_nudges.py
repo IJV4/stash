@@ -14,8 +14,13 @@ NUDGES_IMPORTERS = (
     NUDGES,
     "stash.capture.nudge_replies",
     "stash.capture.nudge_buttons",
+    "stash.capture.digest_replies",
 )
-CAPTURE_MAY_IMPORT_FROM_NUDGES = ("stash.nudges.due", "stash.nudges.messages")
+CAPTURE_MAY_IMPORT_FROM_NUDGES = (
+    "stash.nudges.due",
+    "stash.nudges.messages",
+    "stash.nudges.digest",
+)
 NUDGES_MAY_IMPORT = ("stash.domain", "stash.store.port", "stash.config.nudges", NUDGES)
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 
@@ -71,6 +76,8 @@ def test_the_nudges_scan_covers_the_nudger_schedule_due_types_batching_and_messa
         "stash.nudges.batch",
         "stash.nudges.messages",
         "stash.nudges.ports",
+        "stash.nudges.digest",
+        "stash.nudges.digest_builder",
     } <= scanned.keys()
 
 
@@ -90,7 +97,7 @@ def test_capture_imports_no_more_of_nudges_than_the_due_types_and_messages() -> 
     assert offenders == []
 
 
-@pytest.mark.parametrize("shared", ["due", "messages"])
+@pytest.mark.parametrize("shared", ["due", "messages", "digest"])
 def test_importing_the_due_types_or_the_messages_is_not_reported_as_more_than_rendering_needs(
     shared: str,
 ) -> None:
@@ -104,7 +111,7 @@ def test_importing_the_due_types_or_the_messages_is_not_reported_as_more_than_re
     assert offenders == []
 
 
-@pytest.mark.parametrize("module", ["nudger", "schedule", "batch", "ports"])
+@pytest.mark.parametrize("module", ["nudger", "schedule", "batch", "ports", "digest_builder"])
 def test_importing_any_other_nudges_module_is_reported_as_more_than_rendering_needs(
     module: str,
 ) -> None:
@@ -143,6 +150,26 @@ def test_nudges_sits_below_capture_and_beside_the_other_features_without_importi
     assert offenders == []
 
 
+@pytest.mark.parametrize("banned", ["stash.suggestions", "stash.llm"])
+def test_nudges_reaches_the_model_only_through_its_pick_source_port(banned: str) -> None:
+    # Execute
+    offenders = forbidden_imports_in(project_sources("nudges"), (banned,))
+
+    # Assert
+    assert offenders == []
+
+
+def test_importing_the_suggestions_package_is_reported_as_a_forbidden_nudges_import() -> None:
+    # Setup
+    sources = {"stash.nudges.x": "from stash.suggestions import QuietPicks"}
+
+    # Execute
+    offenders = forbidden_imports_in(sources, ("stash.suggestions",))
+
+    # Assert
+    assert offenders == ["stash.nudges.x -> stash.suggestions"]
+
+
 def test_a_nudges_import_from_an_unlisted_module_is_reported_as_an_importer_outside() -> None:
     # Setup
     sources = {"stash.capture.fixes": "from stash.nudges.due import FollowUp"}
@@ -152,6 +179,17 @@ def test_a_nudges_import_from_an_unlisted_module_is_reported_as_an_importer_outs
 
     # Assert
     assert offenders == ["stash.capture.fixes"]
+
+
+def test_a_nudges_import_from_the_digest_rendering_module_is_not_reported() -> None:
+    # Setup
+    sources = {"stash.capture.digest_replies": "from stash.nudges.digest import UpcomingEntry"}
+
+    # Execute
+    offenders = importers_outside(NUDGES, NUDGES_IMPORTERS, sources)
+
+    # Assert
+    assert offenders == []
 
 
 def test_a_nudges_import_from_a_listed_rendering_module_is_not_reported() -> None:

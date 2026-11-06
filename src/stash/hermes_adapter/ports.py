@@ -3,10 +3,11 @@ from datetime import date, datetime
 from typing import Protocol
 
 from stash.capture import Deferred, Filed, IncomingMessage, ProcessResult, Reply, Reroute
-from stash.domain import Item, ItemType, Outcome, RawCapture, Stage
+from stash.domain import Item, ItemType, Outcome, RawCapture, Stage, Step
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
 from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LibraryQuery
+from stash.suggestions.results import Picked, Unavailable
 
 
 class IntakeSteps(Protocol):
@@ -81,3 +82,29 @@ class ItemLifecycle(LibraryReader, Protocol):
     def ungroup(self, child_id: str) -> Item: ...
 
     def history(self, item_id: str) -> ItemHistory: ...
+
+
+class StepPlanner(Protocol):
+    def add_step(
+        self,
+        item_id: str,
+        text: str,
+        *,
+        lead_days: int | None = None,
+        due_on: date | None = None,
+    ) -> Step: ...
+
+    def edit_step(
+        self,
+        step_id: str,
+        *,
+        text: str | None = None,
+        lead_days: int | None = None,
+        due_on: date | None = None,
+    ) -> Step: ...
+
+    def complete_step(self, step_id: str) -> Step: ...
+
+
+class Suggester(Protocol):
+    def suggest(self, context: str, limit: int) -> Picked | Unavailable: ...

@@ -2,6 +2,8 @@ from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from fakes.memory_store import MemoryStore
+
 from stash.config import ProviderName, ProviderSettings
 from stash.domain import (
     CaptureStatus,
@@ -163,6 +165,13 @@ def stored(store: Store, item: Item) -> Item:
     store.add_capture(a_capture())
     store.save_item(item)
     return item
+
+
+def store_holding(*items: Item) -> MemoryStore:
+    store = MemoryStore()
+    for item in items:
+        stored(store, item)
+    return store
 
 
 def stored_item(store: Store, **overrides: Any) -> Item:

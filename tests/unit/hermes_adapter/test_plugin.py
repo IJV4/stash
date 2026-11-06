@@ -10,6 +10,7 @@ from app_builders import an_app
 from capture_builders import sequential_ids
 from config_builders import a_stash_config
 from fakes.close_counter import CloseCounter
+from fakes.fake_suggestion_desk import FakeSuggestionDesk
 from fakes.hermes_ctx import FakeHermesContext
 from fakes.pending_intake import PendingIntake
 from fakes.recording_loader import RecordingLoader
@@ -18,6 +19,7 @@ from hermes_ctx_builders import a_hermes_context
 from hermes_events import OWNER_ID, an_event
 from hermes_rig import called
 from log_records import recording_logs
+from suggestion_picks import a_pick
 
 from stash.app import StashApp
 from stash.config import ConfigError, StashConfig
@@ -32,7 +34,14 @@ from stash.hermes_adapter.lifecycle_schemas import (
     SET_STAGE_SCHEMA,
 )
 from stash.hermes_adapter.plugin import register
+from stash.hermes_adapter.step_schemas import (
+    ADD_STEP_SCHEMA,
+    COMPLETE_STEP_SCHEMA,
+    EDIT_STEP_SCHEMA,
+)
+from stash.hermes_adapter.suggest_tools import SUGGEST_SCHEMA
 from stash.hermes_adapter.tools import LIST_SCHEMA, SEARCH_SCHEMA
+from stash.suggestions import Picked
 
 LIFECYCLE_SCHEMAS = (
     GET_SCHEMA,
@@ -43,6 +52,7 @@ LIFECYCLE_SCHEMAS = (
     GROUP_SCHEMA,
     LIBRARY_SCHEMA,
 )
+STEP_SCHEMAS = (ADD_STEP_SCHEMA, EDIT_STEP_SCHEMA, COMPLETE_STEP_SCHEMA)
 LOGGER = "stash.hermes_adapter.plugin"
 HOME = "/home/owner"
 DEFAULT_PATH = Path("/home/owner/.config/stash/stash.toml")
@@ -312,6 +322,7 @@ def test_commands_are_registered_with_their_argument_hints() -> None:
         "gpu": "on|off|status",
         "retry": "",
         "library": "[type]",
+        "suggest": "[context]",
     }
 
 
@@ -325,6 +336,7 @@ def test_commands_are_registered_with_their_descriptions() -> None:
         "gpu": "Switch stash's use of the GPU",
         "retry": "Retry captures that are still pending",
         "library": "List kept items, most recently finished first",
+        "suggest": "Suggest what to do from Want to",
     }
 
 
@@ -340,6 +352,42 @@ def test_a_refused_command_keeps_its_argument_hint_and_description_under_the_pre
     # Assert
     [gpu] = [c for c in ctx.command_registrations if c.name == "stash-gpu"]
     assert (gpu.args_hint, gpu.description) == ("on|off|status", "Switch stash's use of the GPU")
+
+
+def test_a_refused_suggest_command_keeps_its_hint_and_description_under_the_prefixed_name() -> None:
+    # Setup
+    ctx = a_hermes_context(reserved={"suggest"})
+
+    # Execute
+    register_plugin(ctx)
+
+    # Assert
+    [suggest] = [c for c in ctx.command_registrations if c.name == "stash-suggest"]
+    assert (suggest.args_hint, suggest.description) == (
+        "[context]",
+        "Suggest what to do from Want to",
+    )
+
+
+def test_a_refused_suggest_command_still_answers_from_the_apps_suggestions() -> None:
+    # Setup
+    desk = FakeSuggestionDesk(Picked((a_pick("d1", "Dune", "A quiet read"),)))
+    ctx = a_hermes_context(reserved={"suggest"})
+    register_plugin(ctx, app=an_app(suggestions=desk))
+
+    # Execute
+    answer = asyncio.run(called(ctx.commands["stash-suggest"], "at home"))
+
+    # Assert
+    assert (answer, desk.asked) == ("• Dune — A quiet read", [("at home", 3)])
+
+
+def test_a_registered_suggest_command_is_not_registered_under_a_prefix() -> None:
+    # Execute
+    ctx = register_plugin()
+
+    # Assert
+    assert "stash-suggest" not in ctx.commands
 
 
 def test_a_refused_command_runs_the_same_command_under_the_prefixed_name() -> None:
@@ -400,6 +448,8 @@ def test_tools_are_registered_with_the_description_of_their_schema() -> None:
         "stash_list": LIST_SCHEMA["description"],
         **{schema["name"]: schema["description"] for schema in LIFECYCLE_SCHEMAS},
         "stash_capture": CAPTURE_SCHEMA["description"],
+        **{schema["name"]: schema["description"] for schema in STEP_SCHEMAS},
+        "stash_suggest": SUGGEST_SCHEMA["description"],
     }
 
 

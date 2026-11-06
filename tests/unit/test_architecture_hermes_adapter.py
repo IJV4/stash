@@ -23,9 +23,21 @@ HERMES_ADAPTER_STASH_PACKAGES = (
     "stash.gpu_switch",
     "stash.hermes_adapter",
     "stash.lifecycle",
+    "stash.planning.errors",
     "stash.rendering",
     "stash.store.port",
+    "stash.suggestions.results",
 )
+
+
+def hermes_imports_outside_the_allowed_packages(sources: dict[str, str]) -> list[str]:
+    return sorted(
+        f"{name} -> {module}"
+        for name, source in sources.items()
+        for module in imported_modules(source)
+        if is_within(module, "stash")
+        and not any(is_within(module, package) for package in HERMES_ADAPTER_STASH_PACKAGES)
+    )
 
 
 def test_the_hermes_adapter_package_is_scanned_module_by_module() -> None:
@@ -57,13 +69,7 @@ def test_the_hermes_adapter_package_imports_no_network_database_or_imaging_libra
 
 def test_the_hermes_adapter_package_imports_only_the_packages_it_is_allowed_to() -> None:
     # Execute
-    offenders = sorted(
-        f"{name} -> {module}"
-        for name, source in project_sources("hermes_adapter").items()
-        for module in imported_modules(source)
-        if is_within(module, "stash")
-        and not any(is_within(module, package) for package in HERMES_ADAPTER_STASH_PACKAGES)
-    )
+    offenders = hermes_imports_outside_the_allowed_packages(project_sources("hermes_adapter"))
 
     # Assert
     assert offenders == []
@@ -129,6 +135,50 @@ def test_only_the_assembly_modules_and_the_cli_import_the_composition_root() -> 
     offenders = importers_outside(
         COMPOSITION_ROOT, (COMPOSITION_ROOT, "stash.cli", *ASSEMBLY_MODULES), project_sources()
     )
+
+    # Assert
+    assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "from stash.planning import Planning",
+        "from stash.planning.service import Planning",
+        "from stash.planning.results import Proposal",
+        "from stash.suggestions import SuggestionDesk",
+        "from stash.suggestions.desk import SuggestionDesk",
+        "from stash.suggestions.engine import SuggestionEngine",
+    ],
+)
+def test_a_hermes_module_importing_the_concrete_planning_or_suggestions_is_reported(
+    statement: str,
+) -> None:
+    # Setup
+    sources = {"stash.hermes_adapter.x": statement}
+
+    # Execute
+    offenders = hermes_imports_outside_the_allowed_packages(sources)
+
+    # Assert
+    assert offenders != []
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "from stash.planning.errors import PlanningError",
+        "from stash.suggestions.results import Picked, Unavailable",
+    ],
+)
+def test_a_hermes_module_importing_only_the_planning_errors_or_suggestion_results_is_not_reported(
+    statement: str,
+) -> None:
+    # Setup
+    sources = {"stash.hermes_adapter.x": statement}
+
+    # Execute
+    offenders = hermes_imports_outside_the_allowed_packages(sources)
 
     # Assert
     assert offenders == []

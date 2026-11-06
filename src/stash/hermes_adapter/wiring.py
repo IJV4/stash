@@ -12,10 +12,13 @@ from stash.hermes_adapter.lifecycle_tools import LifecycleTools
 from stash.hermes_adapter.outbox import Outbox, ReplySender
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.scheduler import LoopScheduler, Scheduler
+from stash.hermes_adapter.step_tools import StepTools
+from stash.hermes_adapter.suggest_command import SuggestCommand
+from stash.hermes_adapter.suggest_tools import SuggestTools
 from stash.hermes_adapter.tool_spec import ToolSpec
 from stash.hermes_adapter.tools import StashTools
 
-Command = ListCommand | GpuCommand | RetryCommand | LibraryCommand
+Command = ListCommand | GpuCommand | RetryCommand | LibraryCommand | SuggestCommand
 
 
 def build_scheduler(app: StashApp) -> LoopScheduler:
@@ -48,6 +51,8 @@ def build_tools(app: StashApp) -> tuple[ToolSpec, ...]:
         *StashTools(app.store).specs(),
         *LifecycleTools(app.lifecycle).specs(),
         *CaptureTools(app.agent_capture).specs(),
+        *StepTools(app.planning).specs(),
+        *SuggestTools(app.suggestions).specs(),
     )
 
 
@@ -57,4 +62,5 @@ def build_commands(app: StashApp) -> dict[str, Command]:
         "gpu": GpuCommand(app.gpu_switch, app.local_now),
         "retry": RetryCommand(app.pipeline),
         "library": LibraryCommand(app.lifecycle),
+        "suggest": SuggestCommand(app.suggestions),
     }

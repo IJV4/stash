@@ -1,7 +1,7 @@
 import datetime as dt
 from typing import Protocol
 
-from stash.domain import Item, Nudge, NudgeKey, NudgeKind, Step
+from stash.domain import Item, Nudge, NudgeKey, NudgeKind, Pick, Step
 
 
 class NudgeStore(Protocol):
@@ -20,3 +20,13 @@ class NudgeStore(Protocol):
     def record_sent(self, nudge: Nudge, sent_at: dt.datetime) -> bool: ...
 
     def last_sent(self, kind: NudgeKind) -> dt.datetime | None: ...
+
+
+class DigestStore(NudgeStore, Protocol):
+    def created_between(self, start: dt.datetime, end: dt.datetime) -> list[Item]: ...
+
+    def want_to_older_than(self, cutoff: dt.datetime, limit: int) -> list[Item]: ...
+
+
+class PickSource(Protocol):
+    def picks(self, context: str, limit: int) -> tuple[Pick, ...]: ...

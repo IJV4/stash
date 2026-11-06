@@ -2,6 +2,7 @@ import pytest
 from fakes.memory_store import MemoryStore
 from step_edit_rig import DATE_NIGHT_ID, NEW_DAY, date_night_with, existing
 
+from stash.domain import STEP_TEXT_LIMIT
 from stash.planning import PlanningRefused, UnknownStep
 
 
@@ -56,6 +57,15 @@ def test_editing_nothing_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(PlanningRefused):
         planning.edit_step("s1")
+
+
+def test_editing_the_text_to_more_than_the_limit_is_refused() -> None:
+    # Setup
+    planning = date_night_with(MemoryStore(), existing())
+
+    # Execute / Assert
+    with pytest.raises(PlanningRefused):
+        planning.edit_step("s1", text="x" * (STEP_TEXT_LIMIT + 1))
 
 
 def test_editing_both_a_lead_time_and_a_date_is_refused() -> None:

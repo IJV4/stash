@@ -39,6 +39,7 @@ from stash.domain.outcome import (
     Outcome,
 )
 from stash.domain.step import MAX_LEAD_DAYS, MIN_LEAD_DAYS, STEP_TEXT_LIMIT, Step
+from stash.domain.suggestion import SUGGESTION_REASON_LIMIT, Pick, require_reason
 
 __all__ = [
     "DETAIL_KEY_LIMIT",
@@ -55,6 +56,7 @@ __all__ = [
     "OUTCOME_NOTES_LIMIT",
     "PLANNED_NEEDS_DATE",
     "STEP_TEXT_LIMIT",
+    "SUGGESTION_REASON_LIMIT",
     "TAKEAWAY_LIMIT",
     "CaptureStatus",
     "Filing",
@@ -64,6 +66,7 @@ __all__ = [
     "NudgeKey",
     "NudgeKind",
     "Outcome",
+    "Pick",
     "RawCapture",
     "Route",
     "SourceRef",
@@ -81,6 +84,7 @@ __all__ = [
     "require_http_url",
     "require_max_length",
     "require_plain_date",
+    "require_reason",
     "require_safe_media_path",
     "require_text",
     "utc_text",

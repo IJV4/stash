@@ -1,5 +1,7 @@
 from datetime import date
 
+LINE_LIMIT = 300
+
 
 def short_day(day: date) -> str:
     return f"{day:%a %b} {day.day}"

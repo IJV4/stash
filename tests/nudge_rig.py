@@ -8,7 +8,7 @@ from nudge_builders import a_nudge_schedule
 
 from stash.capture import Reply
 from stash.capture.nudge_replies import nudge_reply
-from stash.nudges import LOOKBACK, Nudger, Schedule, WeeklyDigest, batch_messages
+from stash.nudges import LOOKBACK, DueNudge, Nudger, Schedule, WeeklyDigest, batch_messages
 
 MINUTE = timedelta(minutes=1)
 HOUR = timedelta(hours=1)
@@ -23,8 +23,11 @@ class NudgeRig:
     send: Callable[[Reply], None]
     sent: list[tuple[datetime, Reply]] = field(default_factory=list)
 
+    def due(self, now: datetime) -> list[DueNudge]:
+        return self.nudger.due(now)
+
     def tick(self, now: datetime) -> None:
-        for message in batch_messages(self.nudger.due(now), now):
+        for message in batch_messages(self.due(now), now):
             rendered = nudge_reply(message)
             try:
                 self.send(rendered.reply)

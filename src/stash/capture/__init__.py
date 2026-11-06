@@ -3,6 +3,7 @@ from stash.capture.burst import BurstCoalescer
 from stash.capture.fixes import FixHandler, Reroute
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.message import IncomingMessage
+from stash.capture.pick_lines import pick_line
 from stash.capture.pipeline import CapturePipeline
 from stash.capture.planning_replies import proposal_reply
 from stash.capture.ports import (
@@ -61,6 +62,7 @@ __all__ = [
     "forces_request",
     "gone",
     "is_forced_request",
+    "pick_line",
     "proposal_reply",
     "reply_for",
     "stage_menu",

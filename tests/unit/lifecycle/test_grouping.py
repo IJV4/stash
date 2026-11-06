@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 import pytest
-from builders import LATER, an_item, stored
+from builders import LATER, an_item, store_holding, stored
 from fakes.memory_store import MemoryStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
@@ -12,13 +12,6 @@ from stash.lifecycle import LifecycleRefused, UnknownItem
 PARENT_HAS_A_PARENT = "parent-has-a-parent"
 CHILD_HOLDS_ITEMS = "child-holds-items"
 BOTH = "both"
-
-
-def store_holding(*items: Item) -> MemoryStore:
-    store = MemoryStore()
-    for item in items:
-        stored(store, item)
-    return store
 
 
 def child_item() -> Item:

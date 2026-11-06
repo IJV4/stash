@@ -8,6 +8,7 @@ from app_builders import NOON, an_app, stored
 from builders import an_item, stored_completion
 from capture_builders import a_filing_answer, sequential_ids
 from capture_rig import build_rig
+from fakes.fake_suggestion_desk import FakeSuggestionDesk
 from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
@@ -21,7 +22,9 @@ from stash.capture import IncomingMessage, confirmation
 from stash.domain import Stage
 from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
 from stash.hermes_adapter.owners import Owners
+from stash.hermes_adapter.suggest_command import SuggestCommand
 from stash.hermes_adapter.wiring import build_commands, build_intake, build_scheduler, build_tools
+from stash.suggestions import Picked
 
 LATER = datetime(2026, 11, 3, 9, 30, tzinfo=UTC)
 
@@ -124,7 +127,7 @@ def test_intakes_built_by_two_registrations_confirm_their_messages_separately() 
     ]
 
 
-def test_the_commands_are_list_gpu_retry_and_library() -> None:
+def test_the_commands_are_list_gpu_retry_library_and_suggest() -> None:
     # Execute
     commands = build_commands(an_app())
 
@@ -134,6 +137,7 @@ def test_the_commands_are_list_gpu_retry_and_library() -> None:
         "gpu": GpuCommand,
         "retry": RetryCommand,
         "library": LibraryCommand,
+        "suggest": SuggestCommand,
     }
 
 
@@ -141,7 +145,7 @@ def handler_named(app: StashApp, name: str) -> Callable[..., str]:
     return next(spec.handler for spec in build_tools(app) if spec.schema["name"] == name)
 
 
-def test_the_tools_are_search_list_the_seven_lifecycle_tools_and_capture() -> None:
+def test_the_tools_are_search_list_lifecycle_capture_the_step_tools_and_suggest() -> None:
     # Execute
     specs = build_tools(an_app())
 
@@ -157,6 +161,10 @@ def test_the_tools_are_search_list_the_seven_lifecycle_tools_and_capture() -> No
         "stash_group",
         "stash_library",
         "stash_capture",
+        "stash_add_step",
+        "stash_edit_step",
+        "stash_complete_step",
+        "stash_suggest",
     ]
 
 
@@ -207,3 +215,39 @@ def test_the_capture_tool_files_through_the_agent_capture_of_the_app() -> None:
 
     # Assert
     assert [message.source.is_agent for message in intake.messages] == [True]
+
+
+def test_the_step_tools_act_on_the_planning_of_the_app() -> None:
+    # Setup
+    store = stored(an_item(id="w1", capture_id="c1", stage=Stage.WANT_TO))
+    add_step = handler_named(an_app(store=store), "stash_add_step")
+
+    # Execute
+    add_step({"item_id": "w1", "text": "Book the table", "lead_days": 7})
+
+    # Assert
+    assert [step.text for step in store.steps_for("w1")] == ["Book the table"]
+
+
+def test_the_suggest_tool_asks_the_suggestions_of_the_app() -> None:
+    # Setup
+    desk = FakeSuggestionDesk(Picked(()))
+    suggest = handler_named(an_app(suggestions=desk), "stash_suggest")
+
+    # Execute
+    suggest({"context": "at home"})
+
+    # Assert
+    assert desk.asked == [("at home", 3)]
+
+
+def test_the_suggest_command_asks_the_suggestions_of_the_app() -> None:
+    # Setup
+    desk = FakeSuggestionDesk(Picked(()))
+    command = build_commands(an_app(suggestions=desk))["suggest"]
+
+    # Execute
+    asyncio.run(command.run("at home"))
+
+    # Assert
+    assert desk.asked == [("at home", 3)]

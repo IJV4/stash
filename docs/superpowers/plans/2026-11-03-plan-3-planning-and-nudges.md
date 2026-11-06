@@ -312,6 +312,12 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 >    - `Reply`'s 4096 limit should count UTF-16 code units (Telegram's unit); check on the PC.
 >    - Add `stash.app.build` to the nudges guard's allowed importers; the app wiring is the first
 >      type-check that `SqliteStore` satisfies `NudgeStore`.
+> 7. Carried from the Task 5 review:
+>    - Wire `DigestBuilder(store, QuietPicks(app.suggestions), schedule)` in `stash.app`, and build
+>      each `WeeklyDigest` with `builder.build(due, now)` before `batch_messages`.
+>    - `Nudger.mark_sent` records stuck, forgotten and digest rows with separate autocommits. Add a
+>      transactional `record_all_sent(nudges, sent_at)` store method (Protocol + both stores +
+>      contract) and use it, so a crash mid-way cannot half-record a digest.
 
 **Files:**
 - Create `src/stash/hermes_adapter/ticker.py`.

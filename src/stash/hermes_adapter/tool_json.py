@@ -4,9 +4,10 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from stash.capture import Deferred, Filed
-from stash.domain import Item, Outcome
+from stash.domain import Item, Outcome, Step
 from stash.hermes_adapter.tool_arguments import ToolArguments
 from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LifecycleError
+from stash.planning.errors import PlanningError
 
 UNREADABLE = "the stash could not be read"
 UNWRITABLE = "the stash could not be updated"
@@ -25,7 +26,7 @@ def error(message: str) -> str:
 def answering(args: object, failure: str, work: Work, log: logging.Logger) -> str:
     try:
         return work(ToolArguments.of(args))
-    except (ValueError, LifecycleError) as refusal:
+    except (ValueError, LifecycleError, PlanningError) as refusal:
         return error(str(refusal))
     except Exception:
         log.exception("a stash tool failed")
@@ -108,6 +109,23 @@ def item_answer(item: Item) -> str:
 
 def outcome_answer(outcome: Outcome) -> str:
     return dump({"outcome": outcome_payload(outcome)})
+
+
+def step_payload(step: Step) -> dict[str, Any]:
+    return {
+        "id": step.id,
+        "item_id": step.item_id,
+        "text": step.text,
+        "lead_days": step.lead_days,
+        "due_on": None if step.due_on is None else step.due_on.isoformat(),
+        "confirmed": step.confirmed,
+        "done": step.done,
+        "position": step.position,
+    }
+
+
+def step_answer(step: Step) -> str:
+    return dump({"step": step_payload(step)})
 
 
 def capture_answer(result: Filed | Deferred) -> str:

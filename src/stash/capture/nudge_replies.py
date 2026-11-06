@@ -1,21 +1,19 @@
 from dataclasses import dataclass
 from typing import assert_never
 
+from stash.capture.digest_replies import render_digest
 from stash.capture.nudge_buttons import action_rows
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT, Reply
-from stash.capture.wording import short_day
+from stash.capture.wording import LINE_LIMIT, short_day
 from stash.domain import collapse_and_clip
 from stash.nudges.due import DateReminder, DueNudge, FollowUp, StepReminder, WeeklyDigest
 from stash.nudges.messages import NudgeMessage
 
-LINE_LIMIT = 300
 CATCH_UP_HEADER = "While I was offline:"
 STEP_LINE = "⏰ {text} — for {title}"
 DATED_STEP_LINE = "⏰ {text} — for {title} ({day})"
 DATE_LINE = "📅 {title} ({day})"
 FOLLOW_UP_LINE = "How was {title}?"
-DIGEST_HEADER = "🗞 Your weekly digest"
-STUCK_LINE = "📖 How is {title} going?"
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +53,7 @@ def _lines(due: DueNudge) -> list[str]:
         case FollowUp():
             return [FOLLOW_UP_LINE.format(title=due.item.title)]
         case WeeklyDigest():
-            return [DIGEST_HEADER, *(STUCK_LINE.format(title=s.item.title) for s in due.stuck)]
+            return render_digest(due).text.splitlines()
         case _:
             assert_never(due)
 

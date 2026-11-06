@@ -73,6 +73,12 @@ class ToolArguments:
     def optional_rating(self) -> int | None:
         return self._optional_int("rating")
 
+    def optional_lead_days(self) -> int | None:
+        return self._optional_int("lead_days")
+
+    def optional_due_on(self) -> date | None:
+        return self.optional_date("due_on")
+
     def optional_takeaways(self) -> tuple[str, ...] | None:
         takeaways = self.values.get("takeaways")
         if takeaways is None:
