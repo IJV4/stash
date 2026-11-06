@@ -3,6 +3,7 @@ from pathlib import Path
 
 INIT_SCRIPT = "0001_init.sql"
 LIFECYCLE_SCRIPT = "0002_lifecycle.sql"
+STEPS_SCRIPT = "0003_steps_nudges.sql"
 
 
 def write_migrations(directory: Path, scripts: dict[str, str]) -> Path:

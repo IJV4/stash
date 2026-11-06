@@ -1,17 +1,36 @@
 import threading
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import date, datetime
 from typing import NamedTuple
 
-from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, SourceRef, Stage
+from fakes.memory_ledger import MemoryLedger
+from fakes.memory_steps import MemorySteps
+
+from stash.domain import (
+    CaptureStatus,
+    Item,
+    ItemType,
+    Nudge,
+    NudgeKey,
+    NudgeKind,
+    Outcome,
+    RawCapture,
+    SourceRef,
+    Stage,
+    Step,
+    require_aware,
+)
 from stash.store.port import (
     DEFAULT_PAGE_SIZE,
     DuplicateOutcomeError,
     UnknownCaptureError,
     UnknownItemError,
     require_date_range,
+    require_instant_range,
     require_non_negative,
     require_outcome_for_item,
+    require_steps_for_item,
 )
 
 
@@ -28,6 +47,8 @@ class MemoryStore:
         self._sources: set[SourceRef] = set()
         self._items: dict[str, Item] = {}
         self._outcomes: dict[str, Outcome] = {}
+        self._steps = MemorySteps(self._lock)
+        self._ledger = MemoryLedger(self._lock)
         self._settings: dict[str, str] = {}
 
     def add_capture(self, capture: RawCapture) -> bool:
@@ -75,6 +96,7 @@ class MemoryStore:
             self._items.pop(item_id, None)
             self._ungroup_children_of(item_id)
             self._drop_outcomes_of(item_id)
+            self._steps.drop_steps_of(item_id)
 
     def delete_item_if_untouched(self, item_id: str) -> bool:
         with self._lock:
@@ -183,6 +205,59 @@ class MemoryStore:
             )
             return [self._items[item_id] for item_id in ranked]
 
+    def items_dated_between(self, start: date, end: date) -> list[Item]:
+        require_date_range(start, end)
+        return self._dated_between(start, end)
+
+    def planned_without_outcome_dated_between(self, start: date, end: date) -> list[Item]:
+        require_date_range(start, end)
+        with self._lock:
+            with_outcome = {outcome.item_id for outcome in self._outcomes.values()}
+        return [
+            item
+            for item in self._dated_between(start, end)
+            if item.stage is Stage.PLANNED and item.id not in with_outcome
+        ]
+
+    def want_to_older_than(self, cutoff: datetime, limit: int) -> list[Item]:
+        return self._stage_older_than(Stage.WANT_TO, cutoff, limit)
+
+    def doing_older_than(self, cutoff: datetime, limit: int) -> list[Item]:
+        return self._stage_older_than(Stage.DOING, cutoff, limit)
+
+    def created_between(self, start: datetime, end: datetime) -> list[Item]:
+        require_instant_range(start, end)
+        return [item for item in self._newest_first() if start <= item.created_at < end]
+
+    def save_steps(self, item_id: str, steps: Sequence[Step]) -> None:
+        require_steps_for_item(item_id, steps)
+        with self._lock:
+            self._require_stored_item(item_id)
+            self._steps.replace_steps(item_id, steps)
+
+    def steps_for(self, item_id: str) -> list[Step]:
+        return self._steps.steps_for(item_id)
+
+    def save_step(self, step: Step) -> None:
+        with self._lock:
+            self._require_stored_item(step.item_id)
+            self._steps.save_step(step)
+
+    def get_step(self, step_id: str) -> Step | None:
+        return self._steps.get_step(step_id)
+
+    def open_confirmed_steps(self) -> list[Step]:
+        return self._steps.open_confirmed_steps()
+
+    def was_sent(self, key: NudgeKey) -> bool:
+        return self._ledger.was_sent(key)
+
+    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
+        return self._ledger.record_sent(nudge, sent_at)
+
+    def last_sent(self, kind: NudgeKind) -> datetime | None:
+        return self._ledger.last_sent(kind)
+
     def get_setting(self, key: str) -> str | None:
         with self._lock:
             return self._settings.get(key)
@@ -236,6 +311,20 @@ class MemoryStore:
         self._known_capture(item.capture_id)
         if item.parent_id is not None and item.parent_id not in self._items:
             raise UnknownItemError(item.parent_id)
+
+    def _dated_between(self, start: date, end: date) -> list[Item]:
+        with self._lock:
+            items = list(self._items.values())
+        dated = [item for item in items if item.date is not None and start <= item.date <= end]
+        return sorted(dated, key=lambda item: (item.date, item.created_at, item.id))
+
+    def _stage_older_than(self, stage: Stage, cutoff: datetime, limit: int) -> list[Item]:
+        require_aware("cutoff", cutoff)
+        require_non_negative("limit", limit)
+        with self._lock:
+            items = list(self._items.values())
+        stale = [item for item in items if item.stage is stage and item.updated_at < cutoff]
+        return sorted(stale, key=lambda item: (item.updated_at, item.id))[:limit]
 
     def _newest_first(self) -> list[Item]:
         with self._lock:

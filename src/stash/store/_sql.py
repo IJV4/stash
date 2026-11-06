@@ -6,8 +6,9 @@ ON CONFLICT (chat_id, message_id) DO NOTHING
 
 UPSERT_ITEM = """
 INSERT INTO items (id, capture_id, item_type, title, stage, source_url, note, details,
-                   tags, people, date, created_at, updated_at, kept, parent_id, drop_reason)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   tags, people, date, created_at, updated_at, kept, parent_id, drop_reason,
+                   cool_off_until)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     capture_id = excluded.capture_id,
     item_type = excluded.item_type,
@@ -23,7 +24,8 @@ ON CONFLICT (id) DO UPDATE SET
     updated_at = excluded.updated_at,
     kept = excluded.kept,
     parent_id = excluded.parent_id,
-    drop_reason = excluded.drop_reason
+    drop_reason = excluded.drop_reason,
+    cool_off_until = excluded.cool_off_until
 """
 
 LIST_ITEMS = """
@@ -111,9 +113,64 @@ JOIN in_range ON in_range.item_id = items.id AND in_range.recency = 1
 ORDER BY in_range.completed_on DESC, in_range.recorded_at DESC, items.id DESC
 """
 
+ITEMS_DATED_BETWEEN = """
+SELECT * FROM items WHERE date BETWEEN :start AND :end ORDER BY date, created_at, id
+"""
+
+PLANNED_WITHOUT_OUTCOME_DATED_BETWEEN = """
+SELECT * FROM items
+WHERE stage = :planned AND date BETWEEN :start AND :end
+  AND NOT EXISTS (SELECT 1 FROM outcomes WHERE outcomes.item_id = items.id)
+ORDER BY date, created_at, id
+"""
+
+STAGE_OLDER_THAN = """
+SELECT * FROM items WHERE stage = :stage AND updated_at < :cutoff
+ORDER BY updated_at, id
+LIMIT :limit
+"""
+
+CREATED_BETWEEN = """
+SELECT * FROM items WHERE created_at >= :start AND created_at < :end
+ORDER BY created_at DESC, id DESC
+"""
+
 DELETE_ITEM_IF_UNTOUCHED = """
 DELETE FROM items
 WHERE id = :item_id AND stage <> :done AND kept = 0
   AND NOT EXISTS (SELECT 1 FROM outcomes WHERE outcomes.item_id = items.id)
   AND NOT EXISTS (SELECT 1 FROM items AS child WHERE child.parent_id = items.id)
 """
+
+UPSERT_STEP = """
+INSERT INTO steps (id, item_id, text, lead_days, due_on, confirmed, done, position, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (id) DO UPDATE SET
+    text = excluded.text,
+    lead_days = excluded.lead_days,
+    due_on = excluded.due_on,
+    confirmed = excluded.confirmed,
+    done = excluded.done,
+    position = excluded.position,
+    created_at = excluded.created_at
+WHERE steps.item_id = excluded.item_id
+"""
+
+DELETE_STEPS_OF_ITEM = "DELETE FROM steps WHERE item_id = ?"
+
+STEPS_FOR_ITEM = "SELECT * FROM steps WHERE item_id = ? ORDER BY position, id"
+
+STEP_BY_ID = "SELECT * FROM steps WHERE id = ?"
+
+OPEN_CONFIRMED_STEPS = """
+SELECT * FROM steps WHERE confirmed = 1 AND done = 0 ORDER BY item_id, position, id
+"""
+
+INSERT_SENT_NUDGE = """
+INSERT INTO sent_nudges (kind, subject_id, due_at, sent_at) VALUES (?, ?, ?, ?)
+ON CONFLICT (kind, subject_id, due_at) DO NOTHING
+"""
+
+NUDGE_WAS_SENT = "SELECT 1 FROM sent_nudges WHERE kind = ? AND subject_id = ? AND due_at = ?"
+
+LAST_SENT = "SELECT max(sent_at) AS latest FROM sent_nudges WHERE kind = ?"

@@ -159,6 +159,7 @@ class Item:
     kept: bool = False
     parent_id: str | None = None
     drop_reason: str | None = None
+    cool_off_until: dt.date | None = None
 
     def __post_init__(self) -> None:
         require_wire_safe_id("item id", self.id)
@@ -169,6 +170,8 @@ class Item:
                 raise ValueError(OWN_PARENT)
         _require_drop_reason_fits(self.stage, self.drop_reason)
         _require_fileable(self.title, self.stage, self.date)
+        if self.cool_off_until is not None:
+            require_plain_date("cool_off_until", self.cool_off_until)
         require_aware("created_at", self.created_at)
         require_aware("updated_at", self.updated_at)
         if self.source_url is not None:
@@ -206,6 +209,10 @@ class Item:
     def moved_to(self, stage: Stage, now: dt.datetime) -> "Item":
         drop_reason = self.drop_reason if stage is Stage.DROPPED else None
         return replace(self, stage=stage, drop_reason=drop_reason, updated_at=now)
+
+    def rescheduled(self, date: dt.date | None, now: dt.datetime) -> "Item":
+        stage = Stage.WANT_TO if lacks_required_date(self.stage, date) else self.stage
+        return replace(self.moved_to(stage, now), date=date)
 
     def relocated_to(self, stage: Stage, now: dt.datetime) -> "Item":
         refusal = self._move_refusal(stage)

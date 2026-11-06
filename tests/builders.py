@@ -1,5 +1,6 @@
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from stash.config import ProviderName, ProviderSettings
 from stash.domain import (
@@ -21,6 +22,13 @@ LATER = BASE + timedelta(hours=3)
 NAIVE = datetime(2026, 11, 2, 12, 0)
 API_KEY = "sk-or-test-key"
 PLUS_FIVE = timezone(timedelta(hours=5))
+MINUS_FIVE = timezone(timedelta(hours=-5))
+MICROSECOND = timedelta(microseconds=1)
+LATE_EVENING_MINUS_FIVE = datetime(2026, 11, 2, 23, 30, tzinfo=MINUS_FIVE)
+EARLY_MORNING_PLUS_FIVE = datetime(2026, 11, 3, 1, 30, tzinfo=PLUS_FIVE)
+LOS_ANGELES = ZoneInfo("America/Los_Angeles")
+SPRING_FORWARD_DAY = date(2027, 3, 14)
+FALL_BACK_DAY = date(2027, 11, 7)
 EARLIER_INSTANT_LATER_WALL_CLOCK = BASE.astimezone(PLUS_FIVE) - timedelta(minutes=30)
 PLANNED_FOR = date(2026, 11, 14)
 COMPLETED_ON = date(2026, 11, 2)
@@ -109,6 +117,7 @@ def an_item(**overrides: Any) -> Item:
         "kept": False,
         "parent_id": None,
         "drop_reason": None,
+        "cool_off_until": None,
     }
     return Item(**{**fields, **overrides})
 
@@ -138,6 +147,10 @@ def titles(items: list[Item]) -> list[str]:
 
 def a_parent_item() -> Item:
     return an_item(id="p1", title="Japan trip")
+
+
+def in_los_angeles(day: date, hour: int = 0, minute: int = 0, fold: int = 0) -> datetime:
+    return datetime.combine(day, time(hour, minute), tzinfo=LOS_ANGELES).replace(fold=fold)
 
 
 UNSAFE_WIRE_IDS = ("", "   ", "a:b", "two words", "bell\x07", "x" * 41, "é" * 40)

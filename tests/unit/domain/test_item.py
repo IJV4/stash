@@ -435,3 +435,33 @@ def test_item_accepts_ids_of_the_maximum_length() -> None:
 
     # Assert
     assert (item.id, item.capture_id) == ("x" * 40, "y" * 40)
+
+
+def test_an_item_has_no_cool_off_date_by_default() -> None:
+    # Execute
+    item = an_item()
+
+    # Assert
+    assert item.cool_off_until is None
+
+
+def test_an_item_keeps_the_cool_off_date_it_was_built_with() -> None:
+    # Execute
+    item = an_item(cool_off_until=date(2026, 12, 1))
+
+    # Assert
+    assert item.cool_off_until == date(2026, 12, 1)
+
+
+def test_an_item_built_from_a_filing_has_no_cool_off_date() -> None:
+    # Execute
+    item = Item.from_filing("i9", a_capture(), a_filing(), None, LATER)
+
+    # Assert
+    assert item.cool_off_until is None
+
+
+def test_item_with_a_datetime_for_cool_off_until_raises_value_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="cool_off_until must be a date, not a datetime"):
+        an_item(cool_off_until=BASE)

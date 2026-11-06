@@ -1,16 +1,30 @@
 import sqlite3
 import threading
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import closing
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import NoReturn
 
-from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, Stage
+from stash.domain import (
+    CaptureStatus,
+    Item,
+    ItemType,
+    Nudge,
+    NudgeKey,
+    NudgeKind,
+    Outcome,
+    RawCapture,
+    Stage,
+    Step,
+    require_aware,
+    utc_text,
+)
 from stash.store import _sql as sql
+from stash.store._ledger import SqliteLedger
 from stash.store._migrate import apply_migrations, packaged_migrations
 from stash.store._rows import (
     capture_from_row,
@@ -20,6 +34,7 @@ from stash.store._rows import (
     outcome_from_row,
     outcome_values,
 )
+from stash.store._steps import SqliteSteps
 from stash.store._transaction import immediate_transaction
 from stash.store.port import (
     DEFAULT_PAGE_SIZE,
@@ -28,6 +43,7 @@ from stash.store.port import (
     UnknownCaptureError,
     UnknownItemError,
     require_date_range,
+    require_instant_range,
     require_non_negative,
     require_outcome_for_item,
 )
@@ -63,6 +79,8 @@ class SqliteStore:
         self._connection = sqlite3.connect(str(path), check_same_thread=False, isolation_level=None)
         try:
             self._configure()
+            self._steps = SqliteSteps(self._connection, self._lock)
+            self._ledger = SqliteLedger(self._connection, self._lock)
             apply_migrations(
                 self._connection, packaged_migrations() if migrations is None else migrations
             )
@@ -182,6 +200,33 @@ class SqliteStore:
             sql.DONE_BETWEEN, {"start": start.isoformat(), "end": end.isoformat()}
         )
 
+    def items_dated_between(self, start: date, end: date) -> list[Item]:
+        require_date_range(start, end)
+        return self._items_from(
+            sql.ITEMS_DATED_BETWEEN, {"start": start.isoformat(), "end": end.isoformat()}
+        )
+
+    def planned_without_outcome_dated_between(self, start: date, end: date) -> list[Item]:
+        require_date_range(start, end)
+        parameters = {
+            "planned": Stage.PLANNED.value,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+        }
+        return self._items_from(sql.PLANNED_WITHOUT_OUTCOME_DATED_BETWEEN, parameters)
+
+    def want_to_older_than(self, cutoff: datetime, limit: int) -> list[Item]:
+        return self._stage_older_than(Stage.WANT_TO, cutoff, limit)
+
+    def doing_older_than(self, cutoff: datetime, limit: int) -> list[Item]:
+        return self._stage_older_than(Stage.DOING, cutoff, limit)
+
+    def created_between(self, start: datetime, end: datetime) -> list[Item]:
+        require_instant_range(start, end)
+        return self._items_from(
+            sql.CREATED_BETWEEN, {"start": utc_text(start), "end": utc_text(end)}
+        )
+
     def add_outcome(self, outcome: Outcome) -> None:
         with self._lock:
             self._insert_outcome(outcome)
@@ -210,6 +255,30 @@ class SqliteStore:
         with self._lock:
             row = self._connection.execute(sql.OUTCOME_BY_ID, (outcome_id,)).fetchone()
         return None if row is None else outcome_from_row(row)
+
+    def save_steps(self, item_id: str, steps: Sequence[Step]) -> None:
+        self._steps.save_steps(item_id, steps)
+
+    def steps_for(self, item_id: str) -> list[Step]:
+        return self._steps.steps_for(item_id)
+
+    def save_step(self, step: Step) -> None:
+        self._steps.save_step(step)
+
+    def get_step(self, step_id: str) -> Step | None:
+        return self._steps.get_step(step_id)
+
+    def open_confirmed_steps(self) -> list[Step]:
+        return self._steps.open_confirmed_steps()
+
+    def was_sent(self, key: NudgeKey) -> bool:
+        return self._ledger.was_sent(key)
+
+    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
+        return self._ledger.record_sent(nudge, sent_at)
+
+    def last_sent(self, kind: NudgeKind) -> datetime | None:
+        return self._ledger.last_sent(kind)
 
     def get_setting(self, key: str) -> str | None:
         with self._lock:
@@ -246,6 +315,12 @@ class SqliteStore:
         with self._lock:
             rows = self._connection.execute(query, parameters).fetchall()
         return [item_from_row(row) for row in rows]
+
+    def _stage_older_than(self, stage: Stage, cutoff: datetime, limit: int) -> list[Item]:
+        require_aware("cutoff", cutoff)
+        require_non_negative("limit", limit)
+        parameters = {"stage": stage.value, "cutoff": utc_text(cutoff), "limit": limit}
+        return self._items_from(sql.STAGE_OLDER_THAN, parameters)
 
     def _exists(self, query: str, row_id: str) -> bool:
         return self._connection.execute(query, (row_id,)).fetchone() is not None

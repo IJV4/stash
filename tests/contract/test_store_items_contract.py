@@ -386,3 +386,31 @@ def test_list_items_with_a_negative_limit_or_offset_raises_value_error(
     with open_store() as store, pytest.raises(ValueError):
         # Execute / Assert
         store.list_items(limit=limit, offset=offset)
+
+
+@all_stores
+def test_an_item_with_a_cool_off_date_reads_it_back(open_store: StoreFactory) -> None:
+    # Setup
+    with open_store() as store:
+        store.add_capture(a_capture())
+        store.save_item(an_item(cool_off_until=date(2026, 12, 1)))
+
+        # Execute
+        found = store.get_item("i1")
+
+        # Assert
+        assert found is not None and found.cool_off_until == date(2026, 12, 1)
+
+
+@all_stores
+def test_an_item_without_a_cool_off_date_reads_it_back_as_none(open_store: StoreFactory) -> None:
+    # Setup
+    with open_store() as store:
+        store.add_capture(a_capture())
+        store.save_item(an_item(cool_off_until=None))
+
+        # Execute
+        found = store.get_item("i1")
+
+        # Assert
+        assert found is not None and found.cool_off_until is None

@@ -1077,6 +1077,57 @@ is left out when the latest outcome has none).
 Untrusted text (titles, notes, takeaways, details, URLs) is printed through the
 same non-printable filter as `/list`.
 
+## Steps and the sent-nudge ledger  [Plan 3 Task 1]
+
+No Telegram surface yet; the planner and nudger will build on these calls.
+
+    from stash.domain import Nudge, NudgeKind, Step
+
+    step = Step(id="s1", item_id="i1", text="Book the table", lead_days=7, due_on=None,
+                confirmed=False, done=False, position=0, created_at=now)
+    store.save_steps("i1", [step])             # replaces the item's steps
+    store.save_step(step.confirmed_now())      # owner confirmed it
+    store.open_confirmed_steps()               # confirmed and not done: the only ones that remind
+    step.due_date(item.date)                   # item date minus lead_days, or its own due_on
+
+    nudge = Nudge(NudgeKind.STEP, "s1", due_at, "Book the table")
+    store.was_sent(nudge.key)                  # False until the outbox send succeeded
+    store.record_sent(nudge, sent_at)          # True if this call recorded it, False if already recorded
+    store.last_sent(NudgeKind.DIGEST)          # latest sent_at for a kind, or None
+
+    item.rescheduled(None, now)                # a PLANNED item without a date goes back to WANT_TO
+
+- A step has 1-200 characters of text and exactly one of `lead_days` (0-60) or `due_on`.
+- A step with a lead time is due that many days before the item's date; with no item date it has no due date.
+- A step with an absolute date is due on that date whatever the item's date.
+- Saving steps for an item replaces its earlier steps; other items' steps are untouched.
+  A step id already used by another item is refused with `DuplicateStepError` and nothing
+  changes, for `save_steps` and `save_step` alike; saving the same id under the same item updates it.
+- Saving steps or a step for an item that does not exist raises `UnknownItemError`.
+- `save_steps` raises `ValueError` for a step that belongs to another item or a step id repeated
+  in one call, and keeps the item's earlier steps.
+- `get_step` of an unknown id is `None`; `steps_for` of an unknown item is `[]`.
+- Steps read back in position order, and are deleted with their item.
+- Only confirmed, not-done steps count as open; unconfirmed proposals never remind.
+- A nudge key is `(kind, subject id, due instant in UTC)`: the same instant written in another
+  offset is the same key, so DST never produces two keys for one reminder.
+- `record_sent` reports whether this call recorded the nudge: `True` the first time, `False` when
+  the key was already recorded. Recording a nudge twice leaves one ledger row and keeps the first
+  send time.
+- `items_dated_between`, `planned_without_outcome_dated_between`, `want_to_older_than`,
+  `doing_older_than` and `created_between` answer the nudger's questions in both stores.
+  Date ranges are inclusive; the instant ranges are `start <= created_at < end`; "older than"
+  compares the last update (`updated_at`), oldest first.
+- `want_to_older_than` and `doing_older_than` return nothing for a `limit` of 0 and refuse a
+  negative `limit` with `ValueError`.
+- `created_between` lists newest first; `items_dated_between` and
+  `planned_without_outcome_dated_between` list by date, then creation time.
+- Every datetime handed to the store (`cutoff`, `start`, `end`, `sent_at`) must be timezone-aware;
+  a naive one raises `ValueError` and nothing is written.
+- `last_sent` returns an aware UTC datetime.
+- Items carry an optional `cool_off_until` date (no behaviour yet; a later cool-off feature will use it).
+- A database at schema version 2 migrates to 3 with every capture and item intact.
+
 ## Storage guarantees  [Tasks 2-3]
 
 These have no caller-visible surface yet; they are pinned by unit and contract

@@ -7,10 +7,9 @@ from pathlib import Path
 import pytest
 from builders import BASE, a_capture, a_source, an_item, an_item_at, minutes_after
 from fakes.store_factories import opened
-from migration_sets import INIT_SCRIPT, packaged_scripts, write_migrations
+from migration_sets import INIT_SCRIPT, LIFECYCLE_SCRIPT, packaged_scripts, write_migrations
 
-from stash.domain import Item, ItemType, Stage
-from stash.store._rows import utc_text
+from stash.domain import Item, ItemType, Stage, utc_text
 
 LIFECYCLE_SCHEMA_VERSION = 2
 PLAN_ONE_ITEM_COLUMNS = (
@@ -85,9 +84,12 @@ def schema_version(path: Path) -> int:
 def test_a_plan_one_database_migrates_to_the_lifecycle_schema_version(tmp_path: Path) -> None:
     # Setup
     path = plan_one_database(tmp_path)
+    lifecycle = write_migrations(
+        tmp_path / "lifecycle", packaged_scripts(INIT_SCRIPT, LIFECYCLE_SCRIPT)
+    )
 
     # Execute
-    with opened(path):
+    with opened(path, lifecycle):
         pass
 
     # Assert

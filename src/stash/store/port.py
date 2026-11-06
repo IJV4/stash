@@ -1,10 +1,24 @@
-from datetime import date
+from collections.abc import Sequence
+from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol
 
-from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, Stage
+from stash.domain import (
+    CaptureStatus,
+    Item,
+    ItemType,
+    Nudge,
+    NudgeKey,
+    NudgeKind,
+    Outcome,
+    RawCapture,
+    Stage,
+    Step,
+    require_aware,
+)
 
 DEFAULT_PAGE_SIZE = 20
+RANGE_ORDER_MESSAGE = "start must not be after end"
 
 
 class UnknownCaptureError(Exception):
@@ -22,6 +36,11 @@ class DuplicateOutcomeError(ValueError):
         super().__init__(f"outcome id {outcome_id!r} already exists")
 
 
+class DuplicateStepError(ValueError):
+    def __init__(self, step_id: str) -> None:
+        super().__init__(f"step id {step_id!r} already belongs to another item")
+
+
 def require_non_negative(name: str, value: int) -> None:
     if value < 0:
         raise ValueError(f"{name} must not be negative")
@@ -29,12 +48,29 @@ def require_non_negative(name: str, value: int) -> None:
 
 def require_date_range(start: date, end: date) -> None:
     if start > end:
-        raise ValueError("start must not be after end")
+        raise ValueError(RANGE_ORDER_MESSAGE)
+
+
+def require_instant_range(start: datetime, end: datetime) -> None:
+    require_aware("start", start)
+    require_aware("end", end)
+    if start > end:
+        raise ValueError(RANGE_ORDER_MESSAGE)
 
 
 def require_outcome_for_item(item: Item, outcome: Outcome) -> None:
     if outcome.item_id != item.id:
         raise ValueError(f"outcome {outcome.id!r} is for item {outcome.item_id!r}, not {item.id!r}")
+
+
+def require_steps_for_item(item_id: str, steps: Sequence[Step]) -> None:
+    seen: set[str] = set()
+    for step in steps:
+        if step.item_id != item_id:
+            raise ValueError(f"step {step.id!r} is for item {step.item_id!r}, not {item_id!r}")
+        if step.id in seen:
+            raise ValueError(f"step id {step.id!r} is repeated")
+        seen.add(step.id)
 
 
 class CaptureStore(Protocol):
@@ -75,6 +111,16 @@ class ItemStore(Protocol):
 
     def done_between(self, start: date, end: date) -> list[Item]: ...
 
+    def items_dated_between(self, start: date, end: date) -> list[Item]: ...
+
+    def planned_without_outcome_dated_between(self, start: date, end: date) -> list[Item]: ...
+
+    def want_to_older_than(self, cutoff: datetime, limit: int) -> list[Item]: ...
+
+    def doing_older_than(self, cutoff: datetime, limit: int) -> list[Item]: ...
+
+    def created_between(self, start: datetime, end: datetime) -> list[Item]: ...
+
 
 class OutcomeStore(Protocol):
     def add_outcome(self, outcome: Outcome) -> None: ...
@@ -88,13 +134,35 @@ class OutcomeStore(Protocol):
     def get_outcome(self, outcome_id: str) -> Outcome | None: ...
 
 
+class StepStore(Protocol):
+    def save_steps(self, item_id: str, steps: Sequence[Step]) -> None: ...
+
+    def steps_for(self, item_id: str) -> list[Step]: ...
+
+    def save_step(self, step: Step) -> None: ...
+
+    def get_step(self, step_id: str) -> Step | None: ...
+
+    def open_confirmed_steps(self) -> list[Step]: ...
+
+
+class NudgeLedger(Protocol):
+    def was_sent(self, key: NudgeKey) -> bool: ...
+
+    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool: ...
+
+    def last_sent(self, kind: NudgeKind) -> datetime | None: ...
+
+
 class SettingsStore(Protocol):
     def get_setting(self, key: str) -> str | None: ...
 
     def put_setting(self, key: str, value: str) -> None: ...
 
 
-class Store(CaptureStore, ItemStore, OutcomeStore, SettingsStore, Protocol): ...
+class Store(
+    CaptureStore, ItemStore, OutcomeStore, StepStore, NudgeLedger, SettingsStore, Protocol
+): ...
 
 
 class BackupError(Exception):

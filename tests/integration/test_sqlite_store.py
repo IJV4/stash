@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 from builders import LATER, a_capture, an_item, an_outcome, stored_item
 from fakes.store_factories import opened
-from migration_sets import INIT_SCRIPT, LIFECYCLE_SCRIPT, packaged_scripts, write_migrations
+from migration_sets import (
+    INIT_SCRIPT,
+    LIFECYCLE_SCRIPT,
+    STEPS_SCRIPT,
+    packaged_scripts,
+    write_migrations,
+)
 
 from stash.domain import Item, Stage
 from stash.store.sqlite import SqliteStore
@@ -26,7 +32,10 @@ BEGIN SELECT RAISE(ABORT, 'forbidden outcome'); END;
 def with_trigger_migration(directory: Path) -> Path:
     return write_migrations(
         directory,
-        {**packaged_scripts(INIT_SCRIPT, LIFECYCLE_SCRIPT), "0003_triggers.sql": TRIGGER_MIGRATION},
+        {
+            **packaged_scripts(INIT_SCRIPT, LIFECYCLE_SCRIPT, STEPS_SCRIPT),
+            "0004_triggers.sql": TRIGGER_MIGRATION,
+        },
     )
 
 

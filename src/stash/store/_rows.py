@@ -1,12 +1,18 @@
 import json
 import sqlite3
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
-from stash.domain import CaptureStatus, Item, ItemType, Outcome, RawCapture, SourceRef, Stage
-
-
-def utc_text(moment: datetime) -> str:
-    return moment.astimezone(UTC).isoformat(timespec="microseconds")
+from stash.domain import (
+    CaptureStatus,
+    Item,
+    ItemType,
+    Outcome,
+    RawCapture,
+    SourceRef,
+    Stage,
+    Step,
+    utc_text,
+)
 
 
 def capture_values(capture: RawCapture) -> tuple[str, ...]:
@@ -44,12 +50,13 @@ def item_values(item: Item) -> tuple[str | int | None, ...]:
         _json(dict(item.details)),
         _json(item.tags),
         _json(item.people),
-        None if item.date is None else item.date.isoformat(),
+        optional_date_text(item.date),
         utc_text(item.created_at),
         utc_text(item.updated_at),
         int(item.kept),
         item.parent_id,
         item.drop_reason,
+        optional_date_text(item.cool_off_until),
     )
 
 
@@ -65,12 +72,13 @@ def item_from_row(row: sqlite3.Row) -> Item:
         details=json.loads(row["details"]),
         tags=tuple(json.loads(row["tags"])),
         people=tuple(json.loads(row["people"])),
-        date=None if row["date"] is None else date.fromisoformat(row["date"]),
+        date=optional_date_from(row["date"]),
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
         kept=bool(row["kept"]),
         parent_id=row["parent_id"],
         drop_reason=row["drop_reason"],
+        cool_off_until=optional_date_from(row["cool_off_until"]),
     )
 
 
@@ -98,6 +106,42 @@ def outcome_from_row(row: sqlite3.Row) -> Outcome:
         recorded_at=datetime.fromisoformat(row["recorded_at"]),
         edited_at=None if row["edited_at"] is None else datetime.fromisoformat(row["edited_at"]),
     )
+
+
+def step_values(step: Step) -> tuple[str | int | None, ...]:
+    return (
+        step.id,
+        step.item_id,
+        step.text,
+        step.lead_days,
+        optional_date_text(step.due_on),
+        int(step.confirmed),
+        int(step.done),
+        step.position,
+        utc_text(step.created_at),
+    )
+
+
+def step_from_row(row: sqlite3.Row) -> Step:
+    return Step(
+        id=row["id"],
+        item_id=row["item_id"],
+        text=row["text"],
+        lead_days=row["lead_days"],
+        due_on=optional_date_from(row["due_on"]),
+        confirmed=bool(row["confirmed"]),
+        done=bool(row["done"]),
+        position=row["position"],
+        created_at=datetime.fromisoformat(row["created_at"]),
+    )
+
+
+def optional_date_text(value: date | None) -> str | None:
+    return None if value is None else value.isoformat()
+
+
+def optional_date_from(text: str | None) -> date | None:
+    return None if text is None else date.fromisoformat(text)
 
 
 def _json(value: object) -> str:
