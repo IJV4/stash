@@ -33,6 +33,7 @@ EARLIER_INSTANT_LATER_WALL_CLOCK = BASE.astimezone(PLUS_FIVE) - timedelta(minute
 PLANNED_FOR = date(2026, 11, 14)
 COMPLETED_ON = date(2026, 11, 2)
 NON_DONE_STAGES = tuple(stage for stage in Stage if stage is not Stage.DONE)
+NOT_PLANNED_STAGES = tuple(stage for stage in Stage if stage is not Stage.PLANNED)
 BARE_STRING_TAKEAWAYS: Any = "Fear"
 BARE_STRING_REFUSAL = "separate items"
 NONE_TAKEAWAYS: Any = None

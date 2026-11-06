@@ -23,6 +23,7 @@ class FixKind(StrEnum):
     ACCEPT_STEPS = "a"
     SKIP_STEPS = "n"
     STEP_DONE = "x"
+    NOT_HAPPENED = "h"
 
     @property
     def takes_argument(self) -> bool:

@@ -2,7 +2,7 @@ from types import MappingProxyType
 
 from stash.capture.callbacks import RATING_ARGUMENTS, FixAction, FixKind, KeepChoice
 from stash.capture.replies import Button, Reply
-from stash.domain import Item
+from stash.domain import Item, Stage
 from stash.lifecycle.results import Completion, ItemHistory
 
 DONE_TEXT = "🎉 Done: {title}"
@@ -11,6 +11,8 @@ RATED_SUFFIX = " · ⭐{rating}"
 NOTES_FOOTER = "Tell me notes or takeaways any time."
 KEPT_TEXT = "📚 Kept: {title}"
 NOT_KEPT_TEXT = "Okay, not keeping {title}."
+IN_WANT_TO_TEXT = "↩️ Okay, {title} is in Want to."
+LEFT_AS_IT_IS_TEXT = "{title} is {stage}, so I left it."
 RATING_LABEL = "⭐{rating}"
 KEEP_LABELS = MappingProxyType[KeepChoice, str](
     {KeepChoice.KEEP: "Keep 📚", KeepChoice.NOT_KEEPING: "Not keeping"}
@@ -39,6 +41,12 @@ def kept_reply(history: ItemHistory) -> Reply:
     if latest is None or latest.is_rated:
         return Reply(text)
     return Reply(text, (_rating_row(latest.id),))
+
+
+def didnt_happen_reply(item: Item) -> Reply:
+    if item.stage is Stage.WANT_TO:
+        return Reply(IN_WANT_TO_TEXT.format(title=item.title))
+    return Reply(LEFT_AS_IT_IS_TEXT.format(title=item.title, stage=item.stage.label))
 
 
 def _rating_row(outcome_id: str) -> tuple[Button, ...]:

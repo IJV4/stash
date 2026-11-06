@@ -4,7 +4,7 @@ from functools import partial
 
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import KeepChoice, rating_for
-from stash.capture.completion_replies import done_reply, kept_reply, rated_reply
+from stash.capture.completion_replies import didnt_happen_reply, done_reply, kept_reply, rated_reply
 from stash.capture.ports import FixStore, LifecycleActions
 from stash.capture.replies import Reply, gone, refused
 from stash.domain import enum_member
@@ -45,6 +45,9 @@ class CompletionButtons:
             return gone()
         return self._answering(partial(self._kept, item_id, choice))
 
+    def didnt_happen(self, item_id: str) -> Reply:
+        return self._answering(partial(self._didnt_happen, item_id))
+
     def _completed(self, item_id: str) -> Reply:
         double_tap = self._double_tap_of(self._lifecycle.history(item_id))
         if double_tap is not None:
@@ -71,6 +74,9 @@ class CompletionButtons:
     def _kept(self, item_id: str, choice: KeepChoice) -> Reply:
         self._lifecycle.keep(item_id, choice.kept)
         return kept_reply(self._lifecycle.history(item_id))
+
+    def _didnt_happen(self, item_id: str) -> Reply:
+        return didnt_happen_reply(self._lifecycle.didnt_happen(item_id))
 
     def _answering(self, build_reply: Callable[[], Reply]) -> Reply:
         try:

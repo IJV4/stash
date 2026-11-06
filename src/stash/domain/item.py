@@ -214,6 +214,11 @@ class Item:
         stage = Stage.WANT_TO if lacks_required_date(self.stage, date) else self.stage
         return replace(self.moved_to(stage, now), date=date)
 
+    def unplanned(self, now: dt.datetime) -> "Item":
+        if not self.is_planned:
+            return self
+        return self.rescheduled(None, now)
+
     def relocated_to(self, stage: Stage, now: dt.datetime) -> "Item":
         refusal = self._move_refusal(stage)
         if refusal is not None:
@@ -250,6 +255,14 @@ class Item:
     @property
     def is_done(self) -> bool:
         return self.stage is Stage.DONE
+
+    @property
+    def is_planned(self) -> bool:
+        return self.stage is Stage.PLANNED
+
+    @property
+    def is_closed(self) -> bool:
+        return self.stage in (Stage.DONE, Stage.DROPPED)
 
     @property
     def in_library(self) -> bool:

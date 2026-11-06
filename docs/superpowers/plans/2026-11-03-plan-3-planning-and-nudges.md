@@ -297,6 +297,18 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 >    update-only store write (Protocol + both stores + contract test, raising `UnknownItemError`
 >    for a missing row) and use it in lifecycle (and `capture.fixes`, which has the same race).
 >    Make `group`'s "child has no children" check and the save one transaction.
+>    Make the update-only write **conditional** (it also checks stage and `updated_at`, so a
+>    concurrent change is not lost) and apply it to `Lifecycle.didnt_happen` first (Task 4 review).
+> 6. Carried from the Task 4 review:
+>    - Fresh install: on the first tick with no DIGEST row in the ledger, record the most recent digest
+>      instant as sent **without sending it**, so the first digest is the next scheduled one, not last
+>      week's (a PC that was off still gets its catch-up digest, because the ledger is not empty then).
+>    - One production delivery loop: due → `batch_messages` → `nudge_reply` → send → `mark_sent` of
+>      the part the reply showed (`mark_sent` returns False on a lost race: log it, do not resend).
+>      The test rig's loop must call it rather than reimplement it.
+>    - `Reply`'s 4096 limit should count UTF-16 code units (Telegram's unit); check on the PC.
+>    - Add `stash.app.build` to the nudges guard's allowed importers; the app wiring is the first
+>      type-check that `SqliteStore` satisfies `NudgeStore`.
 
 **Files:**
 - Create `src/stash/hermes_adapter/ticker.py`.

@@ -1299,6 +1299,121 @@ the unpadded day in "Fri Feb 5", the singular "1 step", the double press of
 and each button's unknown-item, unknown-step and forged-data answers and log
 lines.
 
+## Reminders  [Plan 3 Task 4]
+
+`stash.nudges` works out which reminders are due at an instant and groups them
+into messages; `stash.capture.nudge_replies` turns a message into a `Reply`.
+Nothing here sends anything or runs on its own: the Task 6 ticker calls these
+every `tick_seconds`, sends each reply through the outbox, and marks a message
+sent only after its send succeeded.
+
+    from stash.capture.nudge_replies import nudge_reply
+    from stash.nudges import Nudger, Schedule, batch_messages
+
+    schedule = Schedule(config.nudges, config.timezone)  # America/Los_Angeles
+    schedule.at_local(date(2027, 3, 14), time(9, 0))      # aware UTC: 2027-03-14 16:00 UTC (PDT)
+    schedule.digest_instants_between(start, end)          # every digest_day digest_time in [start, end]
+
+    nudger = Nudger(store, schedule)
+    for message in batch_messages(nudger.due(now), now):
+        rendered = nudge_reply(message)                   # NudgeReply(reply, shown)
+        outbox.send(rendered.reply)                       # Task 6; a failed send stops here
+        nudger.mark_sent(rendered.shown, sent_at)         # False: another sender had recorded one
+
+What is due at `now` (`nudger.due(now)`): every reminder whose instant is at
+most `now`, at most 14 days old (older ones are dropped silently), not yet
+recorded in the sent-nudge ledger, and still valid against the store as it is
+now. Nothing is cached between calls, so an edited date or a dropped item is
+read afresh every time.
+
+- A step reminder: a confirmed, not-done step whose item exists and is neither
+  Done nor Dropped, at `reminder_time` on its due date (the item date minus its
+  lead time, or its own date). Unconfirmed proposed steps never remind.
+- A date reminder: a Planned item, at `reminder_time` on its date.
+- A follow-up: a Planned item with no outcome, at `followup_time` the day after
+  its date. At most one follow-up message goes out per daily follow-up time:
+  once one was sent at or after the latest `followup_time`, further follow-ups
+  wait for the next one.
+- The weekly digest: the latest `digest_day` `digest_time` instant that was not
+  sent. Doing items last updated more than `stuck_doing_days` before it ride
+  inside it (at most 10) and are never a message of their own.
+
+`batch_messages(due, now)` makes at most three messages: the step and date
+reminders, the follow-ups, and the digest. When that is more than one message
+and the oldest is more than 30 minutes overdue (the PC was off), they are one
+catch-up message instead, headed `While I was offline:`.
+
+    While I was offline:
+    ⏰ Book the table — for Date night (Sat Feb 13)
+    📅 Date night (Sat Feb 13)
+    How was Date night?
+    🗞 Your weekly digest
+    📖 How is Thinking in Systems going?
+
+Each step reminder carries a `Done ✓` button (`stash:x:<step id>`); each
+follow-up carries `Done ✓` (`stash:d:<item id>`, Plan 2's one-tap Done, which
+answers with the ⭐1-⭐5 and Keep rows) and `Didn't happen` (`stash:h:<item
+id>`), one row per step or follow-up. With more than one row the `Done ✓` label
+names its subject (`Done ✓ · Book the table`, cut to 24 characters). A message
+carries at most 8 buttons: from the first row that would pass 8, the remaining
+reminders are text only. Every line is cut to 300 characters with its
+whitespace collapsed, so a title or step text cannot break a line. When the
+lines do not all fit Telegram's 4096 characters, `nudge_reply` shows the
+reminders that fit, in order, and returns them as `rendered.shown`; only those
+are marked sent, so the rest stay due and come in the next tick's message. The
+digest's other sections (new, forgotten, upcoming, suggestions) arrive in
+Task 5.
+
+Pressing `Didn't happen` (`app.fixes.apply("stash:h:<item id>")`) moves a
+Planned item back to Want to, clears its date and answers `↩️ Okay, <title> is
+in Want to.` For an item that is no longer Planned it changes nothing and
+answers `<title> is <stage>, so I left it.`, except that an item already in
+Want to answers the `is in Want to.` line again. The operation is
+`Lifecycle.didnt_happen(item_id)`.
+
+Each statement has one acceptance test in `tests/acceptance/test_nudges.py`,
+which ticks a clock-driven loop (due, batch, render, send, mark) over
+in-memory fakes, with a Saturday 2027-02-13 date night and a confirmed
+same-day step:
+
+1. Ticking through that week (every 60 seconds around each reminder time,
+   hourly in between) sends exactly three messages: the
+   step and date reminders at Saturday 09:00, `How was Date night?` at Sunday
+   09:00 and the digest at Sunday 10:00, each once.
+2. With the PC off from Friday 18:00 to Sunday 12:00, the first tick sends one
+   catch-up message with the step, the date reminder, the follow-up and the
+   digest, and the next tick sends nothing.
+3. On 2027-03-14 (clocks go forward) a 09:00 reminder fires once, at 16:00 UTC.
+4. On 2027-11-07 (clocks go back) a 09:00 reminder fires once, at 17:00 UTC.
+5. Dropping the item before Saturday 09:00 sends no step or date reminder for
+   it.
+6. Moving the item's date (a store write; the agent's date edit arrives in a
+   later task) before Saturday 09:00 sends its step reminder on the new date
+   instead.
+7. When the send fails the message is not marked, and the next tick sends it.
+8. Pressing `Didn't happen` on the follow-up moves the date night back to Want
+   to with no date.
+
+Pinned by unit tests: `at_local` for a time in the spring-forward gap gives one
+instant (the wall-clock time read with the pre-transition offset), and for an
+ambiguous fall-back time gives the first occurrence; the 14-day lookback and
+its boundary; a step with no due date (lead time on an undated item) never
+reminds; a Done or Dropped item's steps never remind; the follow-up slot rule,
+including follow-ups that wait a slot and the window then dropping them; the
+digest's stuck items are recorded before the digest itself, so a crash between
+the two writes repeats the digest instead of losing its items; a crash part-way
+through `mark_sent` leaves the unrecorded reminders due (a follow-up at the
+next follow-up time), so at worst part of one message repeats; a nudge sent
+after the follow-up time that is not a follow-up does not hold follow-ups back;
+the stuck boundary (exactly `stuck_doing_days` is not stuck); the catch-up
+rule's 30-minute boundary (exactly 30 minutes is not a catch-up); `mark_sent`
+returns `False` when another sender had already recorded one of the message's
+nudges; the 8-button cap, the subject-naming labels (a lone button row keeps the
+bare `Done ✓` even beside a date reminder or the digest), the 300-character
+line cut and the 4096-character fit (60 due step reminders are all delivered
+over successive ticks and none is marked sent unshown); `Didn't happen` on an
+unknown item answers `That item no longer exists.`
+
 ## Storage guarantees  [Tasks 2-3]
 
 These have no caller-visible surface yet; they are pinned by unit and contract

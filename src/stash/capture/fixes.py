@@ -79,6 +79,8 @@ class FixHandler:
                 return self._planning.skip(action.subject_id)
             case FixKind.STEP_DONE:
                 return self._planning.step_done(action.subject_id)
+            case FixKind.NOT_HAPPENED:
+                return self._completion.didnt_happen(action.subject_id)
             case _:
                 assert_never(action.kind)
 

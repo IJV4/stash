@@ -1,0 +1,116 @@
+import datetime as dt
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from typing import Protocol, TypeVar
+
+from stash.domain import Item, NudgeKind, Step, require_aware
+from stash.nudges.due import (
+    DateReminder,
+    DueNudge,
+    FollowUp,
+    StepReminder,
+    StuckItem,
+    WeeklyDigest,
+)
+from stash.nudges.messages import NudgeMessage
+from stash.nudges.ports import NudgeStore
+from stash.nudges.schedule import Schedule
+
+LOOKBACK = dt.timedelta(days=14)
+STUCK_LIMIT = 10
+
+
+class _Timed(Protocol):
+    @property
+    def due_at(self) -> dt.datetime: ...
+
+
+Due = TypeVar("Due", bound=_Timed)
+
+
+@dataclass(frozen=True, slots=True)
+class DueWindow:
+    start: dt.datetime
+    now: dt.datetime
+
+    def keep(self, dues: Iterable[Due]) -> list[Due]:
+        return [due for due in dues if self.start <= due.due_at <= self.now]
+
+
+def _dated(items: Iterable[Item]) -> Iterator[tuple[Item, dt.date]]:
+    return ((item, item.date) for item in items if item.date is not None)
+
+
+class Nudger:
+    def __init__(self, store: NudgeStore, schedule: Schedule) -> None:
+        self._store = store
+        self._schedule = schedule
+
+    def due(self, now: dt.datetime) -> list[DueNudge]:
+        require_aware("now", now)
+        window = DueWindow(now - LOOKBACK, now)
+        found: list[DueNudge] = [
+            *self._step_reminders(window),
+            *self._date_reminders(window),
+            *self._follow_ups(window),
+            *self._digest(window),
+        ]
+        unsent = [due for due in found if not self._store.was_sent(due.nudge.key)]
+        return sorted(unsent, key=lambda due: due.due_at)
+
+    def mark_sent(self, message: NudgeMessage, sent_at: dt.datetime) -> bool:
+        recorded = [self._store.record_sent(nudge, sent_at) for nudge in message.nudges]
+        return all(recorded)
+
+    def _step_reminders(self, window: DueWindow) -> list[StepReminder]:
+        reminders = (self._step_reminder(step) for step in self._store.open_confirmed_steps())
+        return window.keep(reminder for reminder in reminders if reminder is not None)
+
+    def _step_reminder(self, step: Step) -> StepReminder | None:
+        item = self._store.get_item(step.item_id)
+        if item is None or item.is_closed:
+            return None
+        day = step.due_date(item.date)
+        if day is None:
+            return None
+        return StepReminder(step, item, self._schedule.reminder_at(day))
+
+    def _date_reminders(self, window: DueWindow) -> list[DateReminder]:
+        first, last = self._local_dates(window)
+        planned = (
+            (item, day)
+            for item, day in _dated(self._store.items_dated_between(first, last))
+            if item.is_planned
+        )
+        return window.keep(
+            DateReminder(item, day, self._schedule.reminder_at(day)) for item, day in planned
+        )
+
+    def _follow_ups(self, window: DueWindow) -> list[FollowUp]:
+        if self._followup_slot_taken(window.now):
+            return []
+        first, last = self._schedule.item_dates_followed_up_between(*self._local_dates(window))
+        items = self._store.planned_without_outcome_dated_between(first, last)
+        return window.keep(
+            FollowUp(item, self._schedule.followup_at(day)) for item, day in _dated(items)
+        )
+
+    def _followup_slot_taken(self, now: dt.datetime) -> bool:
+        last = self._store.last_sent(NudgeKind.FOLLOWUP)
+        return last is not None and last >= self._schedule.latest_followup_slot(now)
+
+    def _digest(self, window: DueWindow) -> list[WeeklyDigest]:
+        instant = self._schedule.latest_digest_between(window.start, window.now)
+        if instant is None:
+            return []
+        return [WeeklyDigest(instant, self._stuck_items(instant))]
+
+    def _stuck_items(self, instant: dt.datetime) -> tuple[StuckItem, ...]:
+        cutoff = self._schedule.stuck_cutoff(instant)
+        stuck = (
+            StuckItem(item, instant) for item in self._store.doing_older_than(cutoff, STUCK_LIMIT)
+        )
+        return tuple(item for item in stuck if not self._store.was_sent(item.nudge.key))
+
+    def _local_dates(self, window: DueWindow) -> tuple[dt.date, dt.date]:
+        return self._schedule.local_date(window.start), self._schedule.local_date(window.now)
