@@ -303,6 +303,9 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 >    - Fresh install: on the first tick with no DIGEST row in the ledger, record the most recent digest
 >      instant as sent **without sending it**, so the first digest is the next scheduled one, not last
 >      week's (a PC that was off still gets its catch-up digest, because the ledger is not empty then).
+>      Seed **every** kind the same way on that first tick (step, item-date and follow-up nudges
+>      already past are recorded, not sent), so a first run over an existing database does not
+>      replay two weeks of reminders (Task 4 review).
 >    - One production delivery loop: due → `batch_messages` → `nudge_reply` → send → `mark_sent` of
 >      the part the reply showed (`mark_sent` returns False on a lost race: log it, do not resend).
 >      The test rig's loop must call it rather than reimplement it.
