@@ -13,17 +13,28 @@ from fakes.scripted_chat_model import ScriptedChatModel
 from filing_rig import build_filer
 from lifecycle_rig import a_lifecycle
 from log_records import recording_logs
+from planning_rig import a_planning
 
 from stash.capture import BurstCoalescer, CapturePipeline, FixHandler
 from stash.enrich.links import LinkInfo
 from stash.llm import LlmError
+from stash.planning import Planning
 
 BURST_WINDOW_SECONDS = 5.0
 CAPTURE_LOGGER = "stash.capture"
 
 
-def a_fix_handler(store: MemoryStore, clock: Callable[[], datetime] = lambda: BASE) -> FixHandler:
-    return FixHandler(store, a_lifecycle(store, clock), clock)
+def a_fix_handler(
+    store: MemoryStore,
+    clock: Callable[[], datetime] = lambda: BASE,
+    planning: Planning | None = None,
+) -> FixHandler:
+    return FixHandler(
+        store,
+        a_lifecycle(store, clock),
+        planning or a_planning(store, FakeChatModel(), clock),
+        clock,
+    )
 
 
 def logged_by_applying(store: MemoryStore, data: str) -> list[tuple[int, str]]:

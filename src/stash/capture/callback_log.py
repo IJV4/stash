@@ -9,6 +9,7 @@ class Subject(StrEnum):
     ITEM = "item"
     OUTCOME = "outcome"
     CAPTURE = "capture"
+    STEP = "step"
 
 
 def _clamped(value: str | None) -> str | None:

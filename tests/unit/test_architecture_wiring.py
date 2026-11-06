@@ -3,7 +3,17 @@ from architecture_guard import ADAPTER_MODULES, forbidden_imports_in, project_so
 
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 PURE_FEATURE_MODULES = ("stash.doctor", "stash.doctor_probes", "stash.gpu_switch")
-LOWER_PACKAGES = ["domain", "config", "llm", "gpu", "store", "enrich", "filing", "capture"]
+LOWER_PACKAGES = [
+    "domain",
+    "config",
+    "llm",
+    "gpu",
+    "store",
+    "enrich",
+    "filing",
+    "capture",
+    "planning",
+]
 HIGHER_LAYERS = ("stash.app", "stash.rendering", "stash.cli", "stash.hermes_adapter")
 
 

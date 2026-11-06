@@ -4,7 +4,15 @@ from stash.capture.fixes import FixHandler, Reroute
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.message import IncomingMessage
 from stash.capture.pipeline import CapturePipeline
-from stash.capture.ports import AgentIntake, CaptureFiler, CaptureIntake, FixStore, IntakeStore
+from stash.capture.planning_replies import proposal_reply
+from stash.capture.ports import (
+    AgentIntake,
+    CaptureFiler,
+    CaptureIntake,
+    FixStore,
+    IntakeStore,
+    PlanningActions,
+)
 from stash.capture.replies import (
     Button,
     Reply,
@@ -43,6 +51,7 @@ __all__ = [
     "IncomingMessage",
     "IntakeStore",
     "IsRequest",
+    "PlanningActions",
     "ProcessResult",
     "Reply",
     "Reroute",
@@ -52,6 +61,7 @@ __all__ = [
     "forces_request",
     "gone",
     "is_forced_request",
+    "proposal_reply",
     "reply_for",
     "stage_menu",
     "summary",

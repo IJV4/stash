@@ -9,6 +9,7 @@ from stash.llm.port import (
     ProviderProbe,
 )
 from stash.llm.router import DeferringModel, ModelRouter
+from stash.llm.schema import frozen_schema
 
 __all__ = [
     "BusyCheck",
@@ -28,4 +29,5 @@ __all__ = [
     "ProviderProbe",
     "Role",
     "TextPart",
+    "frozen_schema",
 ]

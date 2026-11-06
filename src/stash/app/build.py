@@ -36,6 +36,7 @@ from stash.gpu_switch import GpuSwitch
 from stash.http_client import make_http_client
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
+from stash.planning import Declines, Planning, StepProposer
 from stash.store.backup import Backups
 
 
@@ -76,12 +77,19 @@ def build_app(
             )
         )
         lifecycle = Lifecycle(sqlite, _new_id, clock, config.timezone)
+        planning = Planning(
+            sqlite,
+            StepProposer(router, clock, config.timezone),
+            Declines(sqlite),
+            _new_id,
+            clock,
+        )
         return StashApp(
             config=config,
             store=sqlite,
             pipeline=pipeline,
             agent_capture=AgentCapture(pipeline, _new_id, clock),
-            fixes=FixHandler(sqlite, lifecycle, clock),
+            fixes=FixHandler(sqlite, lifecycle, planning, clock),
             lifecycle=lifecycle,
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),

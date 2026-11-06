@@ -14,6 +14,7 @@ PURE_LLM_MODULES = (
     "stash.llm.messages",
     "stash.llm.errors",
     "stash.llm.router",
+    "stash.llm.schema",
 )
 PURE_GPU_MODULES = ("stash.gpu", "stash.gpu.port", "stash.gpu.override", "stash.gpu.gate")
 PURE_ENRICH_MODULES = (

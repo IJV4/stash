@@ -1,0 +1,28 @@
+from stash.planning import PlanningError, PlanningRefused, UnknownItem, UnknownStep
+
+
+def test_an_unknown_item_names_the_item_id() -> None:
+    # Execute
+    error = UnknownItem("i9")
+
+    # Assert
+    assert (error.item_id, str(error)) == ("i9", "no item 'i9'")
+
+
+def test_an_unknown_step_names_the_step_id() -> None:
+    # Execute
+    error = UnknownStep("s9")
+
+    # Assert
+    assert (error.step_id, str(error)) == ("s9", "no step 's9'")
+
+
+def test_every_planning_refusal_is_a_planning_error() -> None:
+    # Setup
+    kinds = (UnknownItem, UnknownStep, PlanningRefused)
+
+    # Execute
+    planning_errors = [issubclass(kind, PlanningError) for kind in kinds]
+
+    # Assert
+    assert all(planning_errors)

@@ -154,7 +154,7 @@ Tests: `tests/unit/planning/*`, `tests/acceptance/test_planning.py`.
     Review Focus 5.
   - `StepProposer(models, clock).propose(item) -> tuple[ProposedStep, ...]`.
     It propagates `LlmUnavailable`/`LlmDeferred`; `LlmBadOutput` → `()`.
-  - `Planning(store, proposer, new_id, clock)`:
+  - `Planning(store, proposer, declines, new_id, clock)` (declines: remembered "No steps" per item and date, built in `stash.app`):
     - `propose_for(item_id) -> Proposal(item, steps: tuple[Step, ...])` saves
       the steps **unconfirmed**.
     - `confirm_all(item_id) -> tuple[Step, ...]`, `discard(item_id) -> None`.

@@ -14,6 +14,7 @@ from fakes.pending_intake import PendingIntake
 from fakes.recording_unloader import RecordingUnloader
 from gate_rig import a_gate, a_sample
 from lifecycle_rig import a_lifecycle
+from planning_rig import a_planning
 from router_builders import default_thinking_models
 
 from stash.app import StashApp
@@ -49,7 +50,7 @@ def an_app(**overrides: Any) -> StashApp:
         "store": store,
         "pipeline": pipeline,
         "agent_capture": AgentCapture(pipeline, sequential_ids(), clock),
-        "fixes": FixHandler(store, lifecycle, clock),
+        "fixes": FixHandler(store, lifecycle, a_planning(store, FakeChatModel(), clock), clock),
         "lifecycle": lifecycle,
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),

@@ -1,8 +1,7 @@
 from collections.abc import Iterable, Mapping
-from types import MappingProxyType
-from typing import cast
 
 from stash.domain import ItemType, Route, Stage
+from stash.llm import frozen_schema
 
 SCHEMA_NAME = "filing"
 FILEABLE_STAGES = (Stage.INBOX, Stage.WANT_TO, Stage.PLANNED)
@@ -30,23 +29,16 @@ def _properties() -> dict[str, object]:
     }
 
 
-def _frozen(value: object) -> object:
-    if isinstance(value, Mapping):
-        return MappingProxyType({key: _frozen(item) for key, item in value.items()})
-    if isinstance(value, list):
-        return tuple(_frozen(item) for item in value)
-    return value
-
-
 def _filing_schema() -> Mapping[str, object]:
     properties = _properties()
-    schema = {
-        "type": "object",
-        "properties": properties,
-        "required": list(properties),
-        "additionalProperties": False,
-    }
-    return cast(Mapping[str, object], _frozen(schema))
+    return frozen_schema(
+        {
+            "type": "object",
+            "properties": properties,
+            "required": list(properties),
+            "additionalProperties": False,
+        }
+    )
 
 
 FILING_SCHEMA = _filing_schema()

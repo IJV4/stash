@@ -2,7 +2,7 @@ from typing import Protocol
 
 from stash.capture.message import IncomingMessage
 from stash.capture.results import Deferred, Filed, ProcessResult
-from stash.domain import CaptureStatus, Filing, Item, Outcome, RawCapture
+from stash.domain import CaptureStatus, Filing, Item, Outcome, RawCapture, Step
 from stash.enrich.links import LinkInfo
 from stash.lifecycle.results import Completion, ItemHistory
 
@@ -39,6 +39,18 @@ class LifecycleActions(Protocol):
     def keep(self, item_id: str, kept: bool) -> Item: ...
 
     def history(self, item_id: str) -> ItemHistory: ...
+
+
+class PlanningActions(Protocol):
+    def confirm_all(self, item_id: str) -> tuple[Step, ...]: ...
+
+    def discard(self, item_id: str) -> None: ...
+
+    def complete_step(self, step_id: str) -> Step: ...
+
+
+class ItemLookup(Protocol):
+    def get_item(self, item_id: str) -> Item | None: ...
 
 
 class CaptureFiler(Protocol):

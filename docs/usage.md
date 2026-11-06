@@ -1160,6 +1160,145 @@ No Telegram surface yet; the planner and nudger will build on these calls.
 - Items carry an optional `cool_off_until` date (no behaviour yet; a later cool-off feature will use it).
 - A database at schema version 2 migrates to 3 with every capture and item intact.
 
+## Planning ahead  [Plan 3 Task 3]
+
+`stash.planning` proposes prep steps for a planned item and manages them. The
+proposer asks the SUGGESTIONS model; the service writes steps and nothing else.
+The Telegram buttons that confirm or discard a proposal go through
+`app.fixes.apply`; the agent tools and the nudger (Tasks 4-6) build on
+`Planning`.
+
+    from stash.planning import (
+        Declines, Planning, PlanningError, PlanningRefused, Proposal,
+        StepProposer, UnknownItem, UnknownStep,
+    )
+
+    proposer = StepProposer(router, clock, ZoneInfo("America/Los_Angeles"))
+    planning = Planning(store, proposer, Declines(store), new_id, clock)
+
+    planning.needs_proposal(item)             # PLANNED, dated, and no steps yet
+    proposal = planning.propose_for(item_id)  # Proposal(item, steps): <= 10 unconfirmed steps
+    planning.confirm_all(item_id)             # -> tuple[Step, ...], all confirmed; idempotent
+    planning.discard(item_id)                 # drops unconfirmed steps, keeps confirmed ones
+    planning.add_step(item_id, "Book the table", lead_days=7)   # -> confirmed Step, last position
+    planning.edit_step(step_id, text="Call the venue", due_on=date(2027, 2, 1))  # -> Step
+    planning.complete_step(step_id)           # -> Step with done=True; also confirms a proposed step
+
+`propose_for` refuses with `PlanningRefused` when the item no longer needs a
+proposal: it already has steps or is not planned (a planned item always
+has a date), and also when
+a concurrent proposal (or a step the agent just added) won while the model was
+thinking, or when the item was rescheduled to another date meanwhile (the
+answer was written for the old date, so it is stale: nothing is saved and
+nothing is declined). A caller such as the Task 6 ticker treats that refusal as
+"nothing to send". A proposal that comes back empty is not saved.
+
+Declining sticks. Pressing "No steps" (`planning.discard(item_id)`) records a
+decline for the item's current date, and so does a model answer with no usable
+steps after clamping (an empty list, entries that all get dropped, or output
+that is not usable at all); unit tests pin the model-answer cases. From then on
+`needs_proposal` is false and `propose_for` refuses with `PlanningRefused`
+without asking the model, so the owner is not asked again. The decline lives in
+the settings table (key `planning.declined:<item id>`, value the item's date in
+ISO format), so it survives a restart. A decline is tied to the date it was declined for: any other date offers a
+proposal again (given the item is still planned and has no steps), while that
+same date stays declined.
+`discard` records the decline first and removes the unconfirmed steps second,
+so if the second write fails the proposal stays visible instead of silently
+undoing "No steps". It records the decline even when only confirmed steps exist.
+`Declines(store)` is the real implementation of the `ProposalDeclines` port
+that `Planning` takes; the composition root builds it over the SQLite store.
+An outage (`LlmUnavailable`, `LlmDeferred`) is not a decline: the item still needs a
+proposal and is retried next tick. A decline is never deleted; with steps
+present, or the item out of PLANNED, it is irrelevant. When sending a proposal
+fails, Task 6's ticker calls `planning.discard(item_id)` so the item is not
+retried forever.
+
+Every refusal raises a `PlanningError`: `UnknownItem(item_id)`,
+`UnknownStep(step_id)` or `PlanningRefused(message)`. A refused call writes
+nothing. Each statement below has one acceptance test in
+`tests/acceptance/test_planning.py`:
+
+1. A date night planned for 2027-02-12 gets at most 10 proposed steps from
+   `propose_for`, every one unconfirmed, so none of them is an open confirmed
+   step and none can produce a reminder.
+2. Pressing "Looks good ✓" on the proposal (`app.fixes.apply("stash:a:<item id>")`)
+   confirms every step; they become open confirmed steps and the answer is
+   "✅ Prep saved for Date night: 3 steps. I'll remind you when each is due."
+   Pinned by
+   `test_pressing_looks_good_turns_the_proposed_steps_into_open_confirmed_steps`,
+   which drives `FixHandler.apply` (what `app.fixes` is) over in-memory fakes,
+   taking the button data from `proposal_reply(proposal, item_date).buttons`.
+   The wiring of `app.fixes` to the real `Planning` is pinned by
+   `tests/unit/app/test_build_app_planning.py`.
+3. Pressing "No steps" (`app.fixes.apply("stash:n:<item id>")`) deletes the
+   proposed steps, the item is unchanged and the answer is "Okay, I dropped the
+   proposed steps for Date night." Pinned by
+   `test_pressing_no_steps_deletes_the_proposed_steps_and_leaves_the_item_unchanged`,
+   which likewise drives `FixHandler.apply` over in-memory fakes; the same
+   unit test file pins the app wiring.
+4. When the AI is unavailable, `propose_for` raises `LlmUnavailable`, no step
+   is written and the item is unchanged; the next attempt, once the AI is back,
+   succeeds.
+5. After "No steps" the item is not proposed again until its date changes. Pinned by
+   `test_after_no_steps_the_item_is_not_proposed_again_until_its_date_changes`,
+   which presses "No steps" through `FixHandler.apply`, then reschedules the
+   item to another date.
+
+The proposal reply and the button answers (`stash.capture.planning_replies`):
+
+    from stash.capture import proposal_reply
+
+    reply = proposal_reply(proposal, item_date)
+
+    🗓 Prep for Date night (Fri Feb 12):
+    • Book the table — 7 days before
+    • Order flowers — 1 day before
+    • Pick up the tickets — same day
+    • Call the venue — Fri Feb 5
+    Tell me changes any time.
+
+A proposal with no steps is answered "🗓 Nothing to prep for Date night (Fri Feb
+12)." with no buttons. Otherwise the reply has one row of two buttons: "Looks good ✓" carries `stash:a:<item id>`
+and "No steps" carries `stash:n:<item id>`. A step's `stash:x:<step id>` button
+marks it done (the step reminders rendered by `messages.render` in Task 4 attach it as a
+"Done ✓" button per step). A step due
+by lead time reads "same day", "1 day before" or "N days before"; one with a
+date reads like "Fri Feb 5". The answers to the buttons:
+
+- "Looks good ✓": "✅ Prep saved for Date night: 3 steps. I'll remind you when
+  each is due." ("1 step" for one). Pressing it again gives the same answer and
+  changes nothing. Pressing it after "No steps" says "There are no proposed
+  steps for Date night any more."
+- "No steps": "Okay, I dropped the proposed steps for Date night." Steps that
+  were already confirmed are kept, so an old "No steps" press never deletes them.
+- Step done: "✅ Done: Book the table".
+- An unknown item or step, or forged button data, answers "That item no longer
+  exists." and is logged; a refusal answers "I can't do that: <reason>".
+
+Pinned by unit tests: the model's steps are clamped at the boundary (text
+cleaned of non-printable characters and cut to 200 characters, a blank text
+skipped, `lead_days` accepted only as a whole number and clamped to 0-60,
+anything else skipped, at most 10 kept, a model-supplied position ignored); an
+unusable model answer proposes nothing; the prompt wraps the item in `<item>`
+tags with every untrusted value escaped, so a title containing `</item>` or
+"Ignore previous instructions" stays inside the data; `needs_proposal` is true
+only for a PLANNED item with a date, no steps and no decline recorded for its
+current date; every way of declining (`discard`, an empty or fully dropped
+model answer, unusable model output) records it while an outage records
+nothing, and a decline matches only the date it was declined for;
+`propose_for` refuses to overwrite existing steps, also when the agent added one
+while the model was thinking, and refuses a stale answer when the item was
+rescheduled meanwhile; `discard` records the decline before it removes the
+unconfirmed steps; `discard` never deletes a confirmed step; editing a step's lead time
+clears its absolute date and the other way round; the proposal reply and
+callback data stay within Telegram's 4096 characters and 64 bytes (also for the
+longest ids and ten 200-character steps); the "when" wording of each step,
+the unpadded day in "Fri Feb 5", the singular "1 step", the double press of
+"Looks good ✓", "Looks good ✓" after "No steps", "No steps" after "Looks good ✓",
+and each button's unknown-item, unknown-step and forged-data answers and log
+lines.
+
 ## Storage guarantees  [Tasks 2-3]
 
 These have no caller-visible surface yet; they are pinned by unit and contract

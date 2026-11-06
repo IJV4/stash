@@ -6,7 +6,18 @@ HIGHER_LAYERS = ("stash.app", "stash.rendering", "stash.cli", "stash.hermes_adap
 
 @pytest.mark.parametrize(
     "package",
-    ["enrich", "filing", "llm", "gpu", "store", "config", "domain", "capture", "evaluation"],
+    [
+        "enrich",
+        "filing",
+        "llm",
+        "gpu",
+        "store",
+        "config",
+        "domain",
+        "capture",
+        "evaluation",
+        "planning",
+    ],
 )
 def test_no_package_imports_the_composition_root_or_an_entry_point(package: str) -> None:
     # Execute

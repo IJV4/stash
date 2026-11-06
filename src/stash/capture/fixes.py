@@ -9,7 +9,8 @@ from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import FixAction, FixKind
 from stash.capture.completion_buttons import CompletionButtons
 from stash.capture.menus import stage_menu, type_menu
-from stash.capture.ports import FixStore, LifecycleActions
+from stash.capture.planning_buttons import PlanningButtons
+from stash.capture.ports import FixStore, LifecycleActions, PlanningActions
 from stash.capture.replies import Reply, confirmation, gone
 from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
@@ -29,11 +30,16 @@ class Reroute:
 
 class FixHandler:
     def __init__(
-        self, store: FixStore, lifecycle: LifecycleActions, clock: Callable[[], datetime]
+        self,
+        store: FixStore,
+        lifecycle: LifecycleActions,
+        planning: PlanningActions,
+        clock: Callable[[], datetime],
     ) -> None:
         self._store = store
         self._log = CallbackLog(logger)
         self._completion = CompletionButtons(store, lifecycle, self._log, clock)
+        self._planning = PlanningButtons(store, planning, self._log)
         self._clock = clock
         self._lock = threading.Lock()
 
@@ -67,6 +73,12 @@ class FixHandler:
                 return self._completion.rate(action.subject_id, action.argument)
             case FixKind.KEEP:
                 return self._completion.keep(action.subject_id, action.argument)
+            case FixKind.ACCEPT_STEPS:
+                return self._planning.accept(action.subject_id)
+            case FixKind.SKIP_STEPS:
+                return self._planning.skip(action.subject_id)
+            case FixKind.STEP_DONE:
+                return self._planning.step_done(action.subject_id)
             case _:
                 assert_never(action.kind)
 

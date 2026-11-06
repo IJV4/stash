@@ -1,8 +1,10 @@
 from builders import BASE
 from capture_builders import store_with_filed_item
+from fakes.chat_model import FakeChatModel
 from fakes.memory_store import MemoryStore
 from fakes.overlap_waiting_lifecycle import OverlapWaitingLifecycle
 from lifecycle_rig import a_lifecycle
+from planning_rig import a_planning
 from threads import run_concurrently
 
 from stash.capture import FixHandler, Reply, Reroute
@@ -15,7 +17,7 @@ DONE_PRESS = f"stash:d:{FILED_ITEM_ID}"
 
 def handler_whose_history_reads_overlap(store: MemoryStore) -> FixHandler:
     lifecycle = OverlapWaitingLifecycle(a_lifecycle(store), OVERLAP_GRACE_SECONDS)
-    return FixHandler(store, lifecycle, lambda: BASE)
+    return FixHandler(store, lifecycle, a_planning(store, FakeChatModel()), lambda: BASE)
 
 
 def pressed_simultaneously(handler: FixHandler) -> list[Reply | Reroute]:

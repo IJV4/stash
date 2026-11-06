@@ -14,6 +14,7 @@ MIN_LEAD_DAYS = 0
 MAX_LEAD_DAYS = 60
 MIN_POSITION = 0
 EXACTLY_ONE_DUE = "a step needs exactly one of lead_days and due_on"
+NOTHING_TO_EDIT = "give a text, a lead time or a date"
 
 
 def _require_exactly_one_due(lead_days: int | None, due_on: dt.date | None) -> None:
@@ -63,3 +64,21 @@ class Step:
 
     def marked_done(self) -> "Step":
         return replace(self, done=True)
+
+    def edited(
+        self,
+        *,
+        text: str | None = None,
+        lead_days: int | None = None,
+        due_on: dt.date | None = None,
+    ) -> "Step":
+        if text is None and lead_days is None and due_on is None:
+            raise ValueError(NOTHING_TO_EDIT)
+        if lead_days is None and due_on is None:
+            lead_days, due_on = self.lead_days, self.due_on
+        return replace(
+            self,
+            text=self.text if text is None else text,
+            lead_days=lead_days,
+            due_on=due_on,
+        )

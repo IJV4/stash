@@ -20,6 +20,9 @@ class FixKind(StrEnum):
     DONE = "d"
     RATE = "r"
     KEEP = "k"
+    ACCEPT_STEPS = "a"
+    SKIP_STEPS = "n"
+    STEP_DONE = "x"
 
     @property
     def takes_argument(self) -> bool:
