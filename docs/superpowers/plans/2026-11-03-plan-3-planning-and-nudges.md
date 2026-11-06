@@ -258,6 +258,10 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 - On demand: the agent tool `stash_suggest {context}` and the command
   `/suggest [context]` both call `engine.pick(want_to items ≤ 40, context)` and
   return reasons.
+- Agent step tools (carried from the Task 3 review): `stash_add_step {item_id, text, lead_days | due_on}`,
+  `stash_edit_step {step_id, text?, lead_days?, due_on?}`, `stash_complete_step {step_id}` over
+  `Planning.add_step` / `edit_step` / `complete_step`. Same JSON-in/out, never-raise and
+  argument-validation rules as the Plan 2 lifecycle tools (`{"error"}`, nothing changed).
 - [ ] **Step 1: Failing tests:**
   - A digest with every section.
   - A suggestions failure → the digest without its suggestions section.
@@ -310,6 +314,8 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
     nudge left unsent (RF4). The ticker holds one lock, so ticks never overlap.
   - Each tick also runs `planning.propose_for` for items where `needs_proposal`
     is true (≤ 3 per tick), then sends the `proposal_reply`.
+    If the send fails, call `planning.discard(item_id)` so no hidden unconfirmed steps remain and
+    the item is proposed again (carried from the Task 3 review).
   - Ticks never overlap within the process (one lock) **and** the factory's once-only guard means one
     ticker per process.
   - The owner chat id: Telegram DM chat id == user id. Use the first owner id
