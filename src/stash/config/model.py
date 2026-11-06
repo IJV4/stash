@@ -7,6 +7,9 @@ from typing import Literal, get_args
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
+from stash.config.errors import ConfigError
+from stash.config.nudges import NudgeConfig
+
 OPENROUTER_API_KEY_VAR = "OPENROUTER_API_KEY"
 BusyFallback = Literal["wait", "openrouter"]
 BUSY_FALLBACKS: tuple[BusyFallback, ...] = get_args(BusyFallback)
@@ -14,10 +17,6 @@ OPENAI_V1_SUFFIX = "/v1"
 HTTP_SCHEMES = ("http", "https")
 DEFAULT_BURST_WINDOW_SECONDS = 8.0
 MODEL_ID_FORBIDDEN_CHARACTERS = frozenset("|")
-
-
-class ConfigError(ValueError):
-    pass
 
 
 class ProviderName(StrEnum):
@@ -179,6 +178,7 @@ class StashConfig:
     timezone: ZoneInfo
     llm: LlmConfig
     gpu: GpuConfig
+    nudges: NudgeConfig
     burst_window_seconds: float = DEFAULT_BURST_WINDOW_SECONDS
 
     def __post_init__(self) -> None:

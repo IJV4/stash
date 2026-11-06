@@ -593,6 +593,38 @@ as acceptance tests.
 - The setting covers stash's own LLM calls only; Hermes agent turns use Hermes's
   provider config.
 
+### Nudge schedule  [Plan 3 Task 2]
+
+`config.nudges` (a `NudgeConfig`) carries the schedule the nudger, the digest and
+the ticker read. All times are in `config.timezone`. With no `[nudges]` table every
+value is its default.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `digest_day` | `"sunday"` | Day the weekly digest goes out (a `Weekday`) |
+| `digest_time` | `"10:00"` | Time of the weekly digest |
+| `reminder_time` | `"09:00"` | Day-of reminders, and the time a step with only a lead time is due |
+| `followup_time` | `"09:00"` | Morning-after follow-ups |
+| `forgotten_after_days` | `30` | Want-to items older than this count as forgotten |
+| `stuck_doing_days` | `21` | Doing items older than this count as stuck |
+| `tick_seconds` | `60` | How often the tick runs |
+
+- A file with no `[nudges]` table loads with the defaults above.
+- `[nudges]` values override the defaults one key at a time; the others keep theirs.
+- Times are written `"HH:MM"` (24-hour, two digits each) and load as a `datetime.time`
+  with no seconds; `"25:00"`, `"10:60"`, `"10:00:30"`, `"9:00"` and non-strings are a
+  `ConfigError` naming the key (`nudges.digest_time`).
+- Days are lowercase English names, `monday` first; `Weekday.python_weekday` gives the
+  number `date.weekday()` uses (Monday 0 ... Sunday 6). `"funday"` and `"Sunday"` are a
+  `ConfigError` naming `nudges.digest_day`.
+- `forgotten_after_days` and `stuck_doing_days` are integers from 1 to 365;
+  `tick_seconds` is an integer from 1 to 3600. Zero, negatives, values above the
+  bound, floats, strings and booleans are a `ConfigError` naming the key.
+- An unknown key in `[nudges]` is a `ConfigError` naming its path.
+  (`purchase_cool_off_days` is not a key yet.)
+- `deploy/stash.toml.example` carries the block commented out with the defaults;
+  uncommenting it loads.
+
 ## Switching the AI provider  [Tasks 4-5]
 
 One config line plus an API key moves every stash LLM call between Ollama and

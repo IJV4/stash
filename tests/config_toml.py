@@ -37,3 +37,7 @@ def load_message(tmp_path: Path, text: str, env: Mapping[str, str] | None = None
     with pytest.raises(ConfigError) as error:
         load(tmp_path, text, env)
     return str(error.value)
+
+
+def with_nudges(body: str) -> str:
+    return a_toml(tables=f"{OLLAMA_TABLE}[nudges]\n{body}\n")

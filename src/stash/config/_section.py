@@ -1,9 +1,16 @@
+import datetime as dt
+import re
 from collections.abc import Mapping, Sequence
 from typing import TypeVar
 
-from stash.config.model import ConfigError
+from stash.config.errors import ConfigError
 
 _Choice = TypeVar("_Choice", bound=str)
+
+TIME_PATTERN = re.compile(r"[0-9]{2}:[0-9]{2}")
+MAX_HOUR = 23
+MAX_MINUTE = 59
+TIME_FORMAT = 'a time as "HH:MM"'
 
 
 class Section:
@@ -44,6 +51,17 @@ class Section:
         if isinstance(value, bool) or not isinstance(value, int | float):
             raise self._wrong_type(key, "a number")
         return float(value)
+
+    def take_time(self, key: str, default: dt.time) -> dt.time:
+        value = self._pop(key)
+        if value is None:
+            return default
+        if not isinstance(value, str) or not TIME_PATTERN.fullmatch(value):
+            raise self._wrong_type(key, TIME_FORMAT)
+        hour, minute = (int(part) for part in value.split(":"))
+        if hour > MAX_HOUR or minute > MAX_MINUTE:
+            raise self._wrong_type(key, TIME_FORMAT)
+        return dt.time(hour, minute)
 
     def take_table(self, key: str) -> "Section | None":
         value = self._pop(key)

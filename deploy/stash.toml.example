@@ -35,3 +35,14 @@ model = "nousresearch/hermes-4-70b" # example id, unverified — use one from th
 min_free_vram_mib = 9000            # below this much VRAM free for stash => busy
 max_foreign_utilization_pct = 30    # other apps above this GPU load (stash model unloaded) => busy
 manual_off_hours = 4.0              # how long `stash gpu off` lasts before it expires
+
+# When nudges go out, in the timezone above. Times are "HH:MM" (24-hour); digest_day is a lowercase English day name.
+# Uncomment to change a value; the rest keep these defaults.
+# [nudges]
+# digest_day = "sunday"
+# digest_time = "10:00"
+# reminder_time = "09:00"
+# followup_time = "09:00"
+# forgotten_after_days = 30
+# stuck_doing_days = 21
+# tick_seconds = 60

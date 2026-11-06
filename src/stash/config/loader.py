@@ -6,11 +6,11 @@ from typing import TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from stash.config._section import Section
+from stash.config.errors import ConfigError
 from stash.config.model import (
     BUSY_FALLBACKS,
     DEFAULT_BURST_WINDOW_SECONDS,
     OPENROUTER_API_KEY_VAR,
-    ConfigError,
     GpuConfig,
     LlmConfig,
     LlmTask,
@@ -19,6 +19,7 @@ from stash.config.model import (
     StashConfig,
     Thinking,
 )
+from stash.config.nudges import NudgeConfig, Weekday
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"
 DEFAULT_BASE_URLS = MappingProxyType(
@@ -44,8 +45,9 @@ def load_config(path: Path, env: Mapping[str, str]) -> StashConfig:
     burst_window_seconds = root.take_number("burst_window_seconds", DEFAULT_BURST_WINDOW_SECONDS)
     llm = _llm_config(root.take_table_or_empty("llm"), env)
     gpu = _gpu_config(root.take_table_or_empty("gpu"))
+    nudges = _nudge_config(root.take_table_or_empty("nudges"))
     root.finish()
-    return StashConfig(data_dir, timezone, llm, gpu, burst_window_seconds)
+    return StashConfig(data_dir, timezone, llm, gpu, nudges, burst_window_seconds)
 
 
 def _read_toml(path: Path) -> dict[str, object]:
@@ -103,6 +105,23 @@ def _gpu_config(section: Section) -> GpuConfig:
     )
     section.finish()
     return gpu
+
+
+def _nudge_config(section: Section) -> NudgeConfig:
+    defaults = NudgeConfig()
+    nudges = NudgeConfig(
+        digest_day=section.take_choice("digest_day", tuple(Weekday), defaults.digest_day),
+        digest_time=section.take_time("digest_time", defaults.digest_time),
+        reminder_time=section.take_time("reminder_time", defaults.reminder_time),
+        followup_time=section.take_time("followup_time", defaults.followup_time),
+        forgotten_after_days=section.take_integer(
+            "forgotten_after_days", defaults.forgotten_after_days
+        ),
+        stuck_doing_days=section.take_integer("stuck_doing_days", defaults.stuck_doing_days),
+        tick_seconds=section.take_integer("tick_seconds", defaults.tick_seconds),
+    )
+    section.finish()
+    return nudges
 
 
 def _llm_config(section: Section, env: Mapping[str, str]) -> LlmConfig:
