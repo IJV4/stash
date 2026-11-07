@@ -1,0 +1,19 @@
+from typing import Protocol
+
+from stash.domain import KeyDate, Person
+
+
+class PeopleBook(Protocol):
+    def save_person(self, person: Person) -> None: ...
+
+    def get_person(self, person_id: str) -> Person | None: ...
+
+    def delete_person(self, person_id: str) -> None: ...
+
+    def find_by_name(self, name: str) -> Person | None: ...
+
+    def save_key_date(self, key_date: KeyDate) -> None: ...
+
+
+class PersonLinks(Protocol):
+    def link(self, item_id: str, person_id: str) -> None: ...

@@ -78,7 +78,14 @@ def test_the_suggestions_package_imports_no_composition_root_or_entry_point() ->
 
 @pytest.mark.parametrize(
     "sibling",
-    ["stash.capture", "stash.filing", "stash.planning", "stash.nudges", "stash.lifecycle"],
+    [
+        "stash.capture",
+        "stash.filing",
+        "stash.planning",
+        "stash.nudges",
+        "stash.lifecycle",
+        "stash.people",
+    ],
 )
 def test_suggestions_sits_beside_the_other_features_without_importing_any(sibling: str) -> None:
     # Execute

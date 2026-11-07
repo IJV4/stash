@@ -12,6 +12,7 @@ from stash.capture.ports import (
     CaptureIntake,
     FixStore,
     IntakeStore,
+    ItemLinker,
     PlanningActions,
 )
 from stash.capture.replies import (
@@ -54,6 +55,7 @@ __all__ = [
     "IncomingMessage",
     "IntakeStore",
     "IsRequest",
+    "ItemLinker",
     "PlanningActions",
     "ProcessResult",
     "Reply",

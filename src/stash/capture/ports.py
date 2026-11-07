@@ -56,6 +56,10 @@ class ItemLookup(Protocol):
     def get_item(self, item_id: str) -> Item | None: ...
 
 
+class ItemLinker(Protocol):
+    def link(self, item: Item) -> None: ...
+
+
 class CaptureFiler(Protocol):
     def file(self, text: str, link: LinkInfo | None) -> Filing: ...
 

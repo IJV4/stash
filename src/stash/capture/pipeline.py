@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from stash.capture.message import IncomingMessage
-from stash.capture.ports import CaptureFiler, IntakeStore
+from stash.capture.ports import CaptureFiler, IntakeStore, ItemLinker
 from stash.capture.results import (
     Deferred,
     Duplicate,
@@ -40,12 +40,14 @@ class CapturePipeline:
         filer: CaptureFiler,
         new_id: Callable[[], str],
         clock: Callable[[], datetime],
+        linker: ItemLinker,
     ) -> None:
         self._store = store
         self._inspector = inspector
         self._filer = filer
         self._new_id = new_id
         self._clock = clock
+        self._linker = linker
 
     def receive(self, message: IncomingMessage) -> RawCapture | None:
         capture = RawCapture(
@@ -131,5 +133,12 @@ class CapturePipeline:
             capture.item_id, capture, filing, classified.source_url, self._clock()
         )
         self._store.save_item(item)
+        self._link(item)
         self._store.set_capture_status(capture.id, CaptureStatus.FILED)
         return Filed(item, unsure=filing.route is Route.UNSURE)
+
+    def _link(self, item: Item) -> None:
+        try:
+            self._linker.link(item)
+        except Exception:
+            logger.exception("linking people to item %s failed; the item stays filed", item.id)

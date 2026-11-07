@@ -38,6 +38,7 @@ from stash.http_client import make_http_client
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
 from stash.nudges import DigestBuilder, Nudger, Schedule
+from stash.people import PeopleDirectory, PeopleLinker
 from stash.planning import Declines, Planning, StepProposer
 from stash.store.backup import Backups
 from stash.suggestions import QuietPicks, SuggestionDesk, SuggestionEngine
@@ -70,6 +71,7 @@ def build_app(
         gate = GpuGate(gpu_probe, own_vram_usage(config.llm, http), sqlite, config.gpu)
         models = chat_models(config.llm, http)
         router = ModelRouter(config.llm, models, gate)
+        people = PeopleDirectory(sqlite, _new_id, clock)
         pipeline = SerializedPipeline(
             CapturePipeline(
                 sqlite,
@@ -77,6 +79,7 @@ def build_app(
                 Filer(router, clock, config.timezone),
                 _new_id,
                 clock,
+                PeopleLinker(people, sqlite),
             )
         )
         lifecycle = Lifecycle(sqlite, _new_id, clock, config.timezone)

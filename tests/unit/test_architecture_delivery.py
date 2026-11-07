@@ -13,6 +13,7 @@ PACKAGES_THAT_DO_NOT_IMPORT_DELIVERY = [
     "capture",
     "planning",
     "nudges",
+    "people",
     "suggestions",
     "hermes_adapter",
     "cli",

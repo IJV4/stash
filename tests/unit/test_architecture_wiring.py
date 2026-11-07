@@ -14,6 +14,7 @@ LOWER_PACKAGES = [
     "capture",
     "planning",
     "nudges",
+    "people",
     "suggestions",
 ]
 HIGHER_LAYERS = ("stash.app", "stash.rendering", "stash.cli", "stash.hermes_adapter")

@@ -18,6 +18,7 @@ from planning_rig import a_planning
 from stash.capture import BurstCoalescer, CapturePipeline, FixHandler
 from stash.enrich.links import LinkInfo
 from stash.llm import LlmError
+from stash.people import PeopleDirectory, PeopleLinker
 from stash.planning import Planning
 
 BURST_WINDOW_SECONDS = 5.0
@@ -51,6 +52,7 @@ class CaptureRig:
     model: RecordingChatModel
     busy: FakeBusy
     pipeline: CapturePipeline
+    people: PeopleDirectory
     fixes: FixHandler
     bursts: BurstCoalescer
 
@@ -72,10 +74,13 @@ def build_rig(
     links: Mapping[str, LinkInfo] | None = None,
     outcomes: Sequence[Mapping[str, object] | LlmError] | None = None,
     clock: Callable[[], datetime] = lambda: BASE,
+    store: MemoryStore | None = None,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
-    store = MemoryStore()
+    store = MemoryStore() if store is None else store
+    ids = sequential_ids()
+    people = PeopleDirectory(store, ids, clock)
     inspector = FakeLinkInspector(links)
     model: RecordingChatModel = (
         FakeChatModel(reply=answer, error=error)
@@ -89,8 +94,14 @@ def build_rig(
         model=model,
         busy=busy,
         pipeline=CapturePipeline(
-            store, inspector, build_filer(model, busy, clock), sequential_ids(), clock
+            store,
+            inspector,
+            build_filer(model, busy, clock),
+            ids,
+            clock,
+            PeopleLinker(people, store),
         ),
+        people=people,
         fixes=a_fix_handler(store, clock),
         bursts=BurstCoalescer(BURST_WINDOW_SECONDS),
     )

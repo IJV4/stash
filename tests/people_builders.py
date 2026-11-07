@@ -1,8 +1,11 @@
 from typing import Any
 
 from builders import BASE
+from capture_builders import sequential_ids
+from fakes.memory_store import MemoryStore
 
 from stash.domain import KeyDate, KeyDateKind, Person
+from stash.people import PeopleDirectory
 from stash.store import Store
 
 
@@ -39,3 +42,9 @@ def stored_person(store: Store, **overrides: Any) -> Person:
 
 def ids_of_people(people: list[Person]) -> list[str]:
     return [person.id for person in people]
+
+
+def a_directory(store: MemoryStore | None = None) -> PeopleDirectory:
+    return PeopleDirectory(
+        MemoryStore() if store is None else store, sequential_ids(), lambda: BASE
+    )

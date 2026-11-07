@@ -3,8 +3,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from capture_builders import a_message
+from capture_builders import a_filing_answer, a_message
 from cli_rig import NOON, CliRig, build_cli_rig
+from people_builders import stored_person
 
 from stash.app import StashApp, build_app
 from stash.capture import Deferred, Filed, reply_for, type_menu
@@ -42,6 +43,21 @@ def test_handling_a_message_files_it_and_reply_for_gives_the_confirmation(
 
     # Assert
     assert reply_for(result).text == "✅ Places · Want to"
+    app.close()
+
+
+def test_the_composed_app_links_a_filed_item_to_the_person_it_names(tmp_path: Path) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    app = real_app(rig)
+    ana = stored_person(app.store, name="Ana")
+    rig.providers.answer = a_filing_answer(people=["Ana"])
+
+    # Execute
+    result = filed(app, rig, "Gift idea for Ana")
+
+    # Assert
+    assert app.store.people_for(result.item.id) == [ana]
     app.close()
 
 

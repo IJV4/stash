@@ -4,6 +4,7 @@ from typing import Any
 
 from builders import BASE, a_capture, a_source, an_item, stored_completion
 from fakes.memory_store import MemoryStore
+from fakes.recording_linker import RecordingLinker
 
 from stash.capture import (
     Button,
@@ -11,6 +12,7 @@ from stash.capture import (
     CapturePipeline,
     IncomingMessage,
     IntakeStore,
+    ItemLinker,
     Reply,
     Reroute,
 )
@@ -113,8 +115,16 @@ def a_pipeline(
     inspector: LinkInspector,
     filer: CaptureFiler,
     clock: Callable[[], datetime] = lambda: BASE,
+    linker: ItemLinker | None = None,
 ) -> CapturePipeline:
-    return CapturePipeline(store, inspector, filer, sequential_ids(), clock)
+    return CapturePipeline(
+        store,
+        inspector,
+        filer,
+        sequential_ids(),
+        clock,
+        RecordingLinker() if linker is None else linker,
+    )
 
 
 def store_with_filed_item(
