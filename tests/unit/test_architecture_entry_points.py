@@ -1,7 +1,13 @@
 import pytest
 from architecture_guard import forbidden_imports_in, project_sources
 
-HIGHER_LAYERS = ("stash.app", "stash.rendering", "stash.cli", "stash.hermes_adapter")
+HIGHER_LAYERS = (
+    "stash.app",
+    "stash.rendering",
+    "stash.library_html",
+    "stash.cli",
+    "stash.hermes_adapter",
+)
 
 
 @pytest.mark.parametrize(
