@@ -98,6 +98,11 @@ class MemoryPeople:
         matching = [item for item in linked if item_type is None or item.item_type is item_type]
         return sorted(matching, key=lambda item: (item.created_at, item.id), reverse=True)
 
+    def items_naming_people(self) -> list[Item]:
+        with self._lock:
+            naming = [item for item in self._items.values() if item.people]
+        return sorted(naming, key=lambda item: (item.created_at, item.id), reverse=True)
+
     def drop_links_of_item(self, item_id: str) -> None:
         with self._lock:
             self._links = {link for link in self._links if link[0] != item_id}

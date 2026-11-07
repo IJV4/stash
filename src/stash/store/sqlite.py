@@ -281,6 +281,9 @@ class SqliteStore:
     def items_for(self, person_id: str, item_type: ItemType | None = None) -> list[Item]:
         return self._people.items_for(person_id, item_type)
 
+    def items_naming_people(self) -> list[Item]:
+        return self._people.items_naming_people()
+
     def was_sent(self, key: NudgeKey) -> bool:
         return self._ledger.was_sent(key)
 

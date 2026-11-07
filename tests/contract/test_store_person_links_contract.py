@@ -238,3 +238,31 @@ def test_deleting_an_item_keeps_the_person_and_their_key_dates(open_store: Store
 
         # Assert
         assert found == [a_key_date()]
+
+
+@all_stores
+def test_items_naming_people_leave_out_items_that_name_nobody(open_store: StoreFactory) -> None:
+    # Setup
+    with open_store() as store:
+        stored_item(store, id="i1", title="Mug", people=("Ana",))
+        stored_item(store, id="i2", title="Cafe", people=())
+
+        # Execute
+        found = store.items_naming_people()
+
+        # Assert
+        assert titles(found) == ["Mug"]
+
+
+@all_stores
+def test_items_naming_people_are_listed_newest_first(open_store: StoreFactory) -> None:
+    # Setup
+    with open_store() as store:
+        stored_item(store, id="i1", title="Old", people=("Ana",), created_at=minutes_after(1))
+        stored_item(store, id="i2", title="New", people=("Ana",), created_at=minutes_after(2))
+
+        # Execute
+        found = store.items_naming_people()
+
+        # Assert
+        assert titles(found) == ["New", "Old"]

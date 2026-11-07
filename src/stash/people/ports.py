@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Protocol
 
-from stash.domain import KeyDate, Person
+from stash.domain import Item, KeyDate, Person
 
 
 class PersonLinks(Protocol):
@@ -20,5 +20,9 @@ class PeopleBook(PersonLinks, Protocol):
     def find_by_name(self, name: str) -> Person | None: ...
 
     def save_key_date(self, key_date: KeyDate) -> None: ...
+
+    def key_dates_for(self, person_id: str) -> list[KeyDate]: ...
+
+    def items_naming_people(self) -> list[Item]: ...
 
     def key_dates_between(self, start: date, end: date) -> list[tuple[KeyDate, date]]: ...

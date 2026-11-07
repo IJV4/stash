@@ -50,6 +50,7 @@ from stash.domain.person import (
     NextKeyDate,
     Person,
     PersonSummary,
+    matching_key,
     occurrences_between,
 )
 from stash.domain.step import MAX_LEAD_DAYS, MIN_LEAD_DAYS, STEP_TEXT_LIMIT, Step
@@ -104,6 +105,7 @@ __all__ = [
     "frozen_strings",
     "http_url_host",
     "lacks_required_date",
+    "matching_key",
     "occurrences_between",
     "printable_and_clip",
     "require_aware",

@@ -1,5 +1,6 @@
 import calendar
 import datetime as dt
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -30,6 +31,10 @@ class KeyDateKind(StrEnum):
     OTHER = "other"
 
 
+def matching_key(name: str) -> str:
+    return unicodedata.normalize("NFC", name.strip()).casefold()
+
+
 def _require_name(name: str, value: str) -> None:
     require_text(name, value)
     require_max_length(name, value, PERSON_NAME_LIMIT)
@@ -58,10 +63,10 @@ class Person:
 
     @property
     def names(self) -> frozenset[str]:
-        return frozenset(name.casefold() for name in (self.name, *self.aliases))
+        return frozenset(matching_key(name) for name in (self.name, *self.aliases))
 
     def answers_to(self, name: str) -> bool:
-        return name.casefold() in self.names
+        return matching_key(name) in self.names
 
     def shares_a_name_with(self, other: "Person") -> bool:
         return not self.names.isdisjoint(other.names)

@@ -178,3 +178,25 @@ def test_years_on_an_occurrence_is_unknown_when_the_key_date_has_no_year() -> No
 
     # Assert
     assert years is None
+
+
+def test_a_name_with_surrounding_spaces_is_the_same_name() -> None:
+    # Setup
+    ana = a_person(name="Ana", aliases=())
+
+    # Execute
+    shares = ana.shares_a_name_with(a_person(id="p2", name=" Ana ", aliases=()))
+
+    # Assert
+    assert shares
+
+
+def test_a_decomposed_name_answers_to_its_composed_spelling() -> None:
+    # Setup
+    jose = a_person(name="Jos\u00e9", aliases=())
+
+    # Execute
+    answers = jose.answers_to("Jose\u0301")
+
+    # Assert
+    assert answers

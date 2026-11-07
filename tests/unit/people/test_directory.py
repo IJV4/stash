@@ -91,3 +91,45 @@ def test_an_added_key_date_is_kept_for_the_person() -> None:
     assert store.key_dates_for(ana.id) == [
         KeyDate(added.id, ana.id, KeyDateKind.BIRTHDAY, "Born", 3, 14, 1990)
     ]
+
+
+def test_adding_a_key_date_again_with_the_same_kind_and_label_ignoring_case_replaces_it() -> None:
+    # Setup
+    store = MemoryStore()
+    directory = a_directory(store)
+    ana = directory.add("Ana")
+    directory.add_key_date(ana.id, KeyDateKind.OTHER, 3, 6, label="Graduation")
+
+    # Execute
+    corrected = directory.add_key_date(ana.id, KeyDateKind.OTHER, 3, 7, label=" graduation ")
+
+    # Assert
+    assert store.key_dates_for(ana.id) == [corrected]
+
+
+def test_adding_a_key_date_with_another_label_keeps_both() -> None:
+    # Setup
+    store = MemoryStore()
+    directory = a_directory(store)
+    ana = directory.add("Ana")
+    directory.add_key_date(ana.id, KeyDateKind.OTHER, 3, 6, label="Graduation")
+
+    # Execute
+    directory.add_key_date(ana.id, KeyDateKind.OTHER, 3, 7, label="Wedding")
+
+    # Assert
+    assert len(store.key_dates_for(ana.id)) == 2
+
+
+def test_adding_a_key_date_of_another_kind_with_the_same_label_keeps_both() -> None:
+    # Setup
+    store = MemoryStore()
+    directory = a_directory(store)
+    ana = directory.add("Ana")
+    directory.add_key_date(ana.id, KeyDateKind.BIRTHDAY, 3, 6)
+
+    # Execute
+    directory.add_key_date(ana.id, KeyDateKind.ANNIVERSARY, 3, 7)
+
+    # Assert
+    assert len(store.key_dates_for(ana.id)) == 2

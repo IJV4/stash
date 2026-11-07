@@ -1714,7 +1714,8 @@ people without one last: `Ana (wife) — birthday Sat Mar 6` (the relation only
 when there is one; an `other` date shows its label; the weekday and date are
 those of the next occurrence). With nobody saved it says `No people yet.`
 
-`stash people` on the command line prints the same lines. `stash people --upcoming
+`/people` lists the first 20 people and then `…and N more`; `stash people` on the
+command line prints the same lines for everyone, without a cap. `stash people --upcoming
 DAYS` (1 to 366) lists only the people whose next key date is at most DAYS days
 away, or `No key dates coming up.`
 
@@ -1723,11 +1724,19 @@ Key-date reminders go out 14, 2 and 0 days before the date by default; set
 at least one, none repeated). All of them are sent at `reminder_time` under
 `[nudges]`. When several are due at once (for example after the gateway was
 down), only the closest one is sent, worded with the real days left (`in 5
-days`); on the day itself only the on-the-day reminder is sent.
+days`); on the day itself only the on-the-day reminder is sent. If the PC is off for
+the whole of a key date's day, that occurrence's reminder is skipped (the earlier
+leads have normally already gone out).
+
+Adding a key date for a person who already has one of the same kind and label
+(compared without regard to case or surrounding spaces) corrects it instead of
+duplicating it.
 
 When the filer names people in a captured message, those who match a saved name
 or alias (without regard to case) are linked to the item. A name that matches
 nobody stays plain text on the item: no person is created and nothing is linked.
+Items saved before the person existed are linked too, when the person is added,
+renamed or given an alias.
 
 ## Storage guarantees  [Tasks 2-3]
 

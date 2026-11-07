@@ -249,6 +249,10 @@ WHERE item_people.item_id = ?
 ORDER BY casefold(people.name), people.id
 """
 
+ITEMS_NAMING_PEOPLE = """
+SELECT * FROM items WHERE json_array_length(people) > 0 ORDER BY created_at DESC, id DESC
+"""
+
 ITEMS_FOR_PERSON = """
 SELECT items.* FROM items
 JOIN item_people ON item_people.item_id = items.id

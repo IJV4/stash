@@ -92,6 +92,11 @@ class SqlitePeople:
             rows = self._connection.execute(sql.ITEMS_FOR_PERSON, parameters).fetchall()
         return [item_from_row(row) for row in rows]
 
+    def items_naming_people(self) -> list[Item]:
+        with self._lock:
+            rows = self._connection.execute(sql.ITEMS_NAMING_PEOPLE).fetchall()
+        return [item_from_row(row) for row in rows]
+
     def _all_people(self) -> list[Person]:
         rows = self._connection.execute(sql.ALL_PEOPLE).fetchall()
         return [person_from_row(row) for row in rows]
