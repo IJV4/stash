@@ -37,6 +37,8 @@ max_foreign_utilization_pct = 30    # other apps above this GPU load (stash mode
 manual_off_hours = 4.0              # how long `stash gpu off` lasts before it expires
 
 # When nudges go out, in the timezone above. Times are "HH:MM" (24-hour); digest_day is a lowercase English day name.
+# Changing followup_time re-asks the unanswered follow-ups of the last 14 days once (one message);
+# changing reminder_time or digest_time can repeat that day's sends once.
 # Uncomment to change a value; the rest keep these defaults.
 # [nudges]
 # digest_day = "sunday"
