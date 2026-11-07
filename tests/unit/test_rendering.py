@@ -4,9 +4,10 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from builders import BASE, a_capture, an_item, an_outcome
+from people_builders import a_key_date, a_person
 
 from stash.capture import Deferred, Duplicate, Filed, IsRequest
-from stash.domain import Item, ItemType, Outcome, Stage
+from stash.domain import Item, ItemType, KeyDateKind, NextKeyDate, Outcome, PersonSummary, Stage
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
 from stash.lifecycle import ItemHistory
@@ -15,6 +16,7 @@ from stash.rendering import (
     history_lines,
     library_line,
     listing_line,
+    person_line,
     result_line,
     switched_off_lines,
 )
@@ -403,3 +405,67 @@ def test_control_characters_in_a_link_never_reach_the_history_even_if_the_item_c
 
     # Assert
     assert not any(character in "\n".join(lines) for character in "\x1b\x07")
+
+
+def a_summary(relation: str = "wife", **key_date: Any) -> PersonSummary:
+    person = a_person(name="Ana", relation=relation, aliases=())
+    fields: dict[str, Any] = {"month": 3, "day": 6, "year": 1993, "person_id": person.id}
+    return PersonSummary(
+        person, NextKeyDate(a_key_date(**{**fields, **key_date}), date(2027, 3, 6))
+    )
+
+
+def test_a_person_line_reads_name_relation_kind_and_the_weekday_month_and_day() -> None:
+    # Execute
+    line = person_line(a_summary())
+
+    # Assert
+    assert line == "Ana (wife) — birthday Sat Mar 6"
+
+
+def test_a_person_line_without_a_relation_has_no_parentheses() -> None:
+    # Execute
+    line = person_line(a_summary(relation=""))
+
+    # Assert
+    assert line == "Ana — birthday Sat Mar 6"
+
+
+def test_a_person_line_for_an_other_key_date_names_it_by_its_label() -> None:
+    # Execute
+    line = person_line(a_summary(kind=KeyDateKind.OTHER, label="Name day"))
+
+    # Assert
+    assert line == "Ana (wife) — Name day Sat Mar 6"
+
+
+def test_a_person_line_without_a_key_date_is_just_the_name_and_relation() -> None:
+    # Execute
+    line = person_line(PersonSummary(a_person(name="Ana", relation="wife", aliases=()), None))
+
+    # Assert
+    assert line == "Ana (wife)"
+
+
+def test_a_person_line_drops_control_characters_from_the_name() -> None:
+    # Execute
+    line = person_line(PersonSummary(a_person(name=f"Ana{CONTROL_CHARACTERS}", relation=""), None))
+
+    # Assert
+    assert line == "Ana [31m"
+
+
+def test_a_person_line_drops_control_characters_from_the_relation() -> None:
+    # Execute
+    line = person_line(a_summary(relation=f"wife{CONTROL_CHARACTERS}"))
+
+    # Assert
+    assert line == "Ana (wife [31m) — birthday Sat Mar 6"
+
+
+def test_a_person_line_drops_control_characters_from_an_other_keys_label() -> None:
+    # Execute
+    line = person_line(a_summary(kind=KeyDateKind.OTHER, label=f"Name day{CONTROL_CHARACTERS}"))
+
+    # Assert
+    assert line == "Ana (wife) — Name day [31m Sat Mar 6"

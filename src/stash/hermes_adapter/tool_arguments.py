@@ -5,7 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import TypeVar
 
-from stash.domain import MOVEABLE_STAGES, ItemType, Stage
+from stash.domain import MOVEABLE_STAGES, ItemType, KeyDateKind, Stage
 from stash.domain.wire import require_wire_safe_id
 from stash.store.port import DEFAULT_PAGE_SIZE
 
@@ -80,14 +80,22 @@ class ToolArguments:
         return self.optional_date("due_on")
 
     def optional_takeaways(self) -> tuple[str, ...] | None:
-        takeaways = self.values.get("takeaways")
-        if takeaways is None:
-            return None
-        if not isinstance(takeaways, list | tuple) or not all(
-            isinstance(takeaway, str) for takeaway in takeaways
-        ):
-            raise ValueError("takeaways must be a list of text")
-        return tuple(takeaways)
+        return self._optional_strings("takeaways")
+
+    def optional_aliases(self) -> tuple[str, ...]:
+        return self._optional_strings("aliases") or ()
+
+    def optional_year(self) -> int | None:
+        return self._optional_int("year")
+
+    def key_date_kind(self) -> KeyDateKind:
+        return parse_member(KeyDateKind, "kind", self.required_text("kind"))
+
+    def required_int(self, name: str) -> int:
+        value = self.values.get(name)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"{name} must be an integer")
+        return value
 
     def required_bool(self, name: str) -> bool:
         value = self.values.get(name)
@@ -129,10 +137,15 @@ class ToolArguments:
         return DEFAULT_PAGE_SIZE if limit is None else limit
 
     def _optional_int(self, name: str) -> int | None:
-        value = self.values.get(name)
-        if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
-            raise ValueError(f"{name} must be an integer")
-        return value
+        return None if self.values.get(name) is None else self.required_int(name)
+
+    def _optional_strings(self, name: str) -> tuple[str, ...] | None:
+        values = self.values.get(name)
+        if values is None:
+            return None
+        if not isinstance(values, list | tuple) or not all(isinstance(v, str) for v in values):
+            raise ValueError(f"{name} must be a list of text")
+        return tuple(values)
 
     def _optional_member(self, kind: type[_E], name: str) -> _E | None:
         if self.values.get(name) is None:

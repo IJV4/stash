@@ -39,6 +39,7 @@ COMMAND_DESCRIPTIONS = {
     "retry": ("Retry captures that are still pending", ""),
     "library": ("List kept items, most recently finished first", "[type]"),
     "suggest": ("Suggest what to do from Want to", "[context]"),
+    "people": ("List people with their next key date", ""),
 }
 
 

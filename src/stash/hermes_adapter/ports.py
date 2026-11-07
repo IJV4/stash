@@ -3,7 +3,18 @@ from datetime import date, datetime
 from typing import Protocol
 
 from stash.capture import Deferred, Filed, IncomingMessage, ProcessResult, Reply, Reroute
-from stash.domain import Item, ItemType, Outcome, RawCapture, Stage, Step
+from stash.domain import (
+    Item,
+    ItemType,
+    KeyDate,
+    KeyDateKind,
+    Outcome,
+    Person,
+    PersonSummary,
+    RawCapture,
+    Stage,
+    Step,
+)
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
 from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LibraryQuery
@@ -110,3 +121,25 @@ class StepPlanner(Protocol):
 
 class Suggester(Protocol):
     def suggest(self, context: str, limit: int) -> Picked | Unavailable: ...
+
+
+class PeopleRoster(Protocol):
+    def roster(self, today: date, within_days: int | None = None) -> tuple[PersonSummary, ...]: ...
+
+
+class PeopleDesk(PeopleRoster, Protocol):
+    def add(self, name: str, relation: str = "", aliases: Sequence[str] = ()) -> Person: ...
+
+    def add_key_date(
+        self,
+        person_id: str,
+        kind: KeyDateKind,
+        month: int,
+        day: int,
+        year: int | None = None,
+        label: str = "",
+    ) -> KeyDate: ...
+
+    def link(self, item_id: str, person_id: str) -> None: ...
+
+    def remove(self, person_id: str) -> None: ...

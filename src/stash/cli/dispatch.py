@@ -40,6 +40,8 @@ def dispatch(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
             return commands.show(app.lifecycle, arguments.item_id, out)
         case Command.TICK:
             return commands.tick(app.nudge_delivery, app.clock(), arguments.dry_run, out)
+        case Command.PEOPLE:
+            return commands.people(app.people, app.today(), arguments.upcoming, out)
         case _:
             assert_never(command)
 

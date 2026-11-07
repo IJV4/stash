@@ -7,7 +7,7 @@ from architecture_guard import (
 )
 
 PEOPLE = "stash.people"
-PEOPLE_IMPORTERS = (PEOPLE, "stash.app.build")
+PEOPLE_IMPORTERS = (PEOPLE, "stash.app.build", "stash.app.app")
 PEOPLE_MAY_IMPORT = ("stash.domain", "stash.store.port", PEOPLE)
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 

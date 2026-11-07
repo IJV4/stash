@@ -23,6 +23,9 @@ def emoji_of(key_date: KeyDate) -> str:
     return OCCASION_EMOJI[key_date.kind]
 
 
+def occasion_noun(key_date: KeyDate) -> str:
+    return OCCASION_NOUN.get(key_date.kind) or key_date.label.strip() or UNLABELLED_OCCASION
+
+
 def occasion_of(person: Person, key_date: KeyDate) -> str:
-    noun = OCCASION_NOUN.get(key_date.kind) or key_date.label.strip() or UNLABELLED_OCCASION
-    return OCCASION.format(name=person.name, noun=noun)
+    return OCCASION.format(name=person.name, noun=occasion_noun(key_date))

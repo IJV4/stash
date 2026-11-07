@@ -1,8 +1,15 @@
 from collections.abc import Callable, Sequence
 from dataclasses import replace
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
-from stash.domain import KeyDate, KeyDateKind, Person
+from stash.domain import (
+    MAX_ROSTER_WINDOW_DAYS,
+    KeyDate,
+    KeyDateKind,
+    NextKeyDate,
+    Person,
+    PersonSummary,
+)
 from stash.people.ports import PeopleBook
 from stash.people.results import Resolution
 from stash.store.port import UnknownPersonError
@@ -60,6 +67,18 @@ class PeopleDirectory:
         self._store.save_key_date(key_date)
         return key_date
 
+    def link(self, item_id: str, person_id: str) -> None:
+        self._store.link(item_id, person_id)
+
+    def roster(self, today: date, within_days: int | None = None) -> tuple[PersonSummary, ...]:
+        horizon = MAX_ROSTER_WINDOW_DAYS if within_days is None else within_days
+        next_dates = self._next_dates(today, today + timedelta(days=horizon))
+        summaries = [
+            PersonSummary(person, next_dates.get(person.id)) for person in self._store.list_people()
+        ]
+        wanted = [item for item in summaries if within_days is None or item.next_date is not None]
+        return tuple(sorted(wanted, key=_by_next_date))
+
     def resolve(self, names: Sequence[str]) -> Resolution:
         linked: dict[str, Person] = {}
         unknown: dict[str, str] = {}
@@ -70,6 +89,12 @@ class PeopleDirectory:
             else:
                 linked.setdefault(person.id, person)
         return Resolution(tuple(linked.values()), tuple(unknown.values()))
+
+    def _next_dates(self, first: date, last: date) -> dict[str, NextKeyDate]:
+        next_dates: dict[str, NextKeyDate] = {}
+        for key_date, on in self._store.key_dates_between(first, last):
+            next_dates.setdefault(key_date.person_id, NextKeyDate(key_date, on))
+        return next_dates
 
     def _person(self, person_id: str) -> Person:
         person = self._store.get_person(person_id)
@@ -85,3 +110,10 @@ class PeopleDirectory:
 def _non_blank_names(names: Sequence[str]) -> list[str]:
     stripped = (name.strip() for name in names)
     return [name for name in stripped if name]
+
+
+def _by_next_date(summary: PersonSummary) -> tuple[int, date, str]:
+    name = summary.person.name.casefold()
+    if summary.next_date is None:
+        return (1, date.max, name)
+    return (0, summary.next_date.on, name)

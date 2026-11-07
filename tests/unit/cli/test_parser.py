@@ -78,6 +78,7 @@ def test_list_refuses_values_outside_its_choices(argv: list[str]) -> None:
         ["library"],
         ["show", "x"],
         ["tick"],
+        ["people"],
     ],
     ids=lambda argv: argv[0],
 )
@@ -391,3 +392,27 @@ def test_show_needs_an_item_id() -> None:
     with pytest.raises(SystemExit) as stop:
         parse("show")
     assert stop.value.code == 2
+
+
+def test_people_takes_no_upcoming_window_by_default() -> None:
+    # Execute
+    arguments = parse("people")
+
+    # Assert
+    assert arguments.upcoming is None
+
+
+@pytest.mark.parametrize("days", ["0", "-1", "367", "soon", "99999999999999999999"])
+def test_people_refuses_an_upcoming_window_that_is_not_1_to_366_days(days: str) -> None:
+    # Execute / Assert
+    with pytest.raises(SystemExit) as stop:
+        parse("people", "--upcoming", days)
+    assert stop.value.code == 2
+
+
+def test_people_accepts_an_upcoming_window_of_a_whole_year() -> None:
+    # Execute
+    arguments = parse("people", "--upcoming", "366")
+
+    # Assert
+    assert arguments.upcoming == 366

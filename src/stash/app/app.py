@@ -11,6 +11,7 @@ from stash.gpu import GpuGate
 from stash.gpu_switch import GpuSwitch
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
+from stash.people import PeopleDirectory
 from stash.planning import Planning
 from stash.store import BackupWriter, Closeable, Store
 from stash.suggestions import SuggestionDesk
@@ -25,6 +26,7 @@ class StashApp:
     fixes: FixHandler
     lifecycle: Lifecycle
     planning: Planning
+    people: PeopleDirectory
     suggestions: SuggestionDesk
     nudge_delivery: NudgeDelivery
     proposal_delivery: ProposalDelivery

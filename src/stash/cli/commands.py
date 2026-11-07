@@ -6,17 +6,20 @@ from typing import Protocol, TextIO
 from stash.capture import CaptureIntake, Reply
 from stash.cli.failure import FAILURE, CommandFailed
 from stash.doctor import Doctor
-from stash.domain import ItemType, Stage
+from stash.domain import ItemType, PersonSummary, Stage
 from stash.gpu_switch import GpuSwitch
 from stash.lifecycle import LibraryQuery, Lifecycle, UnknownItem
 from stash.rendering import (
     NO_ITEMS,
+    NO_PEOPLE,
+    NO_UPCOMING_PEOPLE,
     NOTHING_PENDING,
     SWITCHED_ON,
     gpu_status_line,
     history_lines,
     library_line,
     listing_line,
+    person_line,
     result_line,
     switched_off_lines,
 )
@@ -29,6 +32,10 @@ class TickDelivery(Protocol):
     def deliver(self, now: datetime, send: Callable[[Reply], None]) -> None: ...
 
     def preview(self, now: datetime) -> tuple[Reply, ...]: ...
+
+
+class PeopleRoster(Protocol):
+    def roster(self, today: date, within_days: int | None = None) -> tuple[PersonSummary, ...]: ...
 
 
 def _emit(lines: Iterable[str], out: TextIO) -> None:
@@ -95,6 +102,12 @@ def show(lifecycle: Lifecycle, item_id: str, out: TextIO) -> int:
     except UnknownItem as error:
         raise CommandFailed(str(error), FAILURE) from error
     _emit(history_lines(history), out)
+    return 0
+
+
+def people(roster: PeopleRoster, today: date, upcoming: int | None, out: TextIO) -> int:
+    lines = [person_line(summary) for summary in roster.roster(today, upcoming)]
+    _emit(lines or [NO_PEOPLE if upcoming is None else NO_UPCOMING_PEOPLE], out)
     return 0
 
 

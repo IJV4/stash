@@ -14,6 +14,7 @@ from stash.domain.wire import require_wire_safe_id
 
 PERSON_NAME_LIMIT = 80
 PERSON_RELATION_LIMIT = 40
+MAX_ROSTER_WINDOW_DAYS = 366
 MAX_ALIASES = 5
 PERSON_NOTES_LIMIT = 1000
 KEY_DATE_LABEL_LIMIT = 60
@@ -99,6 +100,18 @@ class KeyDate:
         if (self.month, self.day) == (FEBRUARY, LEAP_DAY) and not calendar.isleap(year):
             return dt.date(year, FEBRUARY, COMMON_YEAR_LAST_FEBRUARY_DAY)
         return dt.date(year, self.month, self.day)
+
+
+@dataclass(frozen=True, slots=True)
+class NextKeyDate:
+    key_date: KeyDate
+    on: dt.date
+
+
+@dataclass(frozen=True, slots=True)
+class PersonSummary:
+    person: Person
+    next_date: NextKeyDate | None
 
 
 def occurrences_between(

@@ -6,7 +6,7 @@ from typing import TypeVar
 
 from stash import __version__
 from stash.config import Thinking
-from stash.domain import ItemType, Stage, enum_member
+from stash.domain import MAX_ROSTER_WINDOW_DAYS, ItemType, Stage, enum_member
 from stash.evaluation import EvalArm
 from stash.lifecycle import MAX_LIBRARY_LIMIT, MIN_LIBRARY_LIMIT
 from stash.store.port import DEFAULT_PAGE_SIZE
@@ -14,6 +14,7 @@ from stash.store.port import DEFAULT_PAGE_SIZE
 DEFAULT_CASES = Path("evals/cases.jsonl")
 MIN_LIMIT = 1
 MAX_LIMIT = 1000
+MIN_UPCOMING_DAYS = 1
 
 _E = TypeVar("_E", bound=StrEnum)
 
@@ -28,6 +29,7 @@ class Command(StrEnum):
     LIBRARY = "library"
     SHOW = "show"
     TICK = "tick"
+    PEOPLE = "people"
 
 
 class GpuAction(StrEnum):
@@ -106,6 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument("item_id")
     tick = commands.add_parser(Command.TICK, parents=[shared], help="send the nudges that are due")
     tick.add_argument("--dry-run", action="store_true", help="print them without marking them sent")
+    _add_people(commands, shared)
     return parser
 
 
@@ -129,6 +132,18 @@ def _add_library(
         "--limit",
         type=_limit_between(MIN_LIBRARY_LIMIT, MAX_LIBRARY_LIMIT),
         default=DEFAULT_PAGE_SIZE,
+    )
+
+
+def _add_people(
+    commands: "argparse._SubParsersAction[argparse.ArgumentParser]", shared: argparse.ArgumentParser
+) -> None:
+    people = commands.add_parser(Command.PEOPLE, parents=[shared], help="list people and dates")
+    people.add_argument(
+        "--upcoming",
+        type=_limit_between(MIN_UPCOMING_DAYS, MAX_ROSTER_WINDOW_DAYS),
+        metavar="DAYS",
+        help="only people whose next key date is within DAYS days",
     )
 
 

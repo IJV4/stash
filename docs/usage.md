@@ -1689,6 +1689,46 @@ boolean or non-integer `lead_days`, a malformed date, neither or both of
 `lead_days` and `due_on` on add, an edit with nothing to change, and a
 store that fails all answer `{"error": "..."}` without changing anything.
 
+## People and dates  [Plan 4 Task 4]
+
+stash keeps the people the owner mentions, with yearly key dates (birthday,
+anniversary or other), and reminds the owner before each one. The agent manages
+them through five tools (toolset `stash`); like every tool they return JSON and
+never raise, and a bad call answers `{"error": "..."}` and changes nothing.
+
+| Tool | Arguments | Answers |
+|---|---|---|
+| `stash_people` | none | `{"people": [{"id", "name", "relation", "aliases", "next_key_date"}]}`, soonest key date first; `next_key_date` is `{"kind", "label", "on"}` or `null` |
+| `stash_add_person` | `name` (at most 80 characters), `relation` (at most 40), `aliases` (at most 5 names) | `{"person"}` |
+| `stash_add_key_date` | `person_id`, `kind` (`birthday`, `anniversary` or `other`), `month`, `day`, optional `year` (when it began) and `label` (at most 60 characters, names an `other` date) | `{"key_date"}` |
+| `stash_link_person` | `item_id`, `person_id` | `{"linked": {"item_id", "person_id"}}` |
+| `stash_remove_person` | `person_id` | `{"removed": person_id}`; the person's key dates go too, their items stay saved |
+
+A blank name, a name, relation or label over its limit, more than five aliases,
+a name or alias another person already answers to (compared without regard to
+case), a month and day that are not a real date (April 31), and an unknown
+person or item id all answer `{"error": "..."}`.
+
+`/people` in Telegram lists one line per person, soonest key date first and
+people without one last: `Ana (wife) — birthday Sat Mar 6` (the relation only
+when there is one; an `other` date shows its label; the weekday and date are
+those of the next occurrence). With nobody saved it says `No people yet.`
+
+`stash people` on the command line prints the same lines. `stash people --upcoming
+DAYS` (1 to 366) lists only the people whose next key date is at most DAYS days
+away, or `No key dates coming up.`
+
+Key-date reminders go out 14, 2 and 0 days before the date by default; set
+`lead_days` under `[people]` in `stash.toml` to change them (each from 0 to 365,
+at least one, none repeated). All of them are sent at `reminder_time` under
+`[nudges]`. When several are due at once (for example after the gateway was
+down), only the closest one is sent, worded with the real days left (`in 5
+days`); on the day itself only the on-the-day reminder is sent.
+
+When the filer names people in a captured message, those who match a saved name
+or alias (without regard to case) are linked to the item. A name that matches
+nobody stays plain text on the item: no person is created and nothing is linked.
+
 ## Storage guarantees  [Tasks 2-3]
 
 These have no caller-visible surface yet; they are pinned by unit and contract

@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from stash.domain import ItemType, Stage
+from stash.domain import ItemType, KeyDateKind, Stage
 from stash.hermes_adapter.tool_arguments import ToolArguments
 
 NOT_OBJECTS = [None, "ramen", ["ramen"], 3]
@@ -200,3 +200,88 @@ def test_a_nullable_text_that_is_not_text_is_refused(raw: Any) -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="note must be text"):
         arguments(note=raw).nullable_text("note")
+
+
+def test_a_required_int_is_returned_as_given() -> None:
+    # Execute
+    month = arguments(month=3).required_int("month")
+
+    # Assert
+    assert month == 3
+
+
+@pytest.mark.parametrize("raw", [None, True, "3", 3.0, [3]])
+def test_a_required_int_that_is_not_an_integer_is_refused(raw: Any) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="month must be an integer"):
+        arguments(month=raw).required_int("month")
+
+
+@pytest.mark.parametrize("values", [{}, {"year": None}])
+def test_an_absent_optional_year_is_none(values: dict[str, Any]) -> None:
+    # Execute
+    year = arguments(**values).optional_year()
+
+    # Assert
+    assert year is None
+
+
+def test_an_optional_year_is_returned_as_given() -> None:
+    # Execute
+    year = arguments(year=1993).optional_year()
+
+    # Assert
+    assert year == 1993
+
+
+@pytest.mark.parametrize("raw", [True, "1993", 1993.0, [1993]])
+def test_an_optional_year_that_is_not_an_integer_is_refused(raw: Any) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="year must be an integer"):
+        arguments(year=raw).optional_year()
+
+
+@pytest.mark.parametrize("values", [{}, {"aliases": None}])
+def test_absent_optional_aliases_are_empty(values: dict[str, Any]) -> None:
+    # Execute
+    aliases = arguments(**values).optional_aliases()
+
+    # Assert
+    assert aliases == ()
+
+
+@pytest.mark.parametrize("raw", [["Anita", "Ani"], ("Anita", "Ani")])
+def test_optional_aliases_are_returned_as_a_tuple(raw: Any) -> None:
+    # Execute
+    aliases = arguments(aliases=raw).optional_aliases()
+
+    # Assert
+    assert aliases == ("Anita", "Ani")
+
+
+@pytest.mark.parametrize("raw", ["Anita", 5, True, ["Anita", 5], ["Anita", None], [["Anita"]]])
+def test_optional_aliases_that_are_not_a_list_of_text_are_refused(raw: Any) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="aliases must be a list of text"):
+        arguments(aliases=raw).optional_aliases()
+
+
+def test_a_key_date_kind_is_read_by_value_ignoring_case() -> None:
+    # Execute
+    kind = arguments(kind="Anniversary").key_date_kind()
+
+    # Assert
+    assert kind is KeyDateKind.ANNIVERSARY
+
+
+def test_an_unknown_key_date_kind_is_refused_listing_the_valid_ones() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match=r"unknown kind 'holiday' .*birthday"):
+        arguments(kind="holiday").key_date_kind()
+
+
+@pytest.mark.parametrize("raw", [None, 5, True, ["birthday"]])
+def test_a_key_date_kind_that_is_not_text_is_refused(raw: Any) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="kind must be text"):
+        arguments(kind=raw).key_date_kind()

@@ -1,7 +1,9 @@
 from datetime import tzinfo
 
 from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult
-from stash.domain import Item, Outcome, collapse_and_clip
+from stash.capture.occasions import occasion_noun
+from stash.capture.wording import short_day
+from stash.domain import Item, Outcome, PersonSummary, collapse_and_clip
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
 from stash.lifecycle import ItemHistory
@@ -11,6 +13,8 @@ DASH = " — "
 EXPIRY_FORMAT = "%H:%M"
 TEXT_PREVIEW_CHARS = 60
 NO_ITEMS = "No items."
+NO_PEOPLE = "No people yet."
+NO_UPCOMING_PEOPLE = "No key dates coming up."
 NOTHING_PENDING = "Nothing pending."
 NO_SUGGESTIONS = "Nothing to suggest right now."
 SUGGESTIONS_UNAVAILABLE = "Suggestions are unavailable right now."
@@ -46,6 +50,16 @@ def listing_line(item: Item) -> str:
     if item.date is None:
         return _summary(item)
     return f"{_summary(item)}{SEPARATOR}{item.date.isoformat()}"
+
+
+def person_line(summary: PersonSummary) -> str:
+    person = summary.person
+    name = _clean(person.name)
+    heading = f"{name} ({_clean(person.relation)})" if person.relation else name
+    if summary.next_date is None:
+        return heading
+    occasion = _clean(occasion_noun(summary.next_date.key_date))
+    return f"{heading}{DASH}{occasion} {short_day(summary.next_date.on)}"
 
 
 def result_line(result: ProcessResult) -> str:

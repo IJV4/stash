@@ -24,7 +24,13 @@ from ticker_rig import run_until
 from stash.app import StashApp
 from stash.capture import IncomingMessage, confirmation
 from stash.domain import Stage
-from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
+from stash.hermes_adapter.commands import (
+    GpuCommand,
+    LibraryCommand,
+    ListCommand,
+    PeopleCommand,
+    RetryCommand,
+)
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.suggest_command import SuggestCommand
 from stash.hermes_adapter.wiring import (
@@ -137,7 +143,7 @@ def test_intakes_built_by_two_registrations_confirm_their_messages_separately() 
     ]
 
 
-def test_the_commands_are_list_gpu_retry_library_and_suggest() -> None:
+def test_the_commands_are_list_gpu_retry_library_suggest_and_people() -> None:
     # Execute
     commands = build_commands(an_app())
 
@@ -148,6 +154,7 @@ def test_the_commands_are_list_gpu_retry_library_and_suggest() -> None:
         "retry": RetryCommand,
         "library": LibraryCommand,
         "suggest": SuggestCommand,
+        "people": PeopleCommand,
     }
 
 
@@ -155,7 +162,7 @@ def handler_named(app: StashApp, name: str) -> Callable[..., str]:
     return next(spec.handler for spec in build_tools(app) if spec.schema["name"] == name)
 
 
-def test_the_tools_are_search_list_lifecycle_capture_the_step_tools_and_suggest() -> None:
+def test_the_tools_are_search_list_lifecycle_capture_step_suggest_and_people_tools() -> None:
     # Execute
     specs = build_tools(an_app())
 
@@ -176,6 +183,11 @@ def test_the_tools_are_search_list_lifecycle_capture_the_step_tools_and_suggest(
         "stash_edit_step",
         "stash_complete_step",
         "stash_suggest",
+        "stash_people",
+        "stash_add_person",
+        "stash_add_key_date",
+        "stash_link_person",
+        "stash_remove_person",
     ]
 
 

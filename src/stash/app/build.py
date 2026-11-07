@@ -103,6 +103,7 @@ def build_app(
             fixes=FixHandler(sqlite, lifecycle, planning, clock, config.timezone),
             lifecycle=lifecycle,
             planning=planning,
+            people=people,
             suggestions=suggestions,
             nudge_delivery=NudgeDelivery(Nudger(sqlite, schedule, person_dates), digests),
             proposal_delivery=ProposalDelivery(planning, sqlite),

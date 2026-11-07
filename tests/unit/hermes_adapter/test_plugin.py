@@ -34,6 +34,13 @@ from stash.hermes_adapter.lifecycle_schemas import (
     SET_DATE_SCHEMA,
     SET_STAGE_SCHEMA,
 )
+from stash.hermes_adapter.people_schemas import (
+    ADD_KEY_DATE_SCHEMA,
+    ADD_PERSON_SCHEMA,
+    LINK_PERSON_SCHEMA,
+    PEOPLE_SCHEMA,
+    REMOVE_PERSON_SCHEMA,
+)
 from stash.hermes_adapter.plugin import NO_OWNER_CHAT_LOG, register
 from stash.hermes_adapter.step_schemas import (
     ADD_STEP_SCHEMA,
@@ -55,6 +62,13 @@ LIFECYCLE_SCHEMAS = (
     LIBRARY_SCHEMA,
 )
 STEP_SCHEMAS = (ADD_STEP_SCHEMA, EDIT_STEP_SCHEMA, COMPLETE_STEP_SCHEMA)
+PEOPLE_SCHEMAS = (
+    PEOPLE_SCHEMA,
+    ADD_PERSON_SCHEMA,
+    ADD_KEY_DATE_SCHEMA,
+    LINK_PERSON_SCHEMA,
+    REMOVE_PERSON_SCHEMA,
+)
 LOGGER = "stash.hermes_adapter.plugin"
 HOME = "/home/owner"
 DEFAULT_PATH = Path("/home/owner/.config/stash/stash.toml")
@@ -325,6 +339,7 @@ def test_commands_are_registered_with_their_argument_hints() -> None:
         "retry": "",
         "library": "[type]",
         "suggest": "[context]",
+        "people": "",
     }
 
 
@@ -339,6 +354,7 @@ def test_commands_are_registered_with_their_descriptions() -> None:
         "retry": "Retry captures that are still pending",
         "library": "List kept items, most recently finished first",
         "suggest": "Suggest what to do from Want to",
+        "people": "List people with their next key date",
     }
 
 
@@ -452,6 +468,7 @@ def test_tools_are_registered_with_the_description_of_their_schema() -> None:
         "stash_capture": CAPTURE_SCHEMA["description"],
         **{schema["name"]: schema["description"] for schema in STEP_SCHEMAS},
         "stash_suggest": SUGGEST_SCHEMA["description"],
+        **{schema["name"]: schema["description"] for schema in PEOPLE_SCHEMAS},
     }
 
 

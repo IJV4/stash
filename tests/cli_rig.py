@@ -21,6 +21,7 @@ from stash.config.loader import load_config
 from stash.domain import Item, RawCapture
 from stash.evaluation import Ocr
 from stash.lifecycle import Lifecycle
+from stash.people import PeopleDirectory
 
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 LATE_EVENING_IN_LOS_ANGELES = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
@@ -95,6 +96,13 @@ class CliRig:
         app = self.build(load_config(self.config_file, self.env))
         try:
             act(app.lifecycle)
+        finally:
+            app.close()
+
+    def through_people(self, act: Callable[[PeopleDirectory], object]) -> None:
+        app = self.build(load_config(self.config_file, self.env))
+        try:
+            act(app.people)
         finally:
             app.close()
 

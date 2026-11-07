@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import replace
-from datetime import datetime, tzinfo
+from datetime import date, datetime, tzinfo
 from typing import assert_never
 
 from stash.capture import (
@@ -13,16 +13,24 @@ from stash.capture import (
     ProcessResult,
 )
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
-from stash.hermes_adapter.ports import GpuControl, ItemReader, LibraryReader, Retrier
+from stash.hermes_adapter.ports import (
+    GpuControl,
+    ItemReader,
+    LibraryReader,
+    PeopleRoster,
+    Retrier,
+)
 from stash.hermes_adapter.queries import MAX_LIMIT, ItemQuery, item_type_from_text
 from stash.lifecycle import MAX_LIBRARY_LIMIT, LibraryQuery
 from stash.rendering import (
     NO_ITEMS,
+    NO_PEOPLE,
     NOTHING_PENDING,
     SWITCHED_ON,
     gpu_status_line,
     library_line,
     listing_line,
+    person_line,
     result_line,
     switched_off_lines,
 )
@@ -96,6 +104,17 @@ class LibraryCommand:
         entries = await asyncio.to_thread(self._reader.library, query)
         lines = [library_line(entry.item, entry.last_outcome) for entry in entries]
         return _listing(lines, MAX_LIBRARY_LIMIT)
+
+
+class PeopleCommand:
+    def __init__(self, roster: PeopleRoster, today: Callable[[], date]) -> None:
+        self._roster = roster
+        self._today = today
+
+    async def run(self, raw_args: str) -> str:
+        summaries = await asyncio.to_thread(self._roster.roster, self._today())
+        lines = [person_line(summary) for summary in summaries]
+        return _bounded(lines) if lines else NO_PEOPLE
 
 
 class GpuCommand:
