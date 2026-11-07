@@ -290,7 +290,10 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 > 4. Carried from the Plan 2 Task 2 review: the SQLite `immediate_transaction` may mask a failed
 >    COMMIT with a ROLLBACK error, and `record_completion` holds the in-process lock while
 >    `BEGIN IMMEDIATE` waits. A ticker thread plus a cron fallback is the first time two writers
->    meet. Pin both before relying on them.
+>    meet. Pin both before relying on them. **Resolved in 6a (430c83c):** the COMMIT error is
+>    kept; the lock is deliberately still held during the busy wait, because the store shares one
+>    connection (`docs/store-writes.md` item 13). So 6b runs every store call through
+>    `asyncio.to_thread`, and planning buttons answer `StoreBusyError` with the busy reply.
 > 5. Carried from the Plan 2 Task 3 review (ruling R10): `stash.lifecycle`'s keep, reopen, drop,
 >    group and ungroup read an item and then call `save_item` (create-or-replace). If a ticker
 >    thread or a cron `stash tick` deletes or reroutes the item in between, it comes back. Add an
