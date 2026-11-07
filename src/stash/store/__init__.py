@@ -1,4 +1,5 @@
 from stash.store.port import (
+    BACKUP_LAST_SUCCESS_KEY,
     BackupError,
     BackupSource,
     BackupWriter,
@@ -21,6 +22,7 @@ from stash.store.port import (
 )
 
 __all__ = [
+    "BACKUP_LAST_SUCCESS_KEY",
     "BackupError",
     "BackupSource",
     "BackupWriter",

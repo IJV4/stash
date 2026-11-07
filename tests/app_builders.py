@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
+from backup_builders import a_backups
 from builders import a_capture, a_source
 from capture_builders import sequential_ids
 from config_builders import a_stash_config
@@ -15,19 +16,21 @@ from fakes.pending_intake import PendingIntake
 from fakes.recording_unloader import RecordingUnloader
 from gate_rig import a_gate, a_sample
 from lifecycle_rig import a_lifecycle
+from nudge_builders import a_nudge_schedule
 from planning_rig import a_planning
 from router_builders import default_thinking_models
 
 from stash.app import StashApp
 from stash.capture import AgentCapture, BurstCoalescer, FixHandler
 from stash.config import ProviderName, Thinking
+from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.doctor import Doctor
 from stash.domain import Item
 from stash.evaluation import EvalTargets
 from stash.gpu_switch import GpuSwitch
 from stash.llm import ModelRouter
-from stash.store.backup import Backups
-from stash.suggestions import SuggestionDesk
+from stash.nudges import DigestBuilder, Nudger
+from stash.suggestions import QuietPicks, SuggestionDesk
 
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 
@@ -48,6 +51,8 @@ def an_app(**overrides: Any) -> StashApp:
     gate = a_gate(a_sample(), store=store)
     planning = overrides.get("planning", a_planning(store, FakeChatModel(), clock))
     pipeline = overrides.get("pipeline", PendingIntake())
+    suggestions = overrides.get("suggestions", SuggestionDesk(store, FakeSuggestionPicker()))
+    schedule = a_nudge_schedule()
     fields: dict[str, Any] = {
         "config": config,
         "store": store,
@@ -56,7 +61,11 @@ def an_app(**overrides: Any) -> StashApp:
         "fixes": FixHandler(store, lifecycle, planning, clock),
         "lifecycle": lifecycle,
         "planning": planning,
-        "suggestions": SuggestionDesk(store, FakeSuggestionPicker()),
+        "suggestions": suggestions,
+        "nudge_delivery": NudgeDelivery(
+            Nudger(store, schedule), DigestBuilder(store, QuietPicks(suggestions), schedule)
+        ),
+        "proposal_delivery": ProposalDelivery(planning, store),
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),
         "router": ModelRouter(
@@ -69,7 +78,7 @@ def an_app(**overrides: Any) -> StashApp:
         "clock": clock,
         "eval_targets": EvalTargets((), Thinking.DEFAULT),
         "ocr": FakeOcr(),
-        "backups": Backups(FakeBackupSource()),
+        "backups": a_backups(FakeBackupSource()),
         "resources": CloseCounter(),
     }
     return StashApp(**{**fields, **overrides})

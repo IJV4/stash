@@ -1,4 +1,5 @@
-from collections.abc import Callable, Collection, Mapping
+import asyncio
+from collections.abc import Callable, Collection, Coroutine, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -71,6 +72,7 @@ class _Gateway:
     def __init__(self) -> None:
         self.factories = _PlatformFactories()
         self.admitted = _AdmittedChats()
+        self.tasks: list[asyncio.Task[None]] = []
 
 
 class FakeHermesContext:
@@ -92,6 +94,10 @@ class FakeHermesContext:
         self.tools: dict[str, RegisteredTool] = {}
         self.injected: list[InjectedMessage] = []
         self.refused: list[InjectedMessage] = []
+
+    @property
+    def spawned(self) -> list[asyncio.Task[None]]:
+        return self._gateway.tasks
 
     @property
     def platform_handlers(self) -> dict[str, list[Handler]]:
@@ -118,6 +124,21 @@ class FakeHermesContext:
 
     def connect(self, platform: str, application: Any) -> None:
         self._gateway.factories.connect(platform, application)
+
+    def spawn_task(self, coro: Coroutine[Any, Any, None]) -> asyncio.Task[None]:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            coro.close()
+            raise
+        task = loop.create_task(coro)
+        self._gateway.tasks.append(task)
+        return task
+
+    async def cancel_spawned(self) -> None:
+        for task in self._gateway.tasks:
+            task.cancel()
+        await asyncio.gather(*self._gateway.tasks, return_exceptions=True)
 
     def register_command(
         self,

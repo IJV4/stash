@@ -3,16 +3,20 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from fakes.memory_store import MemoryStore
-from fakes.scripted_sender import SendFailed
 from nudge_builders import a_nudge_schedule
 
 from stash.capture import Reply
-from stash.capture.nudge_replies import nudge_reply
-from stash.nudges import LOOKBACK, DueNudge, Nudger, Schedule, WeeklyDigest, batch_messages
+from stash.delivery import NudgeDelivery
+from stash.nudges import LOOKBACK, DueNudge, Nudger, Schedule, WeeklyDigest
 
 MINUTE = timedelta(minutes=1)
 HOUR = timedelta(hours=1)
 AROUND = timedelta(minutes=10)
+
+
+class UnbuiltDigests:
+    def build(self, due: WeeklyDigest, now: datetime) -> WeeklyDigest:
+        return due
 
 
 @dataclass(slots=True)
@@ -21,20 +25,18 @@ class NudgeRig:
     schedule: Schedule
     nudger: Nudger
     send: Callable[[Reply], None]
+    delivery: NudgeDelivery
     sent: list[tuple[datetime, Reply]] = field(default_factory=list)
 
     def due(self, now: datetime) -> list[DueNudge]:
         return self.nudger.due(now)
 
     def tick(self, now: datetime) -> None:
-        for message in batch_messages(self.due(now), now):
-            rendered = nudge_reply(message)
-            try:
-                self.send(rendered.reply)
-            except SendFailed:
-                continue
-            self.sent.append((now, rendered.reply))
-            self.nudger.mark_sent(rendered.shown, now)
+        def send_and_record(reply: Reply) -> None:
+            self.send(reply)
+            self.sent.append((now, reply))
+
+        self.delivery.deliver(now, send_and_record)
 
     def tick_through(self, instants: Iterable[datetime]) -> None:
         for now in instants:
@@ -57,7 +59,8 @@ def a_nudge_rig(
 ) -> NudgeRig:
     store = store or MemoryStore()
     schedule = a_nudge_schedule()
-    return NudgeRig(store, schedule, Nudger(store, schedule), send)
+    nudger = Nudger(store, schedule)
+    return NudgeRig(store, schedule, nudger, send, NudgeDelivery(nudger, UnbuiltDigests()))
 
 
 def ticks_between(start: datetime, end: datetime, every: timedelta) -> list[datetime]:

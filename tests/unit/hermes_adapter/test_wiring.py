@@ -8,14 +8,18 @@ from app_builders import NOON, an_app, stored
 from builders import an_item, stored_completion
 from capture_builders import a_filing_answer, sequential_ids
 from capture_rig import build_rig
+from config_builders import a_nudge_config, a_stash_config
 from fakes.fake_suggestion_desk import FakeSuggestionDesk
 from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
 from fakes.recording_outbox import RecordingOutbox
+from fakes.recording_sender import RecordingSender
+from fakes.scripted_deliveries import ScriptedNudges
 from fakes.scripted_steps import ScriptedSteps
 from hermes_events import OWNER_ID, an_event
 from hermes_rig import app_over, instant_bursts
+from ticker_rig import run_until
 
 from stash.app import StashApp
 from stash.capture import IncomingMessage, confirmation
@@ -23,7 +27,13 @@ from stash.domain import Stage
 from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.suggest_command import SuggestCommand
-from stash.hermes_adapter.wiring import build_commands, build_intake, build_scheduler, build_tools
+from stash.hermes_adapter.wiring import (
+    build_commands,
+    build_intake,
+    build_scheduler,
+    build_ticker,
+    build_tools,
+)
 from stash.suggestions import Picked
 
 LATER = datetime(2026, 11, 3, 9, 30, tzinfo=UTC)
@@ -251,3 +261,30 @@ def test_the_suggest_command_asks_the_suggestions_of_the_app() -> None:
 
     # Assert
     assert desk.asked == [("at home", 3)]
+
+
+def test_the_ticker_tells_the_deliveries_the_time_of_the_app_clock() -> None:
+    # Setup
+    nudges = ScriptedNudges()
+    ticker = build_ticker(
+        an_app(clock=lambda: LATER, nudge_delivery=nudges), RecordingSender(), "1"
+    )
+
+    # Execute
+    asyncio.run(ticker.tick())
+
+    # Assert
+    assert nudges.nows == [LATER]
+
+
+def test_the_ticker_pauses_the_tick_interval_the_app_is_configured_with() -> None:
+    # Setup
+    config = a_stash_config(nudges=a_nudge_config(tick_seconds=17))
+    scheduler = PausingScheduler()
+    ticker = build_ticker(an_app(config=config), RecordingSender(), OWNER_ID, scheduler=scheduler)
+
+    # Execute
+    asyncio.run(run_until(ticker, lambda: scheduler.requested))
+
+    # Assert
+    assert scheduler.requested[0] == 17.0

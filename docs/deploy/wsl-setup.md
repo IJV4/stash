@@ -111,6 +111,36 @@ hermes gateway restart
 **Check:** `hermes plugins` lists stash as enabled; in Telegram the menu shows
 `/list`, `/gpu`, `/stash_retry` (`/retry` is a Hermes built-in).
 
+### Reminders: the ticker and the cron fallback
+
+Reminders, the Sunday digest, follow-ups and step proposals are delivered by an
+in-process ticker. The first time Hermes connects Telegram it starts the ticker
+(`ctx.spawn_task`); it checks every `[nudges] tick_seconds` (default 60). It
+sends to the owner's Telegram DM: the first id in `TELEGRAM_ALLOWED_USERS`, or
+`plugins.entries.stash.settings.owner_chat_id` when you set it. With neither,
+stash logs one warning and sends no reminders. Nothing else is needed.
+
+**The cron fallback is off by default.** Use it only if the in-process ticker is
+not running (spike #26 failed). It sends no buttons, and Hermes wraps the text
+in its "Cronjob Response" header and footer.
+
+```bash
+cat > ~/.hermes/scripts/stash_tick.sh <<'EOF'
+#!/bin/sh
+exec ~/code/stash/.venv/bin/stash tick --config ~/.config/stash/stash.toml
+EOF
+chmod +x ~/.hermes/scripts/stash_tick.sh
+hermes cron create "every 1m" --no-agent --script stash_tick.sh --deliver telegram:<owner id>
+```
+`--deliver telegram` alone needs a home channel, which there is not, so give the
+chat id: `telegram:<owner id>`. `stash tick` prints nothing when nothing is due,
+and Hermes then stays silent. `stash tick --dry-run` shows what it would send
+and marks nothing. Never run the cron job and the ticker together on purpose:
+both record what they sent in the same ledger, so a nudge is not sent twice,
+but a message one of them sent is simply never shown by the other.
+**Check:** `stash tick --dry-run` prints nothing on a quiet day and the due
+reminders otherwise.
+
 ## 8. Doctor and eval
 
 ```bash

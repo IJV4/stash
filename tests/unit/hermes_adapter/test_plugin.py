@@ -33,7 +33,7 @@ from stash.hermes_adapter.lifecycle_schemas import (
     LIBRARY_SCHEMA,
     SET_STAGE_SCHEMA,
 )
-from stash.hermes_adapter.plugin import register
+from stash.hermes_adapter.plugin import NO_OWNER_CHAT_LOG, register
 from stash.hermes_adapter.step_schemas import (
     ADD_STEP_SCHEMA,
     COMPLETE_STEP_SCHEMA,
@@ -277,7 +277,7 @@ def test_a_config_error_leaves_nothing_registered_and_no_exit_hook() -> None:
 def warning_levels(env: Mapping[str, str]) -> list[int]:
     with recording_logs(LOGGER) as logs:
         register_plugin(env={"HOME": HOME, **env})
-    return [level for level, _ in logs.entries()]
+    return [level for level, message in logs.entries() if message != NO_OWNER_CHAT_LOG]
 
 
 def test_missing_owners_log_one_warning() -> None:

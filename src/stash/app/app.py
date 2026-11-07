@@ -4,6 +4,7 @@ from datetime import date, datetime
 
 from stash.capture import AgentCapture, BurstCoalescer, CaptureIntake, FixHandler
 from stash.config import StashConfig
+from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.doctor import Doctor
 from stash.evaluation import EvalTargets, Ocr
 from stash.gpu import GpuGate
@@ -25,6 +26,8 @@ class StashApp:
     lifecycle: Lifecycle
     planning: Planning
     suggestions: SuggestionDesk
+    nudge_delivery: NudgeDelivery
+    proposal_delivery: ProposalDelivery
     gpu: GpuGate
     gpu_switch: GpuSwitch
     router: ModelRouter

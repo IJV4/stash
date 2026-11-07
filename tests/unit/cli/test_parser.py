@@ -77,6 +77,7 @@ def test_list_refuses_values_outside_its_choices(argv: list[str]) -> None:
         ["backup", "--to", "d"],
         ["library"],
         ["show", "x"],
+        ["tick"],
     ],
     ids=lambda argv: argv[0],
 )
@@ -86,6 +87,17 @@ def test_every_subcommand_takes_a_config_path(argv: list[str]) -> None:
 
     # Assert
     assert arguments.config == "/tmp/stash.toml"
+
+
+@pytest.mark.parametrize(
+    ("argv", "dry_run"), [(["tick"], False), (["tick", "--dry-run"], True)], ids=["real", "dry-run"]
+)
+def test_tick_is_a_real_run_unless_dry_run_is_given(argv: list[str], dry_run: bool) -> None:
+    # Execute
+    arguments = parse(*argv)
+
+    # Assert
+    assert arguments.dry_run is dry_run
 
 
 def test_the_config_path_is_absent_when_not_given() -> None:

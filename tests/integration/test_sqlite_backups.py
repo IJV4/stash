@@ -4,11 +4,11 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from backup_builders import a_backups
 from builders import a_capture, an_item
 from fakes.store_factories import opened
 
 from stash.store import BackupError
-from stash.store.backup import Backups
 
 TODAY = date(2026, 11, 2)
 
@@ -25,7 +25,7 @@ def test_a_backup_of_the_sqlite_store_opens_as_a_database_holding_the_saved_item
         store.save_item(item)
 
         # Execute
-        path = Backups(store).write(tmp_path / "backups", TODAY)
+        path = a_backups(store).write(tmp_path / "backups", TODAY)
 
     # Assert
     with closing(sqlite3.connect(path)) as copy:
@@ -41,7 +41,7 @@ def test_a_backup_of_the_sqlite_store_reopens_as_a_store_with_the_item(tmp_path:
     with opened(tmp_path / "stash.db") as store:
         store.add_capture(capture)
         store.save_item(item)
-        path = Backups(store).write(tmp_path / "backups", TODAY)
+        path = a_backups(store).write(tmp_path / "backups", TODAY)
 
     # Execute
     with opened(path) as restored:

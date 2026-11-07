@@ -16,6 +16,8 @@ from fakes.recording_assistant import RecordingAssistant
 from fakes.vanishing_item_store import VanishingItemStore
 from hermes_events import OWNER_ID, STRANGER_ID, an_event
 from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_button_rig, build_hermes_rig
+from planning_builders import DATE_NIGHT_ID, stored_date_night
+from step_builders import a_step
 
 from stash.capture.callbacks import FixAction, FixKind
 from stash.domain import Stage
@@ -183,3 +185,19 @@ def test_pressing_done_while_the_store_is_busy_asks_to_try_again_in_a_moment() -
 
     # Assert
     assert shown == BUSY
+
+
+def test_pressing_looks_good_while_the_store_is_busy_asks_to_try_again_and_confirms_nothing() -> (
+    None
+):
+    # Setup
+    store = BusyStore()
+    stored_date_night(store)
+    store.save_step(a_step(item_id=DATE_NIGHT_ID))
+    rig = build_button_rig(store)
+
+    # Execute
+    shown = rig.pressed(FixAction(FixKind.ACCEPT_STEPS, DATE_NIGHT_ID).encode())
+
+    # Assert
+    assert (shown, [step.confirmed for step in store.steps_for(DATE_NIGHT_ID)]) == (BUSY, [False])

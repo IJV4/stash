@@ -19,6 +19,7 @@ HIGHER_LAYERS = ("stash.app", "stash.rendering", "stash.cli", "stash.hermes_adap
         "planning",
         "nudges",
         "suggestions",
+        "delivery",
     ],
 )
 def test_no_package_imports_the_composition_root_or_an_entry_point(package: str) -> None:

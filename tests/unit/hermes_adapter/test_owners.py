@@ -9,7 +9,7 @@ def test_parsing_nothing_gives_no_owners() -> None:
     owners = Owners.parse(raw)
 
     # Assert
-    assert owners == Owners(frozenset())
+    assert owners == Owners(())
 
 
 def test_parsing_an_empty_string_gives_no_owners() -> None:
@@ -20,7 +20,7 @@ def test_parsing_an_empty_string_gives_no_owners() -> None:
     owners = Owners.parse(raw)
 
     # Assert
-    assert owners == Owners(frozenset())
+    assert owners == Owners(())
 
 
 def test_parsing_only_blank_entries_gives_no_owners() -> None:
@@ -31,7 +31,7 @@ def test_parsing_only_blank_entries_gives_no_owners() -> None:
     owners = Owners.parse(raw)
 
     # Assert
-    assert owners == Owners(frozenset())
+    assert owners == Owners(())
 
 
 def test_parsing_trims_the_spaces_around_each_user_id() -> None:
@@ -42,7 +42,7 @@ def test_parsing_trims_the_spaces_around_each_user_id() -> None:
     owners = Owners.parse(raw)
 
     # Assert
-    assert owners == Owners(frozenset({"12", "34"}))
+    assert owners == Owners(("12", "34"))
 
 
 def test_parsing_collapses_duplicate_user_ids() -> None:
@@ -53,7 +53,7 @@ def test_parsing_collapses_duplicate_user_ids() -> None:
     owners = Owners.parse(raw)
 
     # Assert
-    assert owners == Owners(frozenset({"12"}))
+    assert owners == Owners(("12",))
 
 
 def test_an_owner_user_id_is_admitted() -> None:
@@ -109,3 +109,25 @@ def test_an_owner_set_with_one_owner_does_not_admit_nobody() -> None:
 
     # Assert
     assert nobody is False
+
+
+def test_the_first_id_is_the_first_one_listed_not_the_smallest() -> None:
+    # Setup
+    owners = Owners.parse("77, 12, 34")
+
+    # Execute
+    first = owners.first_id()
+
+    # Assert
+    assert first == "77"
+
+
+def test_an_empty_owner_set_has_no_first_id() -> None:
+    # Setup
+    owners = Owners.parse(None)
+
+    # Execute
+    first = owners.first_id()
+
+    # Assert
+    assert first is None

@@ -1,9 +1,9 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import date, datetime, tzinfo
 from pathlib import Path
-from typing import TextIO
+from typing import Protocol, TextIO
 
-from stash.capture import CaptureIntake
+from stash.capture import CaptureIntake, Reply
 from stash.cli.failure import FAILURE, CommandFailed
 from stash.doctor import Doctor
 from stash.domain import ItemType, Stage
@@ -21,6 +21,14 @@ from stash.rendering import (
     switched_off_lines,
 )
 from stash.store import BackupError, BackupWriter, ItemStore
+
+MESSAGE_SEPARATOR = "\n\n"
+
+
+class TickDelivery(Protocol):
+    def deliver(self, now: datetime, send: Callable[[Reply], None]) -> None: ...
+
+    def preview(self, now: datetime) -> tuple[Reply, ...]: ...
 
 
 def _emit(lines: Iterable[str], out: TextIO) -> None:
@@ -87,4 +95,16 @@ def show(lifecycle: Lifecycle, item_id: str, out: TextIO) -> int:
     except UnknownItem as error:
         raise CommandFailed(str(error), FAILURE) from error
     _emit(history_lines(history), out)
+    return 0
+
+
+def tick(delivery: TickDelivery, now: datetime, dry_run: bool, out: TextIO) -> int:
+    if dry_run:
+        replies = delivery.preview(now)
+    else:
+        sent: list[Reply] = []
+        delivery.deliver(now, sent.append)
+        replies = tuple(sent)
+    if replies:
+        print(MESSAGE_SEPARATOR.join(reply.text for reply in replies), file=out)
     return 0

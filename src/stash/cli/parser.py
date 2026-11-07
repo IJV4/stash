@@ -27,6 +27,7 @@ class Command(StrEnum):
     BACKUP = "backup"
     LIBRARY = "library"
     SHOW = "show"
+    TICK = "tick"
 
 
 class GpuAction(StrEnum):
@@ -103,6 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_library(commands, shared)
     show = commands.add_parser(Command.SHOW, parents=[shared], help="show an item's history")
     show.add_argument("item_id")
+    tick = commands.add_parser(Command.TICK, parents=[shared], help="send the nudges that are due")
+    tick.add_argument("--dry-run", action="store_true", help="print them without marking them sent")
     return parser
 
 

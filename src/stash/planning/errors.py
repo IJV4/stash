@@ -1,3 +1,6 @@
+PLANNING_BUSY = "the stash is busy with another change; try again in a moment"
+
+
 class PlanningError(Exception):
     pass
 
@@ -16,3 +19,8 @@ class UnknownStep(PlanningError):
 
 class PlanningRefused(PlanningError):
     pass
+
+
+class PlanningBusy(PlanningError):
+    def __init__(self) -> None:
+        super().__init__(PLANNING_BUSY)

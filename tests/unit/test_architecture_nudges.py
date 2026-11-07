@@ -15,6 +15,8 @@ NUDGES_IMPORTERS = (
     "stash.capture.nudge_replies",
     "stash.capture.nudge_buttons",
     "stash.capture.digest_replies",
+    "stash.app.build",
+    "stash.delivery",
 )
 CAPTURE_MAY_IMPORT_FROM_NUDGES = (
     "stash.nudges.due",

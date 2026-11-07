@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import Callable
 
+import pytest
 from capture_builders import QUESTION
 from fakes.hermes_ctx import FakeHermesContext
 from hermes_ctx_builders import a_hermes_context
@@ -256,3 +257,34 @@ def test_a_reloaded_context_with_new_owners_admits_the_new_owners_chat() -> None
 
     # Assert
     assert accepted is True
+
+
+def test_a_spawned_task_runs_on_the_running_loop_and_is_recorded() -> None:
+    # Setup
+    ctx = a_hermes_context()
+    ran: list[str] = []
+
+    async def work() -> None:
+        ran.append("ran")
+
+    async def scenario() -> None:
+        ctx.spawn_task(work())
+        await asyncio.gather(*ctx.spawned)
+
+    # Execute
+    asyncio.run(scenario())
+
+    # Assert
+    assert (ran, len(ctx.spawned)) == (["ran"], 1)
+
+
+def test_spawning_a_task_without_a_running_loop_fails() -> None:
+    # Setup
+    ctx = a_hermes_context()
+
+    async def work() -> None:
+        return None
+
+    # Execute / Assert
+    with pytest.raises(RuntimeError):
+        ctx.spawn_task(work())

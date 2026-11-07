@@ -16,6 +16,7 @@ PLANNING_IMPORTERS = (
     "stash.capture.planning_buttons",
     "stash.app.build",
     "stash.app.app",
+    "stash.delivery",
     "stash.hermes_adapter.tool_json",
 )
 CAPTURE_MAY_IMPORT_FROM_PLANNING = ("stash.planning.errors", "stash.planning.results")

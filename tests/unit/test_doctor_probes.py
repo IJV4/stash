@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from fakes.memory_store import MemoryStore
 from fakes.search_path import FakeSearchPath
 
 from stash.doctor_probes import (
+    BackupProbe,
     ConfigProbe,
     DatabaseProbe,
     ExecutableProbe,
@@ -16,6 +18,9 @@ from stash.doctor_probes import (
 )
 from stash.gpu import GpuSample
 from stash.llm import ProbeResult
+from stash.store import BACKUP_LAST_SUCCESS_KEY
+
+NOW = datetime(2026, 11, 5, 12, 0, tzinfo=UTC)
 
 
 def test_the_config_probe_always_passes_and_names_the_provider_and_data_directory() -> None:
@@ -128,3 +133,39 @@ def test_the_executable_probe_fails_with_its_hint_when_the_tool_is_not_on_the_pa
 
     # Assert
     assert result == ProbeResult(False, "not found on PATH (yt-dlp needs a JavaScript runtime)")
+
+
+def test_the_backup_probe_fails_when_no_backup_was_ever_recorded() -> None:
+    # Setup
+    probe = BackupProbe(MemoryStore(), lambda: NOW)
+
+    # Execute
+    result = probe.check()
+
+    # Assert
+    assert result == ProbeResult(False, "no backup recorded yet")
+
+
+@pytest.mark.parametrize(
+    ("age", "expected"),
+    [
+        (timedelta(minutes=59), ProbeResult(True, "last success 0 hours ago")),
+        (timedelta(hours=1), ProbeResult(True, "last success 1 hour ago")),
+        (timedelta(hours=47, minutes=59), ProbeResult(True, "last success 47 hours ago")),
+        (timedelta(hours=48), ProbeResult(False, "last success 2 days ago")),
+        (timedelta(days=3, hours=23), ProbeResult(False, "last success 3 days ago")),
+    ],
+    ids=["under-an-hour", "one-hour", "just-inside-48h", "exactly-48h", "whole-days-only"],
+)
+def test_the_backup_probe_passes_under_48_hours_and_fails_from_48_hours_naming_the_age(
+    age: timedelta, expected: ProbeResult
+) -> None:
+    # Setup
+    settings = MemoryStore()
+    settings.put_setting(BACKUP_LAST_SUCCESS_KEY, (NOW - age).isoformat())
+
+    # Execute
+    result = BackupProbe(settings, lambda: NOW).check()
+
+    # Assert
+    assert result == expected

@@ -1,5 +1,11 @@
 from stash.planning.declines import Declines
-from stash.planning.errors import PlanningError, PlanningRefused, UnknownItem, UnknownStep
+from stash.planning.errors import (
+    PlanningBusy,
+    PlanningError,
+    PlanningRefused,
+    UnknownItem,
+    UnknownStep,
+)
 from stash.planning.parse import MAX_PROPOSED_STEPS, parse_steps
 from stash.planning.ports import (
     PlanningModelSource,
@@ -18,6 +24,7 @@ __all__ = [
     "STEPS_SCHEMA",
     "Declines",
     "Planning",
+    "PlanningBusy",
     "PlanningError",
     "PlanningModelSource",
     "PlanningRefused",

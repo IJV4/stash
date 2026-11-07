@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from backup_builders import a_backups
 from capture_builders import FORCED_QUESTION, a_filing_answer
 from cli_rig import LATE_EVENING_IN_LOS_ANGELES, NOON, CliRig, build_cli_rig
 from fakes.backup_source import FakeBackupSource
@@ -13,7 +14,7 @@ from fakes.fake_providers import OLLAMA_CHAT_PATH
 
 from stash.cli import main
 from stash.store import BackupError
-from stash.store.backup import BackupName, Backups
+from stash.store.backup import BackupName
 from stash.store.sqlite import SqliteStore
 
 EVERY_SUBCOMMAND = [
@@ -270,7 +271,7 @@ def test_backup_exits_1_and_prints_the_message_on_standard_error_when_the_source
     # Execute
     exit_code = main(
         ["backup", "--to", str(target), "--config", str(rig.config_file)],
-        factory=lambda config: replace(rig.build(config), backups=Backups(source)),
+        factory=lambda config: replace(rig.build(config), backups=a_backups(source)),
         env=rig.env,
         out=out,
         err=err,

@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import Any
@@ -52,7 +53,11 @@ class RegisteredStash:
         return self.application.bot
 
     def connect_telegram(self) -> None:
+        asyncio.run(self._connect_without_ticking())
+
+    async def _connect_without_ticking(self) -> None:
         self.ctx.connect("telegram", self.application)
+        await self.ctx.cancel_spawned()
 
     def reconnected(self) -> "RegisteredStash":
         reconnected = replace(self, application=FakeTelegramApplication())

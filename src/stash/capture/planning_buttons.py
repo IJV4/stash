@@ -4,9 +4,9 @@ from functools import partial
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.planning_replies import step_done_reply, steps_saved_reply, steps_skipped_reply
 from stash.capture.ports import ItemLookup, PlanningActions
-from stash.capture.replies import Reply, gone, refused
+from stash.capture.replies import Reply, busy, gone, refused
 from stash.domain import Item
-from stash.planning.errors import PlanningRefused, UnknownItem, UnknownStep
+from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
 
 
 class PlanningButtons:
@@ -53,5 +53,8 @@ class PlanningButtons:
         except UnknownStep as error:
             self._log.unknown(Subject.STEP, error.step_id)
             return gone()
+        except PlanningBusy:
+            self._log.busy()
+            return busy()
         except PlanningRefused as error:
             return refused(str(error))

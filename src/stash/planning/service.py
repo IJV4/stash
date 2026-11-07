@@ -4,10 +4,10 @@ from contextlib import contextmanager
 from datetime import date, datetime
 
 from stash.domain import Item, Stage, Step
-from stash.planning.errors import PlanningRefused, UnknownItem, UnknownStep
+from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
 from stash.planning.ports import PlanningStore, ProposalDeclines, StepProposals
 from stash.planning.results import Proposal, ProposedStep
-from stash.store.port import UnknownItemError
+from stash.store.port import StoreBusyError, UnknownItemError
 
 NOT_PROPOSABLE = "only a planned item with a date and no steps can get proposed steps"
 
@@ -21,11 +21,13 @@ def _refusing_what_the_domain_refuses() -> Iterator[None]:
 
 
 @contextmanager
-def _reporting_items_that_vanished() -> Iterator[None]:
+def _translating_store_errors() -> Iterator[None]:
     try:
         yield
     except UnknownItemError as error:
         raise UnknownItem(error.item_id) from error
+    except StoreBusyError as error:
+        raise PlanningBusy from error
 
 
 def _any_unconfirmed(steps: Sequence[Step]) -> bool:
@@ -60,7 +62,7 @@ class Planning:
         if not self.needs_proposal(item):
             raise PlanningRefused(NOT_PROPOSABLE)
         proposals = self._proposer.propose(item)
-        with self._lock, _reporting_items_that_vanished():
+        with self._lock, _translating_store_errors():
             current = self._item(item_id)
             if current.date != item.date or not self.needs_proposal(current):
                 raise PlanningRefused(NOT_PROPOSABLE)
@@ -119,7 +121,7 @@ class Planning:
         lead_days: int | None = None,
         due_on: date | None = None,
     ) -> Step:
-        with self._lock, _reporting_items_that_vanished():
+        with self._lock, _translating_store_errors():
             current = self._step(step_id)
             with _refusing_what_the_domain_refuses():
                 edited = current.edited(text=text, lead_days=lead_days, due_on=due_on)
@@ -127,7 +129,7 @@ class Planning:
         return edited
 
     def complete_step(self, step_id: str) -> Step:
-        with self._lock, _reporting_items_that_vanished():
+        with self._lock, _translating_store_errors():
             done = self._step(step_id).confirmed_now().marked_done()
             self._store.save_step(done)
         return done
@@ -135,7 +137,7 @@ class Planning:
     @contextmanager
     def _locked_item(self, item_id: str) -> Iterator[None]:
         self._item(item_id)
-        with self._lock, _reporting_items_that_vanished():
+        with self._lock, _translating_store_errors():
             yield
 
     def _as_unconfirmed_steps(

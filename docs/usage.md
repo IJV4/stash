@@ -1192,7 +1192,7 @@ has a date), and also when
 a concurrent proposal (or a step the agent just added) won while the model was
 thinking, or when the item was rescheduled to another date meanwhile (the
 answer was written for the old date, so it is stale: nothing is saved and
-nothing is declined). A caller such as the Task 6 ticker treats that refusal as
+nothing is declined). The ticker's proposal delivery (below) treats that refusal as
 "nothing to send". A proposal that comes back empty is not saved.
 
 Declining sticks. Pressing "No steps" (`planning.discard(item_id)`) records a
@@ -1213,8 +1213,45 @@ that `Planning` takes; the composition root builds it over the SQLite store.
 An outage (`LlmUnavailable`, `LlmDeferred`) is not a decline: the item still needs a
 proposal and is retried next tick. A decline is never deleted; with steps
 present, or the item out of PLANNED, it is irrelevant. When sending a proposal
-fails, Task 6's ticker calls `planning.discard(item_id)` so the item is not
-retried forever.
+fails, the ticker calls `planning.discard(item_id)` so no unconfirmed steps stay
+hidden and the item is not retried forever (see *Proposals reach the owner*).
+
+A store that stays busy (another writer holds the write lock for more than 5 s)
+makes the writing calls (`propose_for`, `confirm_all`, `discard`, `add_step`,
+`edit_step`, `complete_step`) raise `PlanningBusy`, a `PlanningError`; nothing is
+written. The Telegram buttons answer it "The stash is busy — try again in a
+moment." and log it; the agent tools answer `{"error": ...}` with its message.
+
+### Proposals reach the owner  [Plan 3 Task 6b]
+
+    from stash.delivery import ProposalDelivery
+
+    proposals = ProposalDelivery(planning, store)     # app.proposal_delivery
+    proposals.deliver(send)                           # send: Callable[[Reply], None]
+
+The ticker (see *Reminders*) calls `deliver` on every tick. Each call looks at
+the Planned items (the newest 200), keeps those with a date for which
+`planning.needs_proposal` is true, and proposes steps for at most 3 of them, one
+message each, with `proposal_reply` (`Looks good ✓` and `No steps` buttons).
+
+- A proposal the model leaves empty is sent as `🗓 Nothing to prep for <title>
+  (<day>).`
+- If the send fails, `planning.discard(item_id)` removes the unconfirmed steps
+  and records the decline for that date, so the item is not proposed again until
+  its date changes. The owner can still ask the agent for steps. If that
+  `discard` itself fails (a busy store), it is logged by its type name, the steps
+  stay saved unseen, and the next item is still proposed.
+- A stale answer (`PlanningRefused`: the item was rescheduled or got steps
+  meanwhile) is skipped silently. Any other failure for one item (the AI
+  unavailable or deferred, a busy store) is logged by its type name and the item
+  is tried again on the next tick; the next item is still tried.
+- The call runs the model, so the ticker runs it off the event loop.
+
+Pinned by `tests/acceptance/test_delivery.py`: a dated planned item is proposed
+and sent, at most three per call, a failed send discards the steps and the
+decline holds for that date, an AI outage leaves the item for the next call
+without stopping the next item, a stale answer is not logged, and a busy store
+on a planning button gets the busy reply (`tests/acceptance/test_hermes_buttons.py`).
 
 Every refusal raises a `PlanningError`: `UnknownItem(item_id)`,
 `UnknownStep(step_id)` or `PlanningRefused(message)`. A refused call writes
@@ -1305,9 +1342,9 @@ lines.
 
 `stash.nudges` works out which reminders are due at an instant and groups them
 into messages; `stash.capture.nudge_replies` turns a message into a `Reply`.
-Nothing here sends anything or runs on its own: the Task 6 ticker calls these
-every `tick_seconds`, sends each reply through the outbox, and marks a message
-sent only after its send succeeded.
+Nothing in these two packages sends anything or runs on its own. `stash.delivery`
+runs them as one loop (below), the in-process ticker calls that loop every
+`tick_seconds`, and `stash tick` calls it once from the command line.
 
     from stash.capture.nudge_replies import nudge_reply
     from stash.nudges import Nudger, Schedule, batch_messages
@@ -1319,8 +1356,11 @@ sent only after its send succeeded.
     nudger = Nudger(store, schedule)
     for message in batch_messages(nudger.due(now), now):
         rendered = nudge_reply(message)                   # NudgeReply(reply, shown)
-        outbox.send(rendered.reply)                       # Task 6; a failed send stops here
+        send(rendered.reply)                              # a failed send leaves it unsent
         nudger.mark_sent(rendered.shown, sent_at)         # False: another sender had recorded one
+
+That loop is written once, in `stash.delivery.NudgeDelivery`; the ticker, `stash
+tick` and the test rig all call it instead of repeating it.
 
 What is due at `now` (`nudger.due(now)`): every reminder whose instant is at
 most `now`, at most 14 days old (older ones are dropped silently), not yet
@@ -1374,9 +1414,9 @@ Want to answers the `is in Want to.` line again. The operation is
 `Lifecycle.didnt_happen(item_id)`.
 
 Each statement has one acceptance test in `tests/acceptance/test_nudges.py`,
-which ticks a clock-driven loop (due, batch, render, send, mark) over
-in-memory fakes, with a Saturday 2027-02-13 date night and a confirmed
-same-day step:
+which ticks `NudgeDelivery.deliver` (due, build digests, batch, render, send,
+mark) over in-memory fakes, with a Saturday 2027-02-13 date night and a
+confirmed same-day step:
 
 1. Ticking through that week (every 60 seconds around each reminder time,
    hourly in between) sends exactly three messages: the
@@ -1395,6 +1435,92 @@ same-day step:
 7. When the send fails the message is not marked, and the next tick sends it.
 8. Pressing `Didn't happen` on the follow-up moves the date night back to Want
    to with no date.
+
+### Delivery, the ticker and `stash tick`  [Plan 3 Task 6b]
+
+    from stash.delivery import NudgeDelivery, ProposalDelivery
+
+    app.nudge_delivery.deliver(now, send)     # send: Callable[[Reply], None]; blocking
+    app.nudge_delivery.preview(now)           # -> tuple[Reply, ...]; sends and marks nothing
+    app.proposal_delivery.deliver(send)       # see *Planning ahead*
+
+`NudgeDelivery.deliver` does one tick: `nudger.due(now)`, every `WeeklyDigest`
+filled in by `DigestBuilder.build(due, now)` (with `QuietPicks`, so a model
+outage only leaves out the suggestions), `batch_messages`, then for each
+message `nudge_reply`, `send`, and `nudger.mark_sent` of the part the reply
+showed. It is synchronous and knows nothing about asyncio or Telegram.
+
+9. A failed `send` (any exception) is logged by its type name only, the message
+   stays unsent, and the next message is still tried; the next tick sends it
+   again.
+10. `mark_sent` answering `False` (another sender recorded one of the rows
+    first) is logged and the message is not sent again. A `mark_sent` that
+    raises after a successful send (a busy store) is logged by its type name
+    and the tick carries on with the next message; that message was sent but
+    not recorded, so it is due again on the next tick (the accepted cost of
+    sending before recording).
+11. First run: on the first tick, when the ledger has no digest row, nothing is
+    sent. Every nudge already due (step, date and follow-up reminders, the
+    digest, its stuck and forgotten items) is recorded as sent in one
+    transaction (all or nothing; if it fails the next tick seeds again), so a
+    fresh install or a first run over an existing database does
+    not replay two weeks of reminders. The next scheduled digest and reminder
+    arrive as usual. A PC that was merely off keeps its catch-up message,
+    because its ledger already has a digest row.
+12. `preview(now)` returns the replies `deliver` would send and marks nothing;
+    on the first run it returns nothing, because a real run would stay silent.
+
+**The in-process ticker** (`stash.hermes_adapter.ticker`). The first time Hermes
+connects Telegram, the platform-handler factory starts a `Ticker` with
+`ctx.spawn_task`. Every `tick_seconds` (default 60) it runs `deliver` for the
+nudges and then for the proposals, each inside `asyncio.to_thread` (the store
+can block for up to 5 s), and sends through the Telegram outbox to the owner's
+chat: the first id in `TELEGRAM_ALLOWED_USERS`, or the `owner_chat_id` plugin
+setting when present. With neither, stash logs one warning ("no owner chat:
+reminders are off") and starts no ticker.
+
+- Ticks never overlap (one lock). A delivery that raises is logged and the
+  ticker carries on; cancelling it (Hermes does this on unload) never leaves the
+  lock held, and a message is only marked sent after its send returned.
+- The send runs on the event loop and has a 30 s limit; a send that does not
+  finish counts as a failed send.
+- Once-only guard: `TickerLauncher` lives on the process-wide `AdapterState`.
+  Hermes re-runs the factory whenever the Telegram client is rebuilt; while a
+  ticker is running the later call only logs that it is reusing it. A ticker
+  that ended is started again by the next factory call.
+- Unverified on the live gateway: the `ctx.spawn_task` signature (called with
+  the coroutine only), the re-run on a real reconnect, and what happens on a
+  hot reload, which skips the factory (spike-m0 #26).
+
+Pinned by `tests/acceptance/test_hermes_ticker.py` (two connects start one
+ticker; an ended ticker restarts; a reminder reaches the owner chat once across
+ticks; a failed send is retried on the next tick; a failed proposal send discards
+the proposal) and `tests/unit/hermes_adapter/test_ticker.py` (ticks never
+overlap, work runs off the event-loop thread, a cancel leaves the next tick free,
+a failing delivery does not stop the ticker, the pause between ticks, the send
+limit) and `test_plugin_ticker.py` (the owner chat choice).
+
+**`stash tick [--dry-run]`** is the fallback when the ticker is not running (cron
+`--no-agent`, see `docs/deploy/wsl-setup.md`).
+
+    $ stash tick
+    ⏰ Book the table — for Date night (Sat Feb 13)
+    📅 Date night (Sat Feb 13)
+
+It runs one `deliver` tick with plain text instead of buttons, prints the
+messages separated by one blank line, and marks them sent. It prints nothing at
+all when nothing is due, and nothing on the first run (which only seeds the
+ledger). `--dry-run` prints what a real run would, marks nothing, so a real run
+afterwards still sends it. It has no proposals (they need buttons). It shares the
+sent-nudge ledger with the ticker. Pinned by `tests/acceptance/test_cli_tick.py`.
+
+**`stash doctor`** gains a `backup` line, an optional check: `✔ backup — last
+success 5 hours ago` when `stash backup` last succeeded less than 48 hours ago,
+`! backup — last success 3 days ago` after that, and `! backup — no backup
+recorded yet` before the first one. `Backups.write` records the instant in the
+setting `backup.last_success` once the copy is in place, never for a failed one;
+a failure to record it (a busy store) is logged as a warning and the backup is
+still reported as written.
 
 Pinned by unit tests: `at_local` for a time in the spring-forward gap gives one
 instant (the wall-clock time read with the pre-transition offset), and for an
@@ -1423,8 +1549,15 @@ due value, now carrying its `sections` (new, forgotten, coming up, suggestions;
 the stuck items it already carried are the fifth). `render_digest` turns it into
 the Telegram text. The builder only reads. Because the filled digest is still
 the one `WeeklyDigest` in the message, a single `nudger.mark_sent` records
-everything: the stuck items, the forgotten items and the digest itself, in that
-order.
+everything: the stuck items, the forgotten items and the digest itself, in one
+transaction (`record_all_sent`, so a crash never half-records a digest).
+
+In the app, `build_app` wires `DigestBuilder(store, QuietPicks(suggestions),
+schedule)` into `app.nudge_delivery`, which builds every due `WeeklyDigest` with
+`builder.build(due, now)` before it batches (see *Reminders*, "Delivery"). On the
+first run the digest is built too, so its forgotten items are recorded as
+sent along with the rest and the first digest the owner sees is the next
+scheduled one; the suggestions model is asked once for that discarded digest.
 
     from stash.capture.digest_replies import render_digest
     from stash.capture.nudge_replies import nudge_reply
@@ -1506,6 +1639,10 @@ are accepted, each reason is cut to 200 characters, and nothing it says is run.
     desk = SuggestionDesk(store, engine)                  # Want to items, newest 40
     desk.suggest("2h free Saturday, at home", 3)          # -> Picked((Pick(item, reason), ...)) | Unavailable()
     QuietPicks(desk).picks(DIGEST_CONTEXT, 3)             # the digest's view: tuple[Pick, ...], () when unavailable
+
+`build_app` builds one desk (`app.suggestions`) and uses it for `/suggest`, the
+`stash_suggest` tool and, wrapped in `QuietPicks`, the weekly digest's
+suggestions section (see *Weekly digest*).
 
 Statements (each has a test in `tests/unit/suggestions/`,
 `tests/unit/hermes_adapter/` or `tests/acceptance/test_suggestions.py`; the

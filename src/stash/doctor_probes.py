@@ -1,11 +1,21 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Protocol
 
 from stash.config import StashConfig
 from stash.gpu import GpuProbe
 from stash.llm import ProbeResult
-from stash.store import ItemStore
+from stash.store import BACKUP_LAST_SUCCESS_KEY, ItemStore
+
+STALE_BACKUP_AFTER = timedelta(hours=48)
+NO_BACKUP_RECORDED = "no backup recorded yet"
+SECONDS_PER_HOUR = 3600
+
+
+class SettingsReader(Protocol):
+    def get_setting(self, key: str) -> str | None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,3 +74,23 @@ class ExecutableProbe:
         if found is None:
             return ProbeResult(False, f"not found on PATH ({self.hint})")
         return ProbeResult(True, found)
+
+
+@dataclass(frozen=True, slots=True)
+class BackupProbe:
+    settings: SettingsReader
+    clock: Callable[[], datetime]
+
+    def check(self) -> ProbeResult:
+        recorded = self.settings.get_setting(BACKUP_LAST_SUCCESS_KEY)
+        if recorded is None:
+            return ProbeResult(False, NO_BACKUP_RECORDED)
+        age = self.clock() - datetime.fromisoformat(recorded)
+        if age < STALE_BACKUP_AFTER:
+            return ProbeResult(True, f"last success {_hours(age)} ago")
+        return ProbeResult(False, f"last success {age.days} days ago")
+
+
+def _hours(age: timedelta) -> str:
+    hours = int(age.total_seconds() // SECONDS_PER_HOUR)
+    return f"{hours} hour" if hours == 1 else f"{hours} hours"

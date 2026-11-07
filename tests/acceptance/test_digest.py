@@ -12,7 +12,7 @@ from digest_builders import (
 )
 from digest_rig import a_digest_rig
 from fakes.failing_nudge_sender import FailingNudgeSender
-from fakes.ledger_recording_store import LedgerCrashed, LedgerRecordingStore
+from fakes.ledger_recording_store import LedgerRecordingStore
 from fakes.memory_store import MemoryStore
 from nudge_builders import (
     LONG_AGO,
@@ -154,8 +154,7 @@ def test_a_crash_while_recording_the_digest_repeats_the_whole_digest() -> None:
     stored(store, a_stuck_book())
     rig = a_digest_rig(store, [NO_SUGGESTIONS] * 2)
     store.crash_on = NudgeKind.DIGEST
-    with pytest.raises(LedgerCrashed):
-        rig.tick(DIGEST_AT)
+    rig.tick(DIGEST_AT)
     store.crash_on = None
 
     # Execute

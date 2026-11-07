@@ -58,6 +58,9 @@ class Nudger:
         unsent = [due for due in found if not self._store.was_sent(due.nudge.key)]
         return sorted(unsent, key=lambda due: due.due_at)
 
+    def is_first_run(self) -> bool:
+        return self._store.last_sent(NudgeKind.DIGEST) is None
+
     def mark_sent(self, message: NudgeMessage, sent_at: dt.datetime) -> bool:
         return self._store.record_all_sent(message.nudges, sent_at)
 

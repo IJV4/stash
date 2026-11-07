@@ -1,6 +1,8 @@
+from collections.abc import Sequence
+
 from fakes.memory_store import MemoryStore
 
-from stash.domain import Item, Outcome
+from stash.domain import Item, Outcome, Step
 from stash.store import StoreBusyError
 
 
@@ -12,4 +14,7 @@ class BusyStore(MemoryStore):
         raise StoreBusyError
 
     def group_item(self, child: Item, *, replacing: Item) -> None:
+        raise StoreBusyError
+
+    def save_steps(self, item_id: str, steps: Sequence[Step]) -> None:
         raise StoreBusyError

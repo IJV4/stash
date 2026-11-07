@@ -1,4 +1,4 @@
-from stash.planning import PlanningError, PlanningRefused, UnknownItem, UnknownStep
+from stash.planning import PlanningBusy, PlanningError, PlanningRefused, UnknownItem, UnknownStep
 
 
 def test_an_unknown_item_names_the_item_id() -> None:
@@ -19,7 +19,7 @@ def test_an_unknown_step_names_the_step_id() -> None:
 
 def test_every_planning_refusal_is_a_planning_error() -> None:
     # Setup
-    kinds = (UnknownItem, UnknownStep, PlanningRefused)
+    kinds = (UnknownItem, UnknownStep, PlanningRefused, PlanningBusy)
 
     # Execute
     planning_errors = [issubclass(kind, PlanningError) for kind in kinds]

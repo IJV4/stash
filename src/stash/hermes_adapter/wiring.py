@@ -15,6 +15,7 @@ from stash.hermes_adapter.scheduler import LoopScheduler, Scheduler
 from stash.hermes_adapter.step_tools import StepTools
 from stash.hermes_adapter.suggest_command import SuggestCommand
 from stash.hermes_adapter.suggest_tools import SuggestTools
+from stash.hermes_adapter.ticker import Ticker
 from stash.hermes_adapter.tool_spec import ToolSpec
 from stash.hermes_adapter.tools import StashTools
 
@@ -23,6 +24,19 @@ Command = ListCommand | GpuCommand | RetryCommand | LibraryCommand | SuggestComm
 
 def build_scheduler(app: StashApp) -> LoopScheduler:
     return LoopScheduler(app.clock)
+
+
+def build_ticker(
+    app: StashApp, sender: ReplySender, owner_chat: str, scheduler: Scheduler | None = None
+) -> Ticker:
+    return Ticker(
+        app.nudge_delivery,
+        app.proposal_delivery,
+        sender,
+        owner_chat,
+        scheduler or build_scheduler(app),
+        app.config.nudges.tick_seconds,
+    )
 
 
 def build_intake(

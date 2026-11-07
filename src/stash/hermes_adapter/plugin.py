@@ -15,6 +15,7 @@ from stash.hermes_adapter.events import DISPATCH_HOOK
 from stash.hermes_adapter.host import hermes_secret, resolved_environment
 from stash.hermes_adapter.owners import Owners
 from stash.hermes_adapter.telegram_link import TelegramLink
+from stash.hermes_adapter.ticker import TickerLauncher
 from stash.hermes_adapter.tool_spec import TOOLSET, ToolSpec
 from stash.hermes_adapter.wiring import (
     Command,
@@ -22,6 +23,7 @@ from stash.hermes_adapter.wiring import (
     build_commands,
     build_intake,
     build_scheduler,
+    build_ticker,
     build_tools,
 )
 
@@ -29,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = "~/.config/stash/stash.toml"
 HERMES_SECRETS = ("OPENROUTER_API_KEY", "TELEGRAM_ALLOWED_USERS")
+OWNER_CHAT_SETTING = "owner_chat_id"
+NO_OWNER_CHAT_LOG = "no owner chat: reminders are off"
 COMMAND_DESCRIPTIONS = {
     "list": ("List saved items, newest first", "[stage]"),
     "gpu": ("Switch stash's use of the GPU", "on|off|status"),
@@ -85,19 +89,48 @@ class SharedApp:
 class AdapterState:
     app: SharedApp
     telegram: TelegramLink
+    ticker: TickerLauncher
 
 
 # Unverified (spike-m0 #24): outlives a hot-reload; Hermes re-imports only the shim, not stash.*
-PROCESS_STATE = AdapterState(SharedApp(), TelegramLink())
+PROCESS_STATE = AdapterState(SharedApp(), TelegramLink(), TickerLauncher())
+
+
+def _nothing() -> None:
+    return None
+
+
+def _owner_chat(ctx: Any, owners: Owners) -> str | None:
+    configured = ctx.get_config(OWNER_CHAT_SETTING)
+    chat = str(configured).strip() if isinstance(configured, str | int) else ""
+    return chat or owners.first_id()
+
+
+def _ticker_start(
+    ctx: Any, app: StashApp, owners: Owners, link: TelegramLink, launcher: TickerLauncher
+) -> Callable[[], None]:
+    owner_chat = _owner_chat(ctx, owners)
+    if owner_chat is None:
+        logger.warning(NO_OWNER_CHAT_LOG)
+        return _nothing
+    return lambda: launcher.start_once(
+        ctx.spawn_task, lambda: build_ticker(app, link.outbox, owner_chat)
+    )
 
 
 def _wire_chat(
-    ctx: Any, app: StashApp, owners: Owners, link: TelegramLink, new_id: Callable[[], str]
+    ctx: Any,
+    app: StashApp,
+    owners: Owners,
+    state: AdapterState,
+    new_id: Callable[[], str],
 ) -> None:
+    link = state.telegram
     assistant = GatewayAssistant(ctx.inject_message, link.outbox)
     intake = build_intake(app, owners, link.outbox, build_scheduler(app), new_id)
     callbacks = build_callbacks(app, owners, link.outbox, assistant)
     link.route_presses_to(callbacks.on_press)
+    link.start_with(_ticker_start(ctx, app, owners, link, state.ticker))
     ctx.register_hook(DISPATCH_HOOK, intake.on_dispatch)
     ctx.register_platform_handler("telegram", link.on_connect)
 
@@ -121,6 +154,6 @@ def register(
     owners = Owners.parse(environment.get("TELEGRAM_ALLOWED_USERS"))
     if owners.admits_nobody():
         logger.warning("TELEGRAM_ALLOWED_USERS is empty: stash will ignore every message")
-    _wire_chat(ctx, app, owners, state.telegram, new_id)
+    _wire_chat(ctx, app, owners, state, new_id)
     _register_commands(ctx, build_commands(app))
     _register_tools(ctx, build_tools(app))

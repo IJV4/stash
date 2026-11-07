@@ -28,6 +28,7 @@ from stash.capture import (
     SerializedPipeline,
 )
 from stash.config import StashConfig
+from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.enrich.ytdlp import default_ytdlp_extract
 from stash.filing import Filer
 from stash.gpu import GpuGate
@@ -36,9 +37,10 @@ from stash.gpu_switch import GpuSwitch
 from stash.http_client import make_http_client
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
+from stash.nudges import DigestBuilder, Nudger, Schedule
 from stash.planning import Declines, Planning, StepProposer
 from stash.store.backup import Backups
-from stash.suggestions import SuggestionDesk, SuggestionEngine
+from stash.suggestions import QuietPicks, SuggestionDesk, SuggestionEngine
 
 
 def _utc_now() -> datetime:
@@ -85,6 +87,9 @@ def build_app(
             _new_id,
             clock,
         )
+        suggestions = SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone))
+        schedule = Schedule(config.nudges, config.timezone)
+        digests = DigestBuilder(sqlite, QuietPicks(suggestions), schedule)
         return StashApp(
             config=config,
             store=sqlite,
@@ -93,18 +98,20 @@ def build_app(
             fixes=FixHandler(sqlite, lifecycle, planning, clock),
             lifecycle=lifecycle,
             planning=planning,
-            suggestions=SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone)),
+            suggestions=suggestions,
+            nudge_delivery=NudgeDelivery(Nudger(sqlite, schedule), digests),
+            proposal_delivery=ProposalDelivery(planning, sqlite),
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),
             router=router,
-            doctor=build_doctor(config, sqlite, http, gpu_probe, which, find_spec),
+            doctor=build_doctor(config, sqlite, http, gpu_probe, which, find_spec, clock),
             burst_factory=lambda: BurstCoalescer(config.burst_window_seconds),
             clock=clock,
             eval_targets=eval_targets(
                 config.llm, eval_chat_models(config.llm, http), vision_models(config.llm, http)
             ),
             ocr=make_ocr(which),
-            backups=Backups(sqlite),
+            backups=Backups(sqlite, sqlite, clock),
             resources=resources,
         )
     except BaseException:

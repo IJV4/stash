@@ -19,6 +19,7 @@ from stash.domain import (
 
 DEFAULT_PAGE_SIZE = 20
 RANGE_ORDER_MESSAGE = "start must not be after end"
+BACKUP_LAST_SUCCESS_KEY = "backup.last_success"
 
 
 class UnknownCaptureError(Exception):

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from builders import an_ollama_settings, an_openrouter_settings
 from config_builders import a_stash_config, an_llm_config
 from fakes.failing_list_store import FailingListStore
@@ -10,10 +12,11 @@ from stash.app.doctor_checks import build_doctor
 from stash.config import LlmTask, ProviderName, StashConfig
 from stash.doctor import DoctorLine
 from stash.gpu import GpuProbe, GpuSample
-from stash.store import ItemStore
+from stash.store import Store
 
 OLLAMA = ProviderName.OLLAMA
 OPENROUTER = ProviderName.OPENROUTER
+NOW = datetime(2026, 11, 5, 12, 0, tzinfo=UTC)
 BOTH_PROVIDERS = {
     OLLAMA: an_ollama_settings(),
     OPENROUTER: an_openrouter_settings(),
@@ -27,7 +30,7 @@ def a_config(**llm_fields: object) -> StashConfig:
 def lines_of(
     config: StashConfig,
     providers: FakeProviders | None = None,
-    store: ItemStore | None = None,
+    store: Store | None = None,
     gpu_probe: GpuProbe | None = None,
     executables: dict[str, str] | None = None,
 ) -> list[DoctorLine]:
@@ -38,6 +41,7 @@ def lines_of(
         FakeGpuProbe(None) if gpu_probe is None else gpu_probe,
         FakeSearchPath(executables),
         lambda name: object(),
+        lambda: NOW,
     )
     return list(doctor.run().lines)
 
@@ -57,6 +61,7 @@ def test_the_checks_run_in_the_documented_order_for_both_providers() -> None:
         "yt-dlp",
         "deno",
         "tesseract",
+        "backup",
     ]
 
 
@@ -76,6 +81,7 @@ def test_only_the_configured_providers_get_a_check() -> None:
         "yt-dlp",
         "deno",
         "tesseract",
+        "backup",
     ]
 
 
@@ -142,6 +148,7 @@ def test_the_gpu_tool_checks_are_optional() -> None:
         "yt-dlp",
         "deno",
         "tesseract",
+        "backup",
     ]
 
 
@@ -203,7 +210,7 @@ def test_the_deno_and_tesseract_checks_look_the_tools_up_on_the_path() -> None:
     )
 
     # Assert
-    assert [line.detail for line in lines[7:]] == ["/usr/bin/deno", "/usr/bin/tesseract"]
+    assert [line.detail for line in lines[7:9]] == ["/usr/bin/deno", "/usr/bin/tesseract"]
 
 
 def test_the_yt_dlp_check_asks_whether_the_yt_dlp_module_exists() -> None:
@@ -221,6 +228,7 @@ def test_the_yt_dlp_check_asks_whether_the_yt_dlp_module_exists() -> None:
         FakeGpuProbe(None),
         FakeSearchPath(),
         find_spec,
+        lambda: NOW,
     )
 
     # Execute

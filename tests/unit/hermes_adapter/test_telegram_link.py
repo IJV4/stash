@@ -12,9 +12,10 @@ from stash.capture import Reply
 from stash.hermes_adapter.callbacks import CallbackPress
 from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.outbox import OutboxUnavailable
-from stash.hermes_adapter.telegram_link import TelegramLink
+from stash.hermes_adapter.telegram_link import START_UP_FAILED_LOG, TelegramLink
 
 TELEGRAM_IO_LOGGER = "stash.hermes_adapter.telegram_io"
+TELEGRAM_LINK_LOGGER = "stash.hermes_adapter.telegram_link"
 PLAIN = Reply("Saved")
 OUTBOX_NOT_UP = "the Telegram connection is not up yet"
 
@@ -93,3 +94,47 @@ def test_a_press_before_any_handler_is_routed_is_logged_as_a_failure_and_not_rai
 
     # Assert
     assert logs.entries() == [(logging.ERROR, "callback press failed for chat 1001")]
+
+
+def test_the_start_up_callback_runs_on_every_connect() -> None:
+    # Setup
+    link = TelegramLink()
+    started: list[str] = []
+    link.start_with(lambda: started.append("started"))
+
+    # Execute
+    link.on_connect(FakeTelegramApplication(), None)
+    link.on_connect(FakeTelegramApplication(), None)
+
+    # Assert
+    assert started == ["started", "started"]
+
+
+def test_the_start_up_callback_runs_with_the_outbox_already_connected() -> None:
+    # Setup
+    link = TelegramLink()
+    application = FakeTelegramApplication()
+    link.start_with(lambda: asyncio.run(link.outbox.send("1001", PLAIN)))
+
+    # Execute
+    link.on_connect(application, None)
+
+    # Assert
+    assert [sent.text for sent in application.bot.sent] == ["Saved"]
+
+
+def test_a_start_up_callback_that_fails_is_logged_and_not_raised() -> None:
+    # Setup
+    link = TelegramLink()
+
+    def failing() -> None:
+        raise RuntimeError("no running loop")
+
+    link.start_with(failing)
+
+    # Execute
+    with recording_logs(TELEGRAM_LINK_LOGGER) as logs:
+        link.on_connect(FakeTelegramApplication(), None)
+
+    # Assert
+    assert logs.entries() == [(logging.ERROR, START_UP_FAILED_LOG)]

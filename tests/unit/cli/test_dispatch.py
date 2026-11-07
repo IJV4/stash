@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from app_builders import NOON, an_app, stored
+from backup_builders import a_backups
 from builders import BASE, an_item, stored_completion, stored_item
 from cli_session import Session
 from eval_builders import an_eval_targets
@@ -18,7 +19,6 @@ from stash.config import Thinking
 from stash.doctor import Doctor, DoctorCheck
 from stash.domain import ItemType, Stage
 from stash.llm import ProbeResult
-from stash.store.backup import Backups
 
 LATE_EVENING_IN_LOS_ANGELES = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
 IMAGE_CASE = {
@@ -135,7 +135,7 @@ def test_backup_names_the_file_for_the_date_in_the_configured_timezone(tmp_path:
     # Setup
     session = Session(
         tmp_path,
-        an_app(clock=lambda: LATE_EVENING_IN_LOS_ANGELES, backups=Backups(FakeBackupSource())),
+        an_app(clock=lambda: LATE_EVENING_IN_LOS_ANGELES, backups=a_backups(FakeBackupSource())),
     )
     target = tmp_path / "nas"
 

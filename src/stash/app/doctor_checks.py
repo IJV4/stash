@@ -1,10 +1,12 @@
 from collections.abc import Callable
+from datetime import datetime
 
 import httpx
 
 from stash.config import ProviderName, StashConfig
 from stash.doctor import Doctor, DoctorCheck
 from stash.doctor_probes import (
+    BackupProbe,
     ConfigProbe,
     DatabaseProbe,
     ExecutableProbe,
@@ -14,7 +16,7 @@ from stash.doctor_probes import (
 from stash.gpu import GpuProbe
 from stash.llm import ProviderProbe
 from stash.llm.probes import OllamaProbe, OpenRouterModelProbe, OpenRouterProbe
-from stash.store import ItemStore
+from stash.store import Store
 
 YT_DLP_MODULE = "yt_dlp"
 DENO_HINT = "yt-dlp needs a JavaScript runtime for some sites"
@@ -23,11 +25,12 @@ TESSERACT_HINT = "needed for the OCR eval arm"
 
 def build_doctor(
     config: StashConfig,
-    store: ItemStore,
+    store: Store,
     client: httpx.Client,
     gpu_probe: GpuProbe,
     which: Callable[[str], str | None],
     find_spec: Callable[[str], object | None],
+    clock: Callable[[], datetime],
 ) -> Doctor:
     return Doctor(
         [
@@ -38,6 +41,7 @@ def build_doctor(
             DoctorCheck.optional("yt-dlp", PackageProbe(YT_DLP_MODULE, find_spec)),
             DoctorCheck.optional("deno", ExecutableProbe("deno", which, DENO_HINT)),
             DoctorCheck.optional("tesseract", ExecutableProbe("tesseract", which, TESSERACT_HINT)),
+            DoctorCheck.optional("backup", BackupProbe(store, clock)),
         ]
     )
 

@@ -4,17 +4,18 @@ import re
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
-from typing import Self
+from typing import Protocol, Self
 
-from stash.store.port import BackupError, BackupSource
+from stash.store.port import BACKUP_LAST_SUCCESS_KEY, BackupError, BackupSource
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_KEEP = 30
 _BACKUP_NAME = re.compile(r"stash-([0-9]{4})([0-9]{2})([0-9]{2})\.db")
 _TEMPORARY_PREFIX = ".stash-backup-"
+RECORD_FAILED_LOG = "could not record the backup time: %s"
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -40,16 +41,24 @@ class BackupName:
         return f"stash-{self.day.year:04d}{self.day.month:02d}{self.day.day:02d}.db"
 
 
+class BackupSettings(Protocol):
+    def put_setting(self, key: str, value: str) -> None: ...
+
+
 class Backups:
     def __init__(
         self,
         source: BackupSource,
+        settings: BackupSettings,
+        clock: Callable[[], datetime],
         keep: int = DEFAULT_KEEP,
         remove: Callable[[Path], None] = Path.unlink,
     ) -> None:
         if keep < 1:
             raise ValueError("keep must be at least 1")
         self._source = source
+        self._settings = settings
+        self._clock = clock
         self._keep = keep
         self._remove = remove
 
@@ -60,6 +69,7 @@ class Backups:
             self._copy_into_place(directory, backup)
         except OSError as error:
             raise BackupError(f"cannot write to {directory}: {error}") from error
+        self._record_success_best_effort()
         self._prune_best_effort(directory)
         return backup
 
@@ -73,6 +83,12 @@ class Backups:
         except BaseException:
             temporary.unlink(missing_ok=True)
             raise
+
+    def _record_success_best_effort(self) -> None:
+        try:
+            self._settings.put_setting(BACKUP_LAST_SUCCESS_KEY, self._clock().isoformat())
+        except Exception as error:
+            logger.warning(RECORD_FAILED_LOG, type(error).__name__)
 
     def _prune_best_effort(self, directory: Path) -> None:
         try:

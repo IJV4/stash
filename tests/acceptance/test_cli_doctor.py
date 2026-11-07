@@ -1,6 +1,7 @@
+from datetime import timedelta
 from pathlib import Path
 
-from cli_rig import build_cli_rig
+from cli_rig import CliRig, build_cli_rig
 from fakes.installed_modules import InstalledModules
 
 PASSING_REPORT = [
@@ -13,6 +14,7 @@ PASSING_REPORT = [
     "✔ yt-dlp — installed",
     "! deno — not found on PATH (yt-dlp needs a JavaScript runtime for some sites)",
     "! tesseract — not found on PATH (needed for the OCR eval arm)",
+    "! backup — no backup recorded yet",
 ]
 
 
@@ -112,3 +114,34 @@ def test_a_missing_yt_dlp_package_is_an_optional_line_and_the_exit_code_stays_0(
     # Assert
     line = [line for line in result.lines() if line.startswith("! yt-dlp")]
     assert (result.exit_code, line) == (0, ["! yt-dlp — not installed"])
+
+
+def backup_line(rig: CliRig) -> list[str]:
+    return [line for line in rig.run("doctor").lines() if " backup — " in line]
+
+
+def test_a_backup_made_three_days_ago_shows_an_optional_line_naming_the_days(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    rig.run("backup", "--to", str(tmp_path / "nas"))
+    rig.now += timedelta(days=3)
+
+    # Execute
+    lines = backup_line(rig)
+
+    # Assert
+    assert lines == ["! backup — last success 3 days ago"]
+
+
+def test_a_backup_made_just_now_shows_a_passing_line(tmp_path: Path) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    rig.run("backup", "--to", str(tmp_path / "nas"))
+
+    # Execute
+    lines = backup_line(rig)
+
+    # Assert
+    assert lines == ["✔ backup — last success 0 hours ago"]
