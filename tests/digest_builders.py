@@ -20,7 +20,7 @@ from stash.domain import Item, Pick, Step
 from stash.nudges import StuckItem, WeeklyDigest
 from stash.nudges.digest import DigestSections, UpcomingEntry, UpcomingItem, UpcomingStep
 from stash.nudges.digest_builder import DigestBuilder
-from stash.nudges.ports import DigestStore, PickSource
+from stash.nudges.ports import PickSource
 from stash.store import Store
 
 DIGEST_DAY = date(2027, 2, 7)
@@ -50,18 +50,19 @@ def a_step_the_day_before_the_date_night() -> Step:
 
 
 def a_digest_builder(
-    store: DigestStore,
+    store: Store,
     picks: PickSource | None = None,
     **config_overrides: object,
 ) -> DigestBuilder:
-    return DigestBuilder(store, picks or FakePickSource(), a_nudge_schedule(**config_overrides))
+    schedule = a_nudge_schedule(**config_overrides)
+    return DigestBuilder(store, picks or FakePickSource(), schedule, store)
 
 
 def a_due_digest(at: datetime = DIGEST_AT, *stuck: Item) -> WeeklyDigest:
     return WeeklyDigest(at, tuple(StuckItem(item, at) for item in stuck))
 
 
-def building(store: DigestStore, at: datetime = DIGEST_AT, **config: object) -> DigestSections:
+def building(store: Store, at: datetime = DIGEST_AT, **config: object) -> DigestSections:
     return a_digest_builder(store, **config).build(a_due_digest(at), at).sections
 
 

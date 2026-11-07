@@ -16,7 +16,7 @@ from fakes.pending_intake import PendingIntake
 from fakes.recording_unloader import RecordingUnloader
 from gate_rig import a_gate, a_sample
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
-from nudge_builders import a_nudge_schedule
+from nudge_builders import a_nudge_schedule, a_person_dates
 from planning_rig import a_planning
 from router_builders import default_thinking_models
 
@@ -63,7 +63,8 @@ def an_app(**overrides: Any) -> StashApp:
         "planning": planning,
         "suggestions": suggestions,
         "nudge_delivery": NudgeDelivery(
-            Nudger(store, schedule), DigestBuilder(store, QuietPicks(suggestions), schedule)
+            Nudger(store, schedule, a_person_dates(store, schedule)),
+            DigestBuilder(store, QuietPicks(suggestions), schedule, store),
         ),
         "proposal_delivery": ProposalDelivery(planning, store),
         "gpu": gate,

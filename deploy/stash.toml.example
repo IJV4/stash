@@ -48,3 +48,8 @@ manual_off_hours = 4.0              # how long `stash gpu off` lasts before it e
 # forgotten_after_days = 30
 # stuck_doing_days = 21
 # tick_seconds = 60
+
+# How many days before a birthday, anniversary or other key date to be reminded; 0 is the day itself.
+# Reminders go out at nudges.reminder_time. Each entry is 0 to 365 and none may repeat.
+# [people]
+# lead_days = [14, 2, 0]

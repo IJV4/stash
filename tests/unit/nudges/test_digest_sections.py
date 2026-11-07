@@ -8,6 +8,7 @@ from nudge_builders import (
     a_same_day_step,
     a_stuck_book,
 )
+from people_builders import a_key_date, a_person
 from planning_builders import DATE_NIGHT_ID
 
 from stash.domain import Pick
@@ -19,6 +20,7 @@ from stash.nudges.digest import (
     UPCOMING_DAYS,
     DigestSections,
     UpcomingItem,
+    UpcomingPersonDate,
     UpcomingStep,
 )
 
@@ -73,6 +75,15 @@ def test_an_upcoming_step_for_a_step_of_another_item_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="belongs to item"):
         UpcomingStep(SATURDAY, a_stuck_book(), a_same_day_step(item_id=DATE_NIGHT_ID))
+
+
+def test_an_upcoming_person_date_for_a_key_date_of_another_person_is_refused() -> None:
+    # Setup
+    strangers_key_date = a_key_date(person_id="someone-else")
+
+    # Execute / Assert
+    with pytest.raises(ValueError, match="belongs to"):
+        UpcomingPersonDate(SATURDAY, a_person(), strangers_key_date)
 
 
 def test_sections_with_more_forgotten_items_than_the_limit_are_refused() -> None:

@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 from stash.config.errors import ConfigError
 from stash.config.nudges import NudgeConfig
+from stash.config.people import PeopleConfig
 
 OPENROUTER_API_KEY_VAR = "OPENROUTER_API_KEY"
 BusyFallback = Literal["wait", "openrouter"]
@@ -180,6 +181,7 @@ class StashConfig:
     gpu: GpuConfig
     nudges: NudgeConfig
     burst_window_seconds: float = DEFAULT_BURST_WINDOW_SECONDS
+    people: PeopleConfig = field(default_factory=PeopleConfig)
 
     def __post_init__(self) -> None:
         if not self.data_dir.is_absolute():

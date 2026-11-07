@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from fakes.memory_store import MemoryStore
-from nudge_builders import a_nudge_schedule
+from nudge_builders import a_nudge_schedule, a_person_dates
 
 from stash.capture import Reply
 from stash.delivery import NudgeDelivery
@@ -59,7 +59,7 @@ def a_nudge_rig(
 ) -> NudgeRig:
     store = store or MemoryStore()
     schedule = a_nudge_schedule()
-    nudger = Nudger(store, schedule)
+    nudger = Nudger(store, schedule, a_person_dates(store, schedule))
     return NudgeRig(store, schedule, nudger, send, NudgeDelivery(nudger, UnbuiltDigests()))
 
 

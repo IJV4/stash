@@ -12,6 +12,7 @@ from stash.config.model import (
     Thinking,
 )
 from stash.config.nudges import MAX_NUDGE_DAYS, MAX_TICK_SECONDS, NudgeConfig, Weekday
+from stash.config.people import PeopleConfig
 
 __all__ = [
     "MAX_NUDGE_DAYS",
@@ -24,6 +25,7 @@ __all__ = [
     "LlmTask",
     "ModelChoice",
     "NudgeConfig",
+    "PeopleConfig",
     "ProviderName",
     "ProviderSettings",
     "StashConfig",

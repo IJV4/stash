@@ -5,7 +5,10 @@ from typing import NamedTuple, Self
 
 from stash.domain._validation import require_aware, require_text
 from stash.domain.instant import utc_text
-from stash.domain.wire import require_wire_safe_id
+from stash.domain.wire import MAX_ID_LENGTH, require_wire_safe_id
+
+OCCURRENCE_AND_LEAD_LENGTH = len("@2027-03-06#365")
+MAX_NUDGE_SUBJECT_LENGTH = MAX_ID_LENGTH + OCCURRENCE_AND_LEAD_LENGTH
 
 
 class NudgeKind(StrEnum):
@@ -15,6 +18,7 @@ class NudgeKind(StrEnum):
     DIGEST = "digest"
     STUCK = "stuck"
     FORGOTTEN = "forgotten"
+    PERSON_DATE = "person_date"
 
 
 class NudgeKey(NamedTuple):
@@ -35,7 +39,7 @@ class Nudge:
     title: str
 
     def __post_init__(self) -> None:
-        require_wire_safe_id("nudge subject id", self.subject_id)
+        require_wire_safe_id("nudge subject id", self.subject_id, MAX_NUDGE_SUBJECT_LENGTH)
         require_aware("due_at", self.due_at)
         require_text("title", self.title)
 

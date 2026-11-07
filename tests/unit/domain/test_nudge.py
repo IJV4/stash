@@ -12,6 +12,8 @@ from builders import (
 from step_builders import DUE_AT, a_nudge
 
 from stash.domain import NudgeKey, NudgeKind
+from stash.domain.nudge import MAX_NUDGE_SUBJECT_LENGTH
+from stash.domain.wire import MAX_ID_LENGTH
 
 ONE_DAY = timedelta(days=1)
 NUDGE_KIND_VALUES = [
@@ -21,7 +23,13 @@ NUDGE_KIND_VALUES = [
     (NudgeKind.DIGEST, "digest"),
     (NudgeKind.STUCK, "stuck"),
     (NudgeKind.FORGOTTEN, "forgotten"),
+    (NudgeKind.PERSON_DATE, "person_date"),
 ]
+UNSAFE_SUBJECT_IDS = (
+    *(unsafe for unsafe in UNSAFE_WIRE_IDS if len(unsafe) <= MAX_ID_LENGTH),
+    "x" * (MAX_NUDGE_SUBJECT_LENGTH + 1),
+)
+LONGEST_PERSON_DATE_SUBJECT = f"{'k' * MAX_ID_LENGTH}@2027-03-06#365"
 
 
 def nine_in_los_angeles(day: date) -> datetime:
@@ -34,7 +42,7 @@ def test_each_nudge_kind_is_written_as_its_lowercase_name(kind: NudgeKind, value
     assert kind.value == value
 
 
-def test_there_are_exactly_six_nudge_kinds() -> None:
+def test_there_are_exactly_seven_nudge_kinds() -> None:
     # Assert
     assert len(NudgeKind) == len(NUDGE_KIND_VALUES)
 
@@ -143,13 +151,21 @@ def test_a_nudge_refuses_a_naive_due_at() -> None:
         a_nudge(due_at=NAIVE)
 
 
-@pytest.mark.parametrize("subject_id", UNSAFE_WIRE_IDS)
+@pytest.mark.parametrize("subject_id", UNSAFE_SUBJECT_IDS)
 def test_a_nudge_refuses_a_subject_id_that_cannot_travel_in_callback_data(
     subject_id: str,
 ) -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="nudge subject id"):
         a_nudge(subject_id=subject_id)
+
+
+def test_a_nudge_accepts_a_longest_key_date_id_with_its_occurrence_and_lead() -> None:
+    # Execute
+    nudge = a_nudge(kind=NudgeKind.PERSON_DATE, subject_id=LONGEST_PERSON_DATE_SUBJECT)
+
+    # Assert
+    assert nudge.subject_id == LONGEST_PERSON_DATE_SUBJECT
 
 
 @pytest.mark.parametrize("title", ["", "   ", "\n"])

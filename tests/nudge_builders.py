@@ -8,6 +8,7 @@ from fakes.memory_store import MemoryStore
 from planning_builders import DATE_NIGHT_ID, a_date_night
 from step_builders import a_nudge, a_step
 
+from stash.config.people import DEFAULT_LEAD_DAYS
 from stash.domain import Item, ItemType, Nudge, NudgeKind, Stage, Step
 from stash.nudges import (
     DateReminder,
@@ -15,7 +16,7 @@ from stash.nudges import (
     FollowUp,
     NudgeMessage,
     Nudger,
-    NudgeStore,
+    PersonDates,
     Schedule,
     StepReminder,
     StuckItem,
@@ -109,8 +110,17 @@ def a_nudge_schedule(**config_overrides: object) -> Schedule:
     return Schedule(a_nudge_config(**config_overrides), LOS_ANGELES)
 
 
-def a_nudger(store: NudgeStore, **config_overrides: object) -> Nudger:
-    return Nudger(store, a_nudge_schedule(**config_overrides))
+def a_person_dates(
+    store: Store, schedule: Schedule, lead_days: tuple[int, ...] = DEFAULT_LEAD_DAYS
+) -> PersonDates:
+    return PersonDates(store, schedule, lead_days)
+
+
+def a_nudger(
+    store: Store, lead_days: tuple[int, ...] = DEFAULT_LEAD_DAYS, **config_overrides: object
+) -> Nudger:
+    schedule = a_nudge_schedule(**config_overrides)
+    return Nudger(store, schedule, a_person_dates(store, schedule, lead_days))
 
 
 def a_nudge_message(*due: DueNudge, catch_up: bool = False) -> NudgeMessage:

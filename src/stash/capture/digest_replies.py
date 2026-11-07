@@ -3,11 +3,12 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Self, assert_never
 
+from stash.capture.occasions import emoji_of, occasion_of
 from stash.capture.pick_lines import pick_line
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT, Reply
 from stash.capture.wording import LINE_LIMIT, short_day
 from stash.domain import collapse_and_clip
-from stash.nudges.digest import UpcomingEntry, UpcomingItem, UpcomingStep
+from stash.nudges.digest import UpcomingEntry, UpcomingItem, UpcomingPersonDate, UpcomingStep
 from stash.nudges.due import WeeklyDigest
 
 DIGEST_HEADER = "🗞 Your weekly digest"
@@ -18,6 +19,7 @@ PICKS_HEADING = "💡 Ideas for this week"
 BULLET_LINE = "• {title}"
 UPCOMING_ITEM_LINE = "• {day} — {title}"
 UPCOMING_STEP_LINE = "• {day} — {text} ({title})"
+UPCOMING_PERSON_DATE_LINE = "• {day} — {emoji} {occasion}"
 STUCK_LINE = "📖 How is {title} going?"
 MORE_LINE = "…and {count} more"
 NEW_CAP = 5
@@ -99,6 +101,12 @@ def _upcoming_line(entry: UpcomingEntry) -> str:
             return UPCOMING_ITEM_LINE.format(day=day, title=entry.item.title)
         case UpcomingStep():
             return UPCOMING_STEP_LINE.format(day=day, text=entry.step.text, title=entry.item.title)
+        case UpcomingPersonDate():
+            return UPCOMING_PERSON_DATE_LINE.format(
+                day=day,
+                emoji=emoji_of(entry.key_date),
+                occasion=occasion_of(entry.person, entry.key_date),
+            )
         case _:
             assert_never(entry)
 

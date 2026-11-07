@@ -37,7 +37,7 @@ from stash.gpu_switch import GpuSwitch
 from stash.http_client import make_http_client
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
-from stash.nudges import DigestBuilder, Nudger, Schedule
+from stash.nudges import DigestBuilder, Nudger, PersonDates, Schedule
 from stash.people import PeopleDirectory, PeopleLinker
 from stash.planning import Declines, Planning, StepProposer
 from stash.store.backup import Backups
@@ -93,7 +93,8 @@ def build_app(
         )
         suggestions = SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone))
         schedule = Schedule(config.nudges, config.timezone)
-        digests = DigestBuilder(sqlite, QuietPicks(suggestions), schedule)
+        person_dates = PersonDates(sqlite, schedule, config.people.lead_days)
+        digests = DigestBuilder(sqlite, QuietPicks(suggestions), schedule, sqlite)
         return StashApp(
             config=config,
             store=sqlite,
@@ -103,7 +104,7 @@ def build_app(
             lifecycle=lifecycle,
             planning=planning,
             suggestions=suggestions,
-            nudge_delivery=NudgeDelivery(Nudger(sqlite, schedule), digests),
+            nudge_delivery=NudgeDelivery(Nudger(sqlite, schedule, person_dates), digests),
             proposal_delivery=ProposalDelivery(planning, sqlite),
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),

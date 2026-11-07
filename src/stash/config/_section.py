@@ -13,6 +13,10 @@ MAX_MINUTE = 59
 TIME_FORMAT = 'a time as "HH:MM"'
 
 
+def _is_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 class Section:
     def __init__(self, path: str, data: Mapping[str, object]) -> None:
         self._path = path
@@ -43,6 +47,14 @@ class Section:
         if isinstance(value, bool) or not isinstance(value, int):
             raise self._wrong_type(key, "an integer")
         return value
+
+    def take_integers(self, key: str, default: tuple[int, ...]) -> tuple[int, ...]:
+        value = self._pop(key)
+        if value is None:
+            return default
+        if not isinstance(value, list) or not all(_is_integer(entry) for entry in value):
+            raise self._wrong_type(key, "a list of integers")
+        return tuple(value)
 
     def take_number(self, key: str, default: float) -> float:
         value = self._pop(key)

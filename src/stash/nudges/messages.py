@@ -2,7 +2,14 @@ from dataclasses import dataclass
 from typing import assert_never
 
 from stash.domain import Nudge
-from stash.nudges.due import DateReminder, DueNudge, FollowUp, StepReminder, WeeklyDigest
+from stash.nudges.due import (
+    DateReminder,
+    DueNudge,
+    FollowUp,
+    PersonDateReminder,
+    StepReminder,
+    WeeklyDigest,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +28,7 @@ class NudgeMessage:
 
 def _nudges_of(due: DueNudge) -> tuple[Nudge, ...]:
     match due:
-        case StepReminder() | DateReminder() | FollowUp():
+        case StepReminder() | DateReminder() | FollowUp() | PersonDateReminder():
             return (due.nudge,)
         case WeeklyDigest():
             return due.nudges

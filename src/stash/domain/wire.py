@@ -12,8 +12,8 @@ def is_wire_safe(part: str) -> bool:
     )
 
 
-def require_wire_safe_id(name: str, value: str) -> None:
+def require_wire_safe_id(name: str, value: str, max_length: int = MAX_ID_LENGTH) -> None:
     if not is_wire_safe(value):
         raise ValueError(f"{name} must be non-blank, printable ASCII, without whitespace or ':'")
-    if len(value) > MAX_ID_LENGTH:
-        raise ValueError(f"{name} must be at most {MAX_ID_LENGTH} characters")
+    if len(value) > max_length:
+        raise ValueError(f"{name} must be at most {max_length} characters")

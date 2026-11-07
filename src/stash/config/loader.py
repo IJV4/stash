@@ -20,6 +20,7 @@ from stash.config.model import (
     Thinking,
 )
 from stash.config.nudges import NudgeConfig, Weekday
+from stash.config.people import PeopleConfig
 
 DEFAULT_TIMEZONE = "America/Los_Angeles"
 DEFAULT_BASE_URLS = MappingProxyType(
@@ -46,8 +47,9 @@ def load_config(path: Path, env: Mapping[str, str]) -> StashConfig:
     llm = _llm_config(root.take_table_or_empty("llm"), env)
     gpu = _gpu_config(root.take_table_or_empty("gpu"))
     nudges = _nudge_config(root.take_table_or_empty("nudges"))
+    people = _people_config(root.take_table_or_empty("people"))
     root.finish()
-    return StashConfig(data_dir, timezone, llm, gpu, nudges, burst_window_seconds)
+    return StashConfig(data_dir, timezone, llm, gpu, nudges, burst_window_seconds, people)
 
 
 def _read_toml(path: Path) -> dict[str, object]:
@@ -122,6 +124,12 @@ def _nudge_config(section: Section) -> NudgeConfig:
     )
     section.finish()
     return nudges
+
+
+def _people_config(section: Section) -> PeopleConfig:
+    people = PeopleConfig(lead_days=section.take_integers("lead_days", PeopleConfig().lead_days))
+    section.finish()
+    return people
 
 
 def _llm_config(section: Section, env: Mapping[str, str]) -> LlmConfig:

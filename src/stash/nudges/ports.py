@@ -2,7 +2,7 @@ import datetime as dt
 from collections.abc import Sequence
 from typing import Protocol
 
-from stash.domain import Item, Nudge, NudgeKey, NudgeKind, Pick, Step
+from stash.domain import Item, ItemType, KeyDate, Nudge, NudgeKey, NudgeKind, Person, Pick, Step
 
 
 class NudgeStore(Protocol):
@@ -29,6 +29,14 @@ class DigestStore(NudgeStore, Protocol):
     def created_between(self, start: dt.datetime, end: dt.datetime) -> list[Item]: ...
 
     def want_to_older_than(self, cutoff: dt.datetime, limit: int) -> list[Item]: ...
+
+
+class PeopleReads(Protocol):
+    def key_dates_between(self, start: dt.date, end: dt.date) -> list[tuple[KeyDate, dt.date]]: ...
+
+    def get_person(self, person_id: str) -> Person | None: ...
+
+    def items_for(self, person_id: str, item_type: ItemType | None = None) -> list[Item]: ...
 
 
 class PickSource(Protocol):

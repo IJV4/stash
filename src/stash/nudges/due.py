@@ -1,8 +1,9 @@
 import datetime as dt
 from dataclasses import dataclass
 
-from stash.domain import Item, Nudge, NudgeKind, Step, require_aware
+from stash.domain import Item, KeyDate, Nudge, NudgeKind, Person, Step, require_aware
 from stash.nudges.digest import EMPTY_SECTIONS, DigestSections
+from stash.nudges.person_key_dates import require_key_date_of
 
 DIGEST_SUBJECT = "weekly"
 DIGEST_TITLE = "Weekly digest"
@@ -93,4 +94,25 @@ class WeeklyDigest:
         )
 
 
-DueNudge = StepReminder | DateReminder | FollowUp | WeeklyDigest
+@dataclass(frozen=True, slots=True)
+class PersonDateReminder:
+    person: Person
+    key_date: KeyDate
+    on: dt.date
+    lead: int
+    gift_ideas: tuple[str, ...]
+    due_at: dt.datetime
+
+    def __post_init__(self) -> None:
+        require_aware("due_at", self.due_at)
+        require_key_date_of(self.person, self.key_date)
+        if self.lead < 0:
+            raise ValueError("lead must be >= 0")
+
+    @property
+    def nudge(self) -> Nudge:
+        subject = f"{self.key_date.id}@{self.on.isoformat()}#{self.lead}"
+        return Nudge(NudgeKind.PERSON_DATE, subject, self.due_at, self.person.name)
+
+
+DueNudge = StepReminder | DateReminder | FollowUp | PersonDateReminder | WeeklyDigest

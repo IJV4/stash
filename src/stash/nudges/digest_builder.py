@@ -11,10 +11,12 @@ from stash.nudges.digest import (
     DigestSections,
     UpcomingEntry,
     UpcomingItem,
+    UpcomingPersonDate,
     UpcomingStep,
 )
 from stash.nudges.due import WeeklyDigest
-from stash.nudges.ports import DigestStore, PickSource
+from stash.nudges.person_key_dates import PersonKeyDates
+from stash.nudges.ports import DigestStore, PeopleReads, PickSource
 from stash.nudges.schedule import Schedule
 
 DIGEST_CONTEXT = "Pick things worth doing in the coming week."
@@ -25,11 +27,13 @@ PREVIOUS_DIGESTS_WINDOW = dt.timedelta(weeks=PREVIOUS_DIGESTS, days=1)
 
 
 class DigestBuilder:
-    def __init__(self, store: DigestStore, picks: PickSource, schedule: Schedule) -> None:
+    def __init__(
+        self, store: DigestStore, picks: PickSource, schedule: Schedule, people: PeopleReads
+    ) -> None:
         self._store = store
         self._picks = picks
         self._forgotten = _Forgotten(store, schedule)
-        self._upcoming = _Upcoming(store, schedule)
+        self._upcoming = _Upcoming(store, schedule, people)
 
     def build(self, due: WeeklyDigest, now: dt.datetime) -> WeeklyDigest:
         require_aware("now", now)
@@ -71,9 +75,10 @@ class _Forgotten:
 
 
 class _Upcoming:
-    def __init__(self, store: DigestStore, schedule: Schedule) -> None:
+    def __init__(self, store: DigestStore, schedule: Schedule, people: PeopleReads) -> None:
         self._store = store
         self._schedule = schedule
+        self._key_dates = PersonKeyDates(people)
 
     def entries(self, now: dt.datetime) -> tuple[UpcomingEntry, ...]:
         first = self._schedule.local_date(now)
@@ -81,6 +86,7 @@ class _Upcoming:
         entries: list[UpcomingEntry] = [
             *self._dated_items(first, last),
             *self._steps(first, last),
+            *self._person_dates(first, last),
         ]
         return tuple(sorted(entries, key=lambda entry: (entry.on, entry.RANK)))
 
@@ -94,6 +100,12 @@ class _Upcoming:
     def _steps(self, first: dt.date, last: dt.date) -> list[UpcomingStep]:
         entries = (self._step_entry(step) for step in self._store.open_confirmed_steps())
         return [entry for entry in entries if entry is not None and first <= entry.on <= last]
+
+    def _person_dates(self, first: dt.date, last: dt.date) -> list[UpcomingPersonDate]:
+        return [
+            UpcomingPersonDate(on, person, key_date)
+            for person, key_date, on in self._key_dates.between(first, last)
+        ]
 
     def _step_entry(self, step: Step) -> UpcomingStep | None:
         item = self._store.get_item(step.item_id)

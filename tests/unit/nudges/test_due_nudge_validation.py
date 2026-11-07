@@ -11,6 +11,7 @@ from nudge_builders import (
     a_same_day_step,
     a_stuck_book,
 )
+from people_builders import a_key_date, a_person, a_person_date_reminder
 
 from stash.nudges import DateReminder, FollowUp, StepReminder, StuckItem, WeeklyDigest
 
@@ -37,6 +38,21 @@ def test_a_digest_holding_a_stuck_item_from_another_instant_is_refused() -> None
     # Execute / Assert
     with pytest.raises(ValueError, match="same instant"):
         WeeklyDigest(SUNDAY_DIGEST_TIME, (stuck,))
+
+
+def test_a_person_date_reminder_for_a_key_date_of_another_person_is_refused() -> None:
+    # Setup
+    strangers_key_date = a_key_date(person_id="someone-else")
+
+    # Execute / Assert
+    with pytest.raises(ValueError, match="belongs to"):
+        a_person_date_reminder(person=a_person(), key_date=strangers_key_date)
+
+
+def test_a_person_date_reminder_with_a_negative_lead_is_refused() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="lead"):
+        a_person_date_reminder(lead=-1)
 
 
 @pytest.mark.parametrize(

@@ -8,11 +8,13 @@ from stash.nudges.due import (
     DateReminder,
     DueNudge,
     FollowUp,
+    PersonDateReminder,
     StepReminder,
     StuckItem,
     WeeklyDigest,
 )
 from stash.nudges.messages import NudgeMessage
+from stash.nudges.person_dates import PersonDates
 from stash.nudges.ports import NudgeStore
 from stash.nudges.schedule import Schedule
 
@@ -42,9 +44,10 @@ def _dated(items: Iterable[Item]) -> Iterator[tuple[Item, dt.date]]:
 
 
 class Nudger:
-    def __init__(self, store: NudgeStore, schedule: Schedule) -> None:
+    def __init__(self, store: NudgeStore, schedule: Schedule, person_dates: PersonDates) -> None:
         self._store = store
         self._schedule = schedule
+        self._person_dates = person_dates
 
     def due(self, now: dt.datetime) -> list[DueNudge]:
         require_aware("now", now)
@@ -52,6 +55,7 @@ class Nudger:
         found: list[DueNudge] = [
             *self._step_reminders(window),
             *self._date_reminders(window),
+            *self._person_date_reminders(window),
             *self._follow_ups(window),
             *self._digest(window),
         ]
@@ -87,6 +91,9 @@ class Nudger:
         return window.keep(
             DateReminder(item, day, self._schedule.reminder_at(day)) for item, day in planned
         )
+
+    def _person_date_reminders(self, window: DueWindow) -> list[PersonDateReminder]:
+        return window.keep(self._person_dates.reminders(*self._local_dates(window)))
 
     def _follow_ups(self, window: DueWindow) -> list[FollowUp]:
         if self._followup_slot_taken(window.now):

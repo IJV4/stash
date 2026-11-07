@@ -20,6 +20,7 @@ from nudge_builders import (
     SUNDAY_NOON,
     a_date_reminder,
     a_nudge_schedule,
+    a_person_dates,
     a_planned_date_night,
     stored_date_night_with_its_step,
 )
@@ -148,7 +149,8 @@ def a_first_run_with_three_separate_messages_due() -> tuple[LedgerRecordingStore
     seeded = [a_date_reminder(SATURDAY_MORNING + HOUR).nudge]
     MemoryStore.record_all_sent(store, seeded, SATURDAY_MORNING + HOUR)
     stored(store, a_planned_date_night(id="sunday-night", date=SUNDAY))
-    nudger = Nudger(store, a_nudge_schedule(reminder_time=DIGEST_TIME, followup_time=DIGEST_TIME))
+    schedule = a_nudge_schedule(reminder_time=DIGEST_TIME, followup_time=DIGEST_TIME)
+    nudger = Nudger(store, schedule, a_person_dates(store, schedule))
     return store, NudgeDelivery(nudger, UnbuiltDigests())
 
 

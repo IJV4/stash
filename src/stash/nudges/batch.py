@@ -3,7 +3,14 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import assert_never
 
-from stash.nudges.due import DateReminder, DueNudge, FollowUp, StepReminder, WeeklyDigest
+from stash.nudges.due import (
+    DateReminder,
+    DueNudge,
+    FollowUp,
+    PersonDateReminder,
+    StepReminder,
+    WeeklyDigest,
+)
 from stash.nudges.messages import NudgeMessage
 
 CATCH_UP_AFTER = dt.timedelta(minutes=30)
@@ -25,7 +32,7 @@ def batch_messages(due: Sequence[DueNudge], now: dt.datetime) -> tuple[NudgeMess
 
 def _group_of(nudge: DueNudge) -> _Group:
     match nudge:
-        case StepReminder() | DateReminder():
+        case StepReminder() | DateReminder() | PersonDateReminder():
             return _Group.REMINDERS
         case FollowUp():
             return _Group.FOLLOW_UPS

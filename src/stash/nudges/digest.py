@@ -2,7 +2,8 @@ import datetime as dt
 from dataclasses import dataclass
 from typing import ClassVar
 
-from stash.domain import Item, Pick, Step
+from stash.domain import Item, KeyDate, Person, Pick, Step
+from stash.nudges.person_key_dates import require_key_date_of
 
 FORGOTTEN_LIMIT = 3
 PICK_LIMIT = 3
@@ -35,7 +36,18 @@ class UpcomingStep:
             raise ValueError(f"{self.on} is not the due date of step {self.step.id!r}")
 
 
-UpcomingEntry = UpcomingItem | UpcomingStep
+@dataclass(frozen=True, slots=True)
+class UpcomingPersonDate:
+    RANK: ClassVar[int] = 2
+    on: dt.date
+    person: Person
+    key_date: KeyDate
+
+    def __post_init__(self) -> None:
+        require_key_date_of(self.person, self.key_date)
+
+
+UpcomingEntry = UpcomingItem | UpcomingStep | UpcomingPersonDate
 
 
 @dataclass(frozen=True, slots=True)
