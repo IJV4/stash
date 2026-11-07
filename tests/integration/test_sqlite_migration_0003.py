@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 from builders import BASE, a_capture, an_item, an_item_at, an_outcome, minutes_after
 from fakes.store_factories import opened
-from migration_sets import INIT_SCRIPT, LIFECYCLE_SCRIPT, packaged_scripts, write_migrations
+from migration_sets import (
+    INIT_SCRIPT,
+    LIFECYCLE_SCRIPT,
+    STEPS_SCRIPT,
+    packaged_scripts,
+    write_migrations,
+)
 from step_builders import a_nudge, a_step
 
 from stash.domain import Item, Outcome, Stage, utc_text
@@ -113,9 +119,12 @@ def schema_version(path: Path) -> int:
 def test_a_lifecycle_database_migrates_to_the_steps_schema_version(tmp_path: Path) -> None:
     # Setup
     path = lifecycle_database(tmp_path)
+    steps = write_migrations(
+        tmp_path / "steps", packaged_scripts(INIT_SCRIPT, LIFECYCLE_SCRIPT, STEPS_SCRIPT)
+    )
 
     # Execute
-    with opened(path):
+    with opened(path, steps):
         pass
 
     # Assert

@@ -38,6 +38,17 @@ from stash.domain.outcome import (
     TAKEAWAY_LIMIT,
     Outcome,
 )
+from stash.domain.person import (
+    KEY_DATE_LABEL_LIMIT,
+    MAX_ALIASES,
+    PERSON_NAME_LIMIT,
+    PERSON_NOTES_LIMIT,
+    PERSON_RELATION_LIMIT,
+    KeyDate,
+    KeyDateKind,
+    Person,
+    occurrences_between,
+)
 from stash.domain.step import MAX_LEAD_DAYS, MIN_LEAD_DAYS, STEP_TEXT_LIMIT, Step
 from stash.domain.suggestion import SUGGESTION_REASON_LIMIT, Pick, require_reason
 
@@ -46,6 +57,8 @@ __all__ = [
     "DETAIL_VALUE_LIMIT",
     "DROP_REASON_LIMIT",
     "GROUPS_ONE_LEVEL_DEEP",
+    "KEY_DATE_LABEL_LIMIT",
+    "MAX_ALIASES",
     "MAX_DETAILS",
     "MAX_LEAD_DAYS",
     "MAX_RATING",
@@ -54,6 +67,9 @@ __all__ = [
     "MIN_RATING",
     "MOVEABLE_STAGES",
     "OUTCOME_NOTES_LIMIT",
+    "PERSON_NAME_LIMIT",
+    "PERSON_NOTES_LIMIT",
+    "PERSON_RELATION_LIMIT",
     "PLANNED_NEEDS_DATE",
     "STEP_TEXT_LIMIT",
     "SUGGESTION_REASON_LIMIT",
@@ -62,10 +78,13 @@ __all__ = [
     "Filing",
     "Item",
     "ItemType",
+    "KeyDate",
+    "KeyDateKind",
     "Nudge",
     "NudgeKey",
     "NudgeKind",
     "Outcome",
+    "Person",
     "Pick",
     "RawCapture",
     "Route",
@@ -79,6 +98,7 @@ __all__ = [
     "frozen_strings",
     "http_url_host",
     "lacks_required_date",
+    "occurrences_between",
     "printable_and_clip",
     "require_aware",
     "require_http_url",

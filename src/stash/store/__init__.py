@@ -6,12 +6,14 @@ from stash.store.port import (
     CaptureStore,
     ChildHoldsItemsError,
     Closeable,
+    DuplicateNameError,
     DuplicateOutcomeError,
     DuplicateStepError,
     ItemStore,
     NudgeLedger,
     OutcomeStore,
     ParentIsGroupedError,
+    PeopleStore,
     SettingsStore,
     StaleItemError,
     StepStore,
@@ -19,6 +21,7 @@ from stash.store.port import (
     StoreBusyError,
     UnknownCaptureError,
     UnknownItemError,
+    UnknownPersonError,
 )
 
 __all__ = [
@@ -29,12 +32,14 @@ __all__ = [
     "CaptureStore",
     "ChildHoldsItemsError",
     "Closeable",
+    "DuplicateNameError",
     "DuplicateOutcomeError",
     "DuplicateStepError",
     "ItemStore",
     "NudgeLedger",
     "OutcomeStore",
     "ParentIsGroupedError",
+    "PeopleStore",
     "SettingsStore",
     "StaleItemError",
     "StepStore",
@@ -42,4 +47,5 @@ __all__ = [
     "StoreBusyError",
     "UnknownCaptureError",
     "UnknownItemError",
+    "UnknownPersonError",
 ]

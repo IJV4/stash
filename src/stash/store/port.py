@@ -7,10 +7,12 @@ from stash.domain import (
     CaptureStatus,
     Item,
     ItemType,
+    KeyDate,
     Nudge,
     NudgeKey,
     NudgeKind,
     Outcome,
+    Person,
     RawCapture,
     Stage,
     Step,
@@ -60,6 +62,17 @@ class DuplicateStepError(ValueError):
         super().__init__(f"step id {step_id!r} already belongs to another item")
 
 
+class DuplicateNameError(ValueError):
+    def __init__(self, person: Person, other: Person) -> None:
+        super().__init__(f"{person.name!r} shares a name or alias with {other.name!r}")
+
+
+class UnknownPersonError(Exception):
+    def __init__(self, person_id: str) -> None:
+        super().__init__(person_id)
+        self.person_id = person_id
+
+
 def require_non_negative(name: str, value: int) -> None:
     if value < 0:
         raise ValueError(f"{name} must not be negative")
@@ -101,6 +114,16 @@ def require_steps_for_item(item_id: str, steps: Sequence[Step]) -> None:
         if step.id in seen:
             raise ValueError(f"step id {step.id!r} is repeated")
         seen.add(step.id)
+
+
+def require_distinct_names(person: Person, others: Sequence[Person]) -> None:
+    for other in others:
+        if other.id != person.id and person.shares_a_name_with(other):
+            raise DuplicateNameError(person, other)
+
+
+def find_named(people: Sequence[Person], name: str) -> Person | None:
+    return next((person for person in people if person.answers_to(name)), None)
 
 
 class CaptureStore(Protocol):
@@ -180,6 +203,34 @@ class StepStore(Protocol):
     def open_confirmed_steps(self) -> list[Step]: ...
 
 
+class PeopleStore(Protocol):
+    def save_person(self, person: Person) -> None: ...
+
+    def get_person(self, person_id: str) -> Person | None: ...
+
+    def delete_person(self, person_id: str) -> None: ...
+
+    def list_people(self) -> list[Person]: ...
+
+    def find_by_name(self, name: str) -> Person | None: ...
+
+    def save_key_date(self, key_date: KeyDate) -> None: ...
+
+    def delete_key_date(self, key_date_id: str) -> None: ...
+
+    def key_dates_for(self, person_id: str) -> list[KeyDate]: ...
+
+    def key_dates_between(self, start: date, end: date) -> list[tuple[KeyDate, date]]: ...
+
+    def link(self, item_id: str, person_id: str) -> None: ...
+
+    def unlink(self, item_id: str, person_id: str) -> None: ...
+
+    def people_for(self, item_id: str) -> list[Person]: ...
+
+    def items_for(self, person_id: str, item_type: ItemType | None = None) -> list[Item]: ...
+
+
 class NudgeLedger(Protocol):
     def was_sent(self, key: NudgeKey) -> bool: ...
 
@@ -195,7 +246,14 @@ class SettingsStore(Protocol):
 
 
 class Store(
-    CaptureStore, ItemStore, OutcomeStore, StepStore, NudgeLedger, SettingsStore, Protocol
+    CaptureStore,
+    ItemStore,
+    OutcomeStore,
+    StepStore,
+    PeopleStore,
+    NudgeLedger,
+    SettingsStore,
+    Protocol,
 ): ...
 
 

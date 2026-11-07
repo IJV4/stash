@@ -11,10 +11,12 @@ from stash.domain import (
     CaptureStatus,
     Item,
     ItemType,
+    KeyDate,
     Nudge,
     NudgeKey,
     NudgeKind,
     Outcome,
+    Person,
     RawCapture,
     Stage,
     Step,
@@ -26,6 +28,7 @@ from stash.store._connect import open_connection
 from stash.store._item_writes import SqliteItemWrites
 from stash.store._ledger import SqliteLedger
 from stash.store._migrate import apply_migrations, packaged_migrations
+from stash.store._people import SqlitePeople
 from stash.store._rows import (
     capture_from_row,
     capture_values,
@@ -63,6 +66,7 @@ class SqliteStore:
         try:
             self._item_writes = SqliteItemWrites(self._connection, self._lock)
             self._steps = SqliteSteps(self._connection, self._lock)
+            self._people = SqlitePeople(self._connection, self._lock)
             self._ledger = SqliteLedger(self._connection, self._lock)
             apply_migrations(
                 self._connection, packaged_migrations() if migrations is None else migrations
@@ -237,6 +241,45 @@ class SqliteStore:
 
     def open_confirmed_steps(self) -> list[Step]:
         return self._steps.open_confirmed_steps()
+
+    def save_person(self, person: Person) -> None:
+        self._people.save_person(person)
+
+    def get_person(self, person_id: str) -> Person | None:
+        return self._people.get_person(person_id)
+
+    def delete_person(self, person_id: str) -> None:
+        self._people.delete_person(person_id)
+
+    def list_people(self) -> list[Person]:
+        return self._people.list_people()
+
+    def find_by_name(self, name: str) -> Person | None:
+        return self._people.find_by_name(name)
+
+    def save_key_date(self, key_date: KeyDate) -> None:
+        self._people.save_key_date(key_date)
+
+    def delete_key_date(self, key_date_id: str) -> None:
+        self._people.delete_key_date(key_date_id)
+
+    def key_dates_for(self, person_id: str) -> list[KeyDate]:
+        return self._people.key_dates_for(person_id)
+
+    def key_dates_between(self, start: date, end: date) -> list[tuple[KeyDate, date]]:
+        return self._people.key_dates_between(start, end)
+
+    def link(self, item_id: str, person_id: str) -> None:
+        self._people.link(item_id, person_id)
+
+    def unlink(self, item_id: str, person_id: str) -> None:
+        self._people.unlink(item_id, person_id)
+
+    def people_for(self, item_id: str) -> list[Person]:
+        return self._people.people_for(item_id)
+
+    def items_for(self, person_id: str, item_type: ItemType | None = None) -> list[Item]:
+        return self._people.items_for(person_id, item_type)
 
     def was_sent(self, key: NudgeKey) -> bool:
         return self._ledger.was_sent(key)

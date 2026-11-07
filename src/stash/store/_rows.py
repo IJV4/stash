@@ -6,7 +6,10 @@ from stash.domain import (
     CaptureStatus,
     Item,
     ItemType,
+    KeyDate,
+    KeyDateKind,
     Outcome,
+    Person,
     RawCapture,
     SourceRef,
     Stage,
@@ -133,6 +136,52 @@ def step_from_row(row: sqlite3.Row) -> Step:
         done=bool(row["done"]),
         position=row["position"],
         created_at=datetime.fromisoformat(row["created_at"]),
+    )
+
+
+def person_values(person: Person) -> tuple[str, ...]:
+    return (
+        person.id,
+        person.name,
+        person.relation,
+        _json(person.aliases),
+        person.notes,
+        utc_text(person.created_at),
+    )
+
+
+def person_from_row(row: sqlite3.Row) -> Person:
+    return Person(
+        id=row["id"],
+        name=row["name"],
+        relation=row["relation"],
+        aliases=tuple(json.loads(row["aliases"])),
+        notes=row["notes"],
+        created_at=datetime.fromisoformat(row["created_at"]),
+    )
+
+
+def key_date_values(key_date: KeyDate) -> tuple[str | int | None, ...]:
+    return (
+        key_date.id,
+        key_date.person_id,
+        key_date.kind.value,
+        key_date.label,
+        key_date.month,
+        key_date.day,
+        key_date.year,
+    )
+
+
+def key_date_from_row(row: sqlite3.Row) -> KeyDate:
+    return KeyDate(
+        id=row["id"],
+        person_id=row["person_id"],
+        kind=KeyDateKind(row["kind"]),
+        label=row["label"],
+        month=row["month"],
+        day=row["day"],
+        year=row["year"],
     )
 
 

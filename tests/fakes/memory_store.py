@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from fakes.memory_item_writes import MemoryItemWrites
 from fakes.memory_ledger import MemoryLedger
+from fakes.memory_people import MemoryPeople
 from fakes.memory_queries import Recency, mentions, recency_of, within
 from fakes.memory_steps import MemorySteps
 
@@ -12,10 +13,12 @@ from stash.domain import (
     CaptureStatus,
     Item,
     ItemType,
+    KeyDate,
     Nudge,
     NudgeKey,
     NudgeKind,
     Outcome,
+    Person,
     RawCapture,
     SourceRef,
     Stage,
@@ -44,6 +47,7 @@ class MemoryStore:
         self._outcomes: dict[str, Outcome] = {}
         self._writes = MemoryItemWrites(self._lock, self._captures, self._items)
         self._steps = MemorySteps(self._lock)
+        self._people = MemoryPeople(self._lock, self._items)
         self._ledger = MemoryLedger(self._lock)
         self._settings: dict[str, str] = {}
 
@@ -97,6 +101,7 @@ class MemoryStore:
             self._ungroup_children_of(item_id)
             self._drop_outcomes_of(item_id)
             self._steps.drop_steps_of(item_id)
+            self._people.drop_links_of_item(item_id)
 
     def delete_item_if_untouched(self, item_id: str) -> bool:
         with self._lock:
@@ -249,6 +254,45 @@ class MemoryStore:
 
     def open_confirmed_steps(self) -> list[Step]:
         return self._steps.open_confirmed_steps()
+
+    def save_person(self, person: Person) -> None:
+        self._people.save_person(person)
+
+    def get_person(self, person_id: str) -> Person | None:
+        return self._people.get_person(person_id)
+
+    def delete_person(self, person_id: str) -> None:
+        self._people.delete_person(person_id)
+
+    def list_people(self) -> list[Person]:
+        return self._people.list_people()
+
+    def find_by_name(self, name: str) -> Person | None:
+        return self._people.find_by_name(name)
+
+    def save_key_date(self, key_date: KeyDate) -> None:
+        self._people.save_key_date(key_date)
+
+    def delete_key_date(self, key_date_id: str) -> None:
+        self._people.delete_key_date(key_date_id)
+
+    def key_dates_for(self, person_id: str) -> list[KeyDate]:
+        return self._people.key_dates_for(person_id)
+
+    def key_dates_between(self, start: date, end: date) -> list[tuple[KeyDate, date]]:
+        return self._people.key_dates_between(start, end)
+
+    def link(self, item_id: str, person_id: str) -> None:
+        self._people.link(item_id, person_id)
+
+    def unlink(self, item_id: str, person_id: str) -> None:
+        self._people.unlink(item_id, person_id)
+
+    def people_for(self, item_id: str) -> list[Person]:
+        return self._people.people_for(item_id)
+
+    def items_for(self, person_id: str, item_type: ItemType | None = None) -> list[Item]:
+        return self._people.items_for(person_id, item_type)
 
     def was_sent(self, key: NudgeKey) -> bool:
         return self._ledger.was_sent(key)

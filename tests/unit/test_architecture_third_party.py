@@ -9,6 +9,7 @@ STORE_INTERNALS = (
     "stash.store._transaction",
     "stash.store._item_writes",
     "stash.store._steps",
+    "stash.store._people",
     "stash.store._ledger",
 )
 ALLOWED_IMPORTERS = (*ADAPTER_MODULES, *STORE_INTERNALS, "stash.app")
