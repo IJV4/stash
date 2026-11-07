@@ -13,7 +13,14 @@ class FailingSaveStore(MemoryStore):
         self.fail_next_save = False
 
     def save_item(self, item: Item) -> None:
+        self._fail_if_asked(item)
+        super().save_item(item)
+
+    def update_item(self, item: Item, *, replacing: Item) -> None:
+        self._fail_if_asked(item)
+        super().update_item(item, replacing=replacing)
+
+    def _fail_if_asked(self, item: Item) -> None:
         if self.fail_next_save:
             self.fail_next_save = False
             raise SaveFailed(item.id)
-        super().save_item(item)

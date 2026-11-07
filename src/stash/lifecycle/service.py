@@ -2,8 +2,12 @@ from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item, Outcome, Stage, frozen_strings
-from stash.lifecycle._guards import refusing_what_the_domain_refuses, reporting_items_that_vanished
+from stash.domain import Item, Outcome, Stage, frozen_strings
+from stash.lifecycle._guards import (
+    refusing_what_the_domain_refuses,
+    refusing_what_the_store_refuses_for_a_group,
+    reporting_concurrent_changes,
+)
 from stash.lifecycle.errors import LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.ports import LifecycleStore
 from stash.lifecycle.query import DEFAULT_LIBRARY_QUERY, LibraryQuery
@@ -56,8 +60,8 @@ class Lifecycle:
                 recorded_at=now,
             )
             completed = _completed(item, repeat, keep, now)
-        with reporting_items_that_vanished():
-            self._store.record_completion(completed, outcome)
+        with reporting_concurrent_changes():
+            self._store.record_completion(completed, outcome, replacing=item)
         return Completion(completed, outcome, repeat=repeat)
 
     def keep(self, item_id: str, kept: bool) -> Item:
@@ -65,27 +69,27 @@ class Lifecycle:
         now = self._clock()
         with refusing_what_the_domain_refuses():
             changed = item.kept_as(kept, now)
-        return self._saved(changed)
+        return self._saved(item, changed)
 
     def reopen(self, item_id: str) -> Item:
         item = self._item(item_id)
         now = self._clock()
         with refusing_what_the_domain_refuses():
             changed = item.reopened(now)
-        return self._saved(changed)
+        return self._saved(item, changed)
 
     def drop(self, item_id: str, reason: str | None) -> Item:
         item = self._item(item_id)
         now = self._clock()
         with refusing_what_the_domain_refuses():
             changed = item.dropped(_unless_blank(reason), now)
-        return self._saved(changed)
+        return self._saved(item, changed)
 
     def didnt_happen(self, item_id: str) -> Item:
         item = self._item(item_id)
         if not item.is_planned:
             return item
-        return self._saved(item.unplanned(self._clock()))
+        return self._saved(item, item.unplanned(self._clock()))
 
     def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item:
         if stage is Stage.DROPPED:
@@ -96,22 +100,22 @@ class Lifecycle:
         now = self._clock()
         with refusing_what_the_domain_refuses():
             changed = item.relocated_to(stage, now)
-        return self._saved(changed)
+        return self._saved(item, changed)
 
     def group(self, child_id: str, parent_id: str) -> Item:
         child = self._item(child_id)
         parent = self._item(parent_id)
-        if self._store.children_of(child.id):
-            raise LifecycleRefused(f"{GROUPS_ONE_LEVEL_DEEP}: {child.title} already holds items")
         now = self._clock()
         with refusing_what_the_domain_refuses():
             changed = child.grouped_under(parent, now)
-        return self._saved(changed)
+        with reporting_concurrent_changes(), refusing_what_the_store_refuses_for_a_group(child):
+            self._store.group_item(changed, replacing=child)
+        return changed
 
     def ungroup(self, child_id: str) -> Item:
         child = self._item(child_id)
         now = self._clock()
-        return self._saved(child.ungrouped(now))
+        return self._saved(child, child.ungrouped(now))
 
     def annotate(
         self,
@@ -153,14 +157,14 @@ class Lifecycle:
         return outcomes[-1] if outcomes else None
 
     def _saved_outcome(self, outcome: Outcome) -> Outcome:
-        with reporting_items_that_vanished():
+        with reporting_concurrent_changes():
             self._store.save_outcome(outcome)
         return outcome
 
-    def _saved(self, item: Item) -> Item:
-        with reporting_items_that_vanished():
-            self._store.save_item(item)
-        return item
+    def _saved(self, read: Item, changed: Item) -> Item:
+        with reporting_concurrent_changes():
+            self._store.update_item(changed, replacing=read)
+        return changed
 
     def _item(self, item_id: str) -> Item:
         item = self._store.get_item(item_id)

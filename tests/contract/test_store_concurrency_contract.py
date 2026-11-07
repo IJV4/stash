@@ -99,7 +99,7 @@ def test_completions_recorded_concurrently_are_all_kept(open_store: StoreFactory
         def complete(worker: int) -> None:
             item = an_item_at(Stage.DOING, id=f"i{worker}")
             outcome = an_outcome(id=f"o{worker}", item_id=item.id)
-            store.record_completion(item.completed(LATER), outcome)
+            store.record_completion(item.completed(LATER), outcome, replacing=item)
 
         # Execute
         errors = run_concurrently(workers, complete)
@@ -148,12 +148,12 @@ def test_a_capture_status_set_while_other_threads_write_leaves_every_effect(
             for n in range(count):
                 item = an_item_at(Stage.DOING, id=f"i{n}")
                 outcome = an_outcome(id=f"o{n}", item_id=item.id)
-                store.record_completion(item.completed(LATER), outcome)
+                store.record_completion(item.completed(LATER), outcome, replacing=item)
 
         def refused_completions() -> None:
             for _ in range(count):
                 with suppress(DuplicateOutcomeError):
-                    store.record_completion(refused.completed(LATER), taken)
+                    store.record_completion(refused.completed(LATER), taken, replacing=refused)
 
         writers = [request_captures, add_captures, complete_items, refused_completions]
 

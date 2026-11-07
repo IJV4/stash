@@ -1,13 +1,11 @@
 import sqlite3
 import threading
-import time
 from collections.abc import Mapping, Sequence
 from contextlib import closing
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import NoReturn
 
 from stash.domain import (
     CaptureStatus,
@@ -24,61 +22,46 @@ from stash.domain import (
     utc_text,
 )
 from stash.store import _sql as sql
+from stash.store._connect import open_connection
+from stash.store._item_writes import SqliteItemWrites
 from stash.store._ledger import SqliteLedger
 from stash.store._migrate import apply_migrations, packaged_migrations
 from stash.store._rows import (
     capture_from_row,
     capture_values,
     item_from_row,
-    item_values,
     outcome_from_row,
-    outcome_values,
 )
 from stash.store._steps import SqliteSteps
-from stash.store._transaction import immediate_transaction
 from stash.store.port import (
     DEFAULT_PAGE_SIZE,
     BackupError,
-    DuplicateOutcomeError,
     UnknownCaptureError,
-    UnknownItemError,
     require_date_range,
     require_instant_range,
     require_non_negative,
-    require_outcome_for_item,
 )
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
-_FOREIGN_KEY_VIOLATION = "SQLITE_CONSTRAINT_FOREIGNKEY"
-_BUSY = "SQLITE_BUSY"
-_WAL_SWITCH_DEADLINE_SECONDS = 5.0
-_WAL_SWITCH_RETRY_SECONDS = 0.01
+BUSY_TIMEOUT = timedelta(seconds=5)
 
 
 def _value_of(member: StrEnum | None) -> str | None:
     return None if member is None else member.value
 
 
-def _enable_wal(connection: sqlite3.Connection) -> None:
-    if connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal":
-        return
-    deadline = time.monotonic() + _WAL_SWITCH_DEADLINE_SECONDS
-    while True:
-        try:
-            connection.execute("PRAGMA journal_mode=WAL")
-            return
-        except sqlite3.OperationalError as error:
-            if error.sqlite_errorname != _BUSY or time.monotonic() >= deadline:
-                raise
-            time.sleep(_WAL_SWITCH_RETRY_SECONDS)
-
-
 class SqliteStore:
-    def __init__(self, path: Path, migrations: Traversable | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        migrations: Traversable | None = None,
+        busy_timeout: timedelta = BUSY_TIMEOUT,
+    ) -> None:
+        # One connection serves all threads: a transaction holds this lock while it waits to begin.
         self._lock = threading.RLock()
-        self._connection = sqlite3.connect(str(path), check_same_thread=False, isolation_level=None)
+        self._connection = open_connection(path, busy_timeout)
         try:
-            self._configure()
+            self._item_writes = SqliteItemWrites(self._connection, self._lock)
             self._steps = SqliteSteps(self._connection, self._lock)
             self._ledger = SqliteLedger(self._connection, self._lock)
             apply_migrations(
@@ -87,12 +70,6 @@ class SqliteStore:
         except BaseException:
             self._connection.close()
             raise
-
-    def _configure(self) -> None:
-        self._connection.row_factory = sqlite3.Row
-        _enable_wal(self._connection)
-        self._connection.execute("PRAGMA foreign_keys=ON")
-        self._connection.create_function("casefold", 1, str.casefold, deterministic=True)
 
     def add_capture(self, capture: RawCapture) -> bool:
         with self._lock:
@@ -128,13 +105,13 @@ class SqliteStore:
         return [capture_from_row(row) for row in rows]
 
     def save_item(self, item: Item) -> None:
-        with self._lock:
-            try:
-                self._connection.execute(sql.UPSERT_ITEM, item_values(item))
-            except sqlite3.IntegrityError as error:
-                if error.sqlite_errorname != _FOREIGN_KEY_VIOLATION:
-                    raise
-                self._refuse_item(item, error)
+        self._item_writes.save_item(item)
+
+    def update_item(self, item: Item, *, replacing: Item) -> None:
+        self._item_writes.update_item(item, replacing=replacing)
+
+    def group_item(self, child: Item, *, replacing: Item) -> None:
+        self._item_writes.group_item(child, replacing=replacing)
 
     def get_item(self, item_id: str) -> Item | None:
         with self._lock:
@@ -228,23 +205,13 @@ class SqliteStore:
         )
 
     def add_outcome(self, outcome: Outcome) -> None:
-        with self._lock:
-            self._insert_outcome(outcome)
+        self._item_writes.add_outcome(outcome)
 
     def save_outcome(self, outcome: Outcome) -> None:
-        with self._lock:
-            try:
-                self._connection.execute(sql.UPSERT_OUTCOME, outcome_values(outcome))
-            except sqlite3.IntegrityError as error:
-                self._refuse_outcome(outcome, error)
+        self._item_writes.save_outcome(outcome)
 
-    def record_completion(self, item: Item, outcome: Outcome) -> None:
-        require_outcome_for_item(item, outcome)
-        with self._lock, immediate_transaction(self._connection):
-            if not self._exists(sql.ITEM_EXISTS, item.id):
-                raise UnknownItemError(item.id)
-            self.save_item(item)
-            self._insert_outcome(outcome)
+    def record_completion(self, item: Item, outcome: Outcome, *, replacing: Item) -> None:
+        self._item_writes.record_completion(item, outcome, replacing=replacing)
 
     def outcomes_for(self, item_id: str) -> list[Outcome]:
         with self._lock:
@@ -277,6 +244,9 @@ class SqliteStore:
     def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
         return self._ledger.record_sent(nudge, sent_at)
 
+    def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
+        return self._ledger.record_all_sent(nudges, sent_at)
+
     def last_sent(self, kind: NudgeKind) -> datetime | None:
         return self._ledger.last_sent(kind)
 
@@ -302,13 +272,6 @@ class SqliteStore:
         with self._lock:
             self._connection.close()
 
-    def _refuse_item(self, item: Item, error: sqlite3.IntegrityError) -> NoReturn:
-        if not self._exists(sql.CAPTURE_EXISTS, item.capture_id):
-            raise UnknownCaptureError(item.capture_id) from error
-        if item.parent_id is not None:
-            raise UnknownItemError(item.parent_id) from error
-        raise error
-
     def _items_from(
         self, query: str, parameters: Mapping[str, object] | tuple[str, ...]
     ) -> list[Item]:
@@ -321,19 +284,3 @@ class SqliteStore:
         require_non_negative("limit", limit)
         parameters = {"stage": stage.value, "cutoff": utc_text(cutoff), "limit": limit}
         return self._items_from(sql.STAGE_OLDER_THAN, parameters)
-
-    def _exists(self, query: str, row_id: str) -> bool:
-        return self._connection.execute(query, (row_id,)).fetchone() is not None
-
-    def _insert_outcome(self, outcome: Outcome) -> None:
-        try:
-            self._connection.execute(sql.INSERT_OUTCOME, outcome_values(outcome))
-        except sqlite3.IntegrityError as error:
-            self._refuse_outcome(outcome, error)
-
-    def _refuse_outcome(self, outcome: Outcome, error: sqlite3.IntegrityError) -> NoReturn:
-        if error.sqlite_errorname == _PRIMARY_KEY_VIOLATION:
-            raise DuplicateOutcomeError(outcome.id) from error
-        if error.sqlite_errorname == _FOREIGN_KEY_VIOLATION:
-            raise UnknownItemError(outcome.item_id) from error
-        raise error

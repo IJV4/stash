@@ -52,7 +52,6 @@ FORGOTTEN_AND_STUCK_TEXT = "\n".join(
         "📖 How is Thinking in Systems going?",
     ]
 )
-FORGOTTEN_ONLY_TEXT = "🗞 Your weekly digest\n🕰 Forgotten\n• Learn to sail"
 REMINDERS_FILLING_THE_MESSAGE = 13
 WEEKLY_DIGEST_TEXT = "\n".join(
     [
@@ -148,7 +147,7 @@ def test_a_failed_send_records_nothing_so_the_retry_sends_the_whole_digest() -> 
     assert rig.sent_texts() == [(DIGEST_AT + MINUTE, FORGOTTEN_AND_STUCK_TEXT)]
 
 
-def test_a_crash_before_the_digest_row_repeats_the_digest_with_the_same_forgotten_item() -> None:
+def test_a_crash_while_recording_the_digest_repeats_the_whole_digest() -> None:
     # Setup
     store = LedgerRecordingStore()
     stored(store, a_forgotten_sail())
@@ -165,7 +164,7 @@ def test_a_crash_before_the_digest_row_repeats_the_digest_with_the_same_forgotte
     # Assert
     assert rig.sent_texts() == [
         (DIGEST_AT, FORGOTTEN_AND_STUCK_TEXT),
-        (DIGEST_AT + MINUTE, FORGOTTEN_ONLY_TEXT),
+        (DIGEST_AT + MINUTE, FORGOTTEN_AND_STUCK_TEXT),
     ]
 
 

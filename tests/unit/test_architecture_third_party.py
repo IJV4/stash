@@ -5,7 +5,9 @@ THIRD_PARTY_PACKAGES = ("httpx", "sqlite3", "subprocess", "yt_dlp", "PIL", "pyte
 STORE_INTERNALS = (
     "stash.store._rows",
     "stash.store._migrate",
+    "stash.store._connect",
     "stash.store._transaction",
+    "stash.store._item_writes",
     "stash.store._steps",
     "stash.store._ledger",
 )

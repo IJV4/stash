@@ -1,4 +1,5 @@
 import datetime as dt
+from collections.abc import Sequence
 from typing import Protocol
 
 from stash.domain import Item, Nudge, NudgeKey, NudgeKind, Pick, Step
@@ -17,7 +18,7 @@ class NudgeStore(Protocol):
 
     def was_sent(self, key: NudgeKey) -> bool: ...
 
-    def record_sent(self, nudge: Nudge, sent_at: dt.datetime) -> bool: ...
+    def record_all_sent(self, nudges: Sequence[Nudge], sent_at: dt.datetime) -> bool: ...
 
     def last_sent(self, kind: NudgeKind) -> dt.datetime | None: ...
 

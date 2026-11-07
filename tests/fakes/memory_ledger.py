@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from stash.domain import Nudge, NudgeKey, NudgeKind, require_aware
@@ -20,6 +21,11 @@ class MemoryLedger:
                 return False
             self._sent[nudge.key] = sent_at.astimezone(UTC)
             return True
+
+    def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
+        require_aware("sent_at", sent_at)
+        with self._lock:
+            return all([self.record_sent(nudge, sent_at) for nudge in nudges])
 
     def last_sent(self, kind: NudgeKind) -> datetime | None:
         with self._lock:

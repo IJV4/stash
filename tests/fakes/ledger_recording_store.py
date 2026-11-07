@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 
 from fakes.memory_store import MemoryStore
@@ -14,13 +15,9 @@ class LedgerRecordingStore(MemoryStore):
         super().__init__()
         self.recorded: list[NudgeKind] = []
         self.crash_on: NudgeKind | None = None
-        self.crash_after: int | None = None
 
-    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
-        if nudge.kind is self.crash_on or self._crash_after_reached():
-            raise LedgerCrashed(nudge.kind)
-        self.recorded.append(nudge.kind)
-        return super().record_sent(nudge, sent_at)
-
-    def _crash_after_reached(self) -> bool:
-        return self.crash_after is not None and len(self.recorded) >= self.crash_after
+    def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
+        if any(nudge.kind is self.crash_on for nudge in nudges):
+            raise LedgerCrashed(self.crash_on)
+        self.recorded.extend(nudge.kind for nudge in nudges)
+        return super().record_all_sent(nudges, sent_at)

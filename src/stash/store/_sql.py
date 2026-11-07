@@ -28,6 +28,31 @@ ON CONFLICT (id) DO UPDATE SET
     cool_off_until = excluded.cool_off_until
 """
 
+UPDATE_ITEM = """
+UPDATE items SET
+    capture_id = ?2,
+    item_type = ?3,
+    title = ?4,
+    stage = ?5,
+    source_url = ?6,
+    note = ?7,
+    details = ?8,
+    tags = ?9,
+    people = ?10,
+    date = ?11,
+    created_at = ?12,
+    updated_at = ?13,
+    kept = ?14,
+    parent_id = ?15,
+    drop_reason = ?16,
+    cool_off_until = ?17
+WHERE id = ?1
+"""
+
+ITEM_BY_ID = "SELECT * FROM items WHERE id = ?"
+
+ITEM_HOLDS_ITEMS = "SELECT 1 FROM items WHERE parent_id = ? LIMIT 1"
+
 LIST_ITEMS = """
 SELECT * FROM items
 WHERE (:stage IS NULL OR stage = :stage) AND (:item_type IS NULL OR item_type = :item_type)

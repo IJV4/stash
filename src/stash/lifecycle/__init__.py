@@ -1,4 +1,11 @@
-from stash.lifecycle.errors import LifecycleError, LifecycleRefused, UnknownItem, UnknownOutcome
+from stash.lifecycle.errors import (
+    ItemChanged,
+    LifecycleError,
+    LifecycleRefused,
+    StashBusy,
+    UnknownItem,
+    UnknownOutcome,
+)
 from stash.lifecycle.ports import LifecycleStore
 from stash.lifecycle.query import MAX_LIBRARY_LIMIT, MIN_LIBRARY_LIMIT, LibraryQuery
 from stash.lifecycle.results import Completion, ItemHistory, LibraryEntry
@@ -8,6 +15,7 @@ __all__ = [
     "MAX_LIBRARY_LIMIT",
     "MIN_LIBRARY_LIMIT",
     "Completion",
+    "ItemChanged",
     "ItemHistory",
     "LibraryEntry",
     "LibraryQuery",
@@ -15,6 +23,7 @@ __all__ = [
     "LifecycleError",
     "LifecycleRefused",
     "LifecycleStore",
+    "StashBusy",
     "UnknownItem",
     "UnknownOutcome",
 ]

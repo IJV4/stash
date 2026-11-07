@@ -6,9 +6,15 @@ from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import KeepChoice, rating_for
 from stash.capture.completion_replies import didnt_happen_reply, done_reply, kept_reply, rated_reply
 from stash.capture.ports import FixStore, LifecycleActions
-from stash.capture.replies import Reply, gone, refused
+from stash.capture.replies import Reply, busy, changed, gone, refused
 from stash.domain import enum_member
-from stash.lifecycle.errors import LifecycleRefused, UnknownItem, UnknownOutcome
+from stash.lifecycle.errors import (
+    ItemChanged,
+    LifecycleRefused,
+    StashBusy,
+    UnknownItem,
+    UnknownOutcome,
+)
 from stash.lifecycle.results import Completion, ItemHistory
 
 RATING_KIND = "rating"
@@ -84,6 +90,12 @@ class CompletionButtons:
         except UnknownItem as error:
             self._log.unknown(Subject.ITEM, error.item_id)
             return gone()
+        except ItemChanged as error:
+            self._log.changed(Subject.ITEM, error.item_id)
+            return changed()
+        except StashBusy:
+            self._log.busy()
+            return busy()
         except UnknownOutcome as error:
             self._log.unknown(Subject.OUTCOME, error.outcome_id)
             return gone()

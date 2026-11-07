@@ -7,6 +7,8 @@ from stash.capture.replies import (
     TELEGRAM_TEXT_LIMIT,
     Button,
     Reply,
+    busy,
+    changed,
     confirmation,
     deferred,
     gone,
@@ -165,3 +167,13 @@ def test_the_deferred_notices_cannot_be_changed_at_runtime() -> None:
     # Execute / Assert
     with pytest.raises(TypeError):
         DEFERRED_TEXT["gpu_busy"] = "changed"  # type: ignore[index]
+
+
+def test_the_changed_reply_says_the_item_changed_meanwhile_and_has_no_buttons() -> None:
+    # Execute / Assert
+    assert changed() == Reply("That changed meanwhile — try again.", ())
+
+
+def test_the_busy_reply_says_the_stash_is_busy_and_has_no_buttons() -> None:
+    # Execute / Assert
+    assert busy() == Reply("The stash is busy — try again in a moment.", ())

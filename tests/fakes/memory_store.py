@@ -2,9 +2,10 @@ import threading
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import date, datetime
-from typing import NamedTuple
 
+from fakes.memory_item_writes import MemoryItemWrites
 from fakes.memory_ledger import MemoryLedger
+from fakes.memory_queries import Recency, mentions, recency_of, within
 from fakes.memory_steps import MemorySteps
 
 from stash.domain import (
@@ -34,12 +35,6 @@ from stash.store.port import (
 )
 
 
-class Recency(NamedTuple):
-    completed_on: date
-    recorded_at: datetime
-    outcome_id: str
-
-
 class MemoryStore:
     def __init__(self) -> None:
         self._lock = threading.RLock()
@@ -47,6 +42,7 @@ class MemoryStore:
         self._sources: set[SourceRef] = set()
         self._items: dict[str, Item] = {}
         self._outcomes: dict[str, Outcome] = {}
+        self._writes = MemoryItemWrites(self._lock, self._captures, self._items)
         self._steps = MemorySteps(self._lock)
         self._ledger = MemoryLedger(self._lock)
         self._settings: dict[str, str] = {}
@@ -83,9 +79,13 @@ class MemoryStore:
         return sorted(pending, key=lambda capture: (capture.received_at, capture.id))
 
     def save_item(self, item: Item) -> None:
-        with self._lock:
-            self._require_references(item)
-            self._items[item.id] = item
+        self._writes.save_item(item)
+
+    def update_item(self, item: Item, *, replacing: Item) -> None:
+        self._writes.update_item(item, replacing=replacing)
+
+    def group_item(self, child: Item, *, replacing: Item) -> None:
+        self._writes.group_item(child, replacing=replacing)
 
     def get_item(self, item_id: str) -> Item | None:
         with self._lock:
@@ -128,7 +128,7 @@ class MemoryStore:
         if not query.strip():
             return []
         needle = query.casefold()
-        matching = [item for item in self._newest_first() if _mentions(item, needle)]
+        matching = [item for item in self._newest_first() if mentions(item, needle)]
         return matching[:limit]
 
     def add_outcome(self, outcome: Outcome) -> None:
@@ -142,13 +142,12 @@ class MemoryStore:
             self._require_stored_item(outcome.item_id)
             self._outcomes[outcome.id] = outcome
 
-    def record_completion(self, item: Item, outcome: Outcome) -> None:
+    def record_completion(self, item: Item, outcome: Outcome, *, replacing: Item) -> None:
         require_outcome_for_item(item, outcome)
         with self._lock:
-            self._require_stored_item(item.id)
-            self._require_references(item)
+            self._writes.require_replaceable(item, replacing)
             self._require_unused_outcome_id(outcome)
-            self._items[item.id] = item
+            self._writes.put(item)
             self._outcomes[outcome.id] = outcome
 
     def outcomes_for(self, item_id: str) -> list[Outcome]:
@@ -156,7 +155,7 @@ class MemoryStore:
             outcomes = [
                 outcome for outcome in self._outcomes.values() if outcome.item_id == item_id
             ]
-        return sorted(outcomes, key=_recency)
+        return sorted(outcomes, key=recency_of)
 
     def get_outcome(self, outcome_id: str) -> Outcome | None:
         with self._lock:
@@ -255,6 +254,9 @@ class MemoryStore:
     def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
         return self._ledger.record_sent(nudge, sent_at)
 
+    def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
+        return self._ledger.record_all_sent(nudges, sent_at)
+
     def last_sent(self, kind: NudgeKind) -> datetime | None:
         return self._ledger.last_sent(kind)
 
@@ -278,8 +280,8 @@ class MemoryStore:
         latest: dict[str, Recency] = {}
         with self._lock:
             for outcome in self._outcomes.values():
-                if _within(outcome.completed_on, start, end):
-                    rank = _recency(outcome)
+                if within(outcome.completed_on, start, end):
+                    rank = recency_of(outcome)
                     latest[outcome.item_id] = max(rank, latest.get(outcome.item_id, rank))
         return latest
 
@@ -307,11 +309,6 @@ class MemoryStore:
         if outcome.id in self._outcomes:
             raise DuplicateOutcomeError(outcome.id)
 
-    def _require_references(self, item: Item) -> None:
-        self._known_capture(item.capture_id)
-        if item.parent_id is not None and item.parent_id not in self._items:
-            raise UnknownItemError(item.parent_id)
-
     def _dated_between(self, start: date, end: date) -> list[Item]:
         with self._lock:
             items = list(self._items.values())
@@ -330,15 +327,3 @@ class MemoryStore:
         with self._lock:
             items = list(self._items.values())
         return sorted(items, key=lambda item: (item.created_at, item.id), reverse=True)
-
-
-def _recency(outcome: Outcome) -> Recency:
-    return Recency(outcome.completed_on, outcome.recorded_at, outcome.id)
-
-
-def _within(day: date, start: date | None, end: date | None) -> bool:
-    return (start is None or start <= day) and (end is None or day <= end)
-
-
-def _mentions(item: Item, needle: str) -> bool:
-    return any(needle in text.casefold() for text in (item.title, item.note, *item.tags))

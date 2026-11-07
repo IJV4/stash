@@ -165,7 +165,9 @@ def test_a_completion_whose_outcome_is_refused_leaves_the_item_unchanged(tmp_pat
     with store_holding_a_doing_item(tmp_path) as (store, item):
         # Execute
         with pytest.raises(sqlite3.IntegrityError, match="forbidden outcome"):
-            store.record_completion(item.completed(LATER), an_outcome(notes="forbidden"))
+            store.record_completion(
+                item.completed(LATER), an_outcome(notes="forbidden"), replacing=item
+            )
 
         # Assert
         assert store.get_item("i1") == item
@@ -177,7 +179,9 @@ def test_a_completion_whose_outcome_is_refused_stores_no_outcome(tmp_path: Path)
     with store_holding_a_doing_item(tmp_path) as (store, item):
         # Execute
         with pytest.raises(sqlite3.IntegrityError, match="forbidden outcome"):
-            store.record_completion(item.completed(LATER), an_outcome(notes="forbidden"))
+            store.record_completion(
+                item.completed(LATER), an_outcome(notes="forbidden"), replacing=item
+            )
 
         # Assert
         assert store.outcomes_for("i1") == []

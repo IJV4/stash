@@ -26,6 +26,12 @@ class CallbackLog:
     def unknown(self, subject: Subject, subject_id: str) -> None:
         self.logger.info("fix callback for unknown %s %s", subject, _clamped(subject_id))
 
+    def changed(self, subject: Subject, subject_id: str) -> None:
+        self.logger.info("fix callback for %s %s changed meanwhile", subject, _clamped(subject_id))
+
+    def busy(self) -> None:
+        self.logger.warning("fix callback while the stash was busy")
+
     def invalid(self, subject: Subject, subject_id: str, kind: str, value: str | None) -> None:
         self.logger.warning(
             "fix callback for %s %s has an invalid %s %r",

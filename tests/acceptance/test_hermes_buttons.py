@@ -1,20 +1,29 @@
 import asyncio
+from dataclasses import replace
 
+from builders import an_item_at, stored
 from capture_builders import (
     QUESTION,
     a_filing_answer,
     a_request_answer,
     an_unsure_answer,
     button_data,
+    store_with_filed_item,
 )
+from fakes.busy_store import BusyStore
+from fakes.changing_item_store import RETITLED_BY_ANOTHER_WRITER, ChangingItemStore
 from fakes.recording_assistant import RecordingAssistant
+from fakes.vanishing_item_store import VanishingItemStore
 from hermes_events import OWNER_ID, STRANGER_ID, an_event
-from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_hermes_rig
+from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_button_rig, build_hermes_rig
 
 from stash.capture.callbacks import FixAction, FixKind
+from stash.domain import Stage
 from stash.hermes_adapter.events import Chat
 
 GONE = "That item no longer exists."
+CHANGED = "That changed meanwhile — try again."
+BUSY = "The stash is busy — try again in a moment."
 FORGED_ITEM_ID = "f" * 32
 APOLOGY_TEXT = (
     "I couldn't pass that on to the assistant. Send it again starting with ? and I'll hand it over."
@@ -128,3 +137,49 @@ def test_pressing_that_was_a_question_after_an_allowed_question_injects_the_text
 
     # Assert
     assert ([message.content for message in rig.ctx.injected], rig.ctx.refused) == ([QUESTION], [])
+
+
+def test_pressing_didnt_happen_on_an_item_deleted_meanwhile_says_it_no_longer_exists() -> None:
+    # Setup
+    store = VanishingItemStore()
+    stored(store, an_item_at(Stage.PLANNED))
+    store.vanish_after_reading_item("i1")
+    rig = build_button_rig(store)
+
+    # Execute
+    shown = rig.pressed(FixAction(FixKind.NOT_HAPPENED, "i1").encode())
+
+    # Assert
+    assert (shown, store.get_item("i1")) == (GONE, None)
+
+
+def test_a_stage_press_on_an_item_changed_meanwhile_asks_to_try_again_and_keeps_the_change() -> (
+    None
+):
+    # Setup
+    store = ChangingItemStore()
+    _, item = store_with_filed_item(store, stage=Stage.INBOX)
+    store.change_after_reading_item("c1")
+    rig = build_button_rig(store)
+
+    # Execute
+    shown = rig.pressed(FixAction(FixKind.SET_STAGE, "c1", Stage.DOING.value).encode())
+
+    # Assert
+    assert (shown, store.get_item("c1")) == (
+        CHANGED,
+        replace(item, title=RETITLED_BY_ANOTHER_WRITER),
+    )
+
+
+def test_pressing_done_while_the_store_is_busy_asks_to_try_again_in_a_moment() -> None:
+    # Setup
+    store = BusyStore()
+    stored(store, an_item_at(Stage.DOING))
+    rig = build_button_rig(store)
+
+    # Execute
+    shown = rig.pressed(FixAction(FixKind.DONE, "i1").encode())
+
+    # Assert
+    assert shown == BUSY

@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 import pytest
 from builders import stored
 from fakes.ledger_recording_store import LedgerCrashed, LedgerRecordingStore
@@ -95,7 +93,7 @@ def test_marking_records_the_time_the_message_was_sent() -> None:
     assert store.last_sent(NudgeKind.FOLLOWUP) == SUNDAY_NOON
 
 
-def test_a_digest_is_recorded_after_the_stuck_items_that_rode_it() -> None:
+def test_a_digest_is_recorded_together_with_the_stuck_items_that_rode_it() -> None:
     # Setup
     store = LedgerRecordingStore()
     nudger = a_nudger(store)
@@ -108,9 +106,7 @@ def test_a_digest_is_recorded_after_the_stuck_items_that_rode_it() -> None:
     assert store.recorded == [NudgeKind.STUCK, NudgeKind.DIGEST]
 
 
-def test_a_crash_before_the_digest_is_recorded_repeats_the_digest_without_the_recorded_items() -> (
-    None
-):
+def test_a_crash_while_recording_a_digest_repeats_the_digest_with_its_stuck_items() -> None:
     # Setup
     store = LedgerRecordingStore()
     nudger = a_nudger(store)
@@ -125,12 +121,10 @@ def test_a_crash_before_the_digest_is_recorded_repeats_the_digest_without_the_re
     due = nudger.due(SUNDAY_NOON)
 
     # Assert
-    assert WeeklyDigest(SUNDAY_DIGEST_TIME, ()) in due
+    assert digest in due
 
 
-def test_a_crash_after_the_first_reminder_of_a_message_is_recorded_leaves_only_the_rest_due() -> (
-    None
-):
+def test_a_crash_while_recording_reminders_leaves_all_of_them_due_again() -> None:
     # Setup
     store = LedgerRecordingStore()
     stored_date_night_with_its_step(store)
@@ -138,50 +132,54 @@ def test_a_crash_after_the_first_reminder_of_a_message_is_recorded_leaves_only_t
     reminders = tuple(
         due for due in nudger.due(SATURDAY_MORNING) if isinstance(due, StepReminder | DateReminder)
     )
-    store.crash_after = 1
+    store.crash_on = NudgeKind.ITEM_DATE
     with pytest.raises(LedgerCrashed):
         nudger.mark_sent(NudgeMessage(reminders, catch_up=False), SATURDAY_MORNING)
-    store.crash_after = None
+    store.crash_on = None
 
     # Execute
     due = nudger.due(SATURDAY_MORNING)
 
     # Assert
-    assert [nudge.nudge.kind for nudge in due if not isinstance(nudge, WeeklyDigest)] == [
-        NudgeKind.ITEM_DATE
-    ]
+    assert {nudge.nudge.kind for nudge in due if not isinstance(nudge, WeeklyDigest)} == {
+        NudgeKind.STEP,
+        NudgeKind.ITEM_DATE,
+    }
 
 
-def a_store_whose_ledger_crashes_after_the_first_of_two_follow_ups() -> LedgerRecordingStore:
+def a_store_whose_ledger_crashes_while_recording_two_follow_ups() -> LedgerRecordingStore:
     store = LedgerRecordingStore()
     stored_date_night_with_its_step(store)
     stored(store, a_planned_date_night(id="friday-dinner", date=FRIDAY))
     nudger = a_nudger(store)
     follow_ups = tuple(due for due in nudger.due(SUNDAY_NOON) if isinstance(due, FollowUp))
-    store.crash_after = 1
+    store.crash_on = NudgeKind.FOLLOWUP
     with pytest.raises(LedgerCrashed):
         nudger.mark_sent(NudgeMessage(follow_ups, catch_up=False), SUNDAY_NOON)
-    store.crash_after = None
+    store.crash_on = None
     return store
 
 
-def test_a_crash_after_the_first_of_two_follow_ups_holds_the_other_until_the_next_slot() -> None:
+def test_a_crash_while_recording_two_follow_ups_leaves_both_due_again() -> None:
     # Setup
-    store = a_store_whose_ledger_crashes_after_the_first_of_two_follow_ups()
+    store = a_store_whose_ledger_crashes_while_recording_two_follow_ups()
 
     # Execute
     due = a_nudger(store).due(SUNDAY_NOON)
 
     # Assert
-    assert only(FollowUp, due) == []
+    assert sorted(follow_up.item.id for follow_up in only(FollowUp, due)) == [
+        DATE_NIGHT_ID,
+        "friday-dinner",
+    ]
 
 
-def test_a_follow_up_held_back_by_a_crash_is_due_at_the_next_slot_and_not_lost() -> None:
+def test_a_crash_while_recording_two_follow_ups_leaves_the_follow_up_slot_free() -> None:
     # Setup
-    store = a_store_whose_ledger_crashes_after_the_first_of_two_follow_ups()
+    store = a_store_whose_ledger_crashes_while_recording_two_follow_ups()
 
     # Execute
-    due = a_nudger(store).due(SUNDAY_MORNING + timedelta(days=1))
+    last = store.last_sent(NudgeKind.FOLLOWUP)
 
     # Assert
-    assert [follow_up.item.id for follow_up in only(FollowUp, due)] == [DATE_NIGHT_ID]
+    assert last is None

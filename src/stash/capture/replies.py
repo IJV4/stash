@@ -10,6 +10,8 @@ from stash.domain import Item, derive_title
 TELEGRAM_TEXT_LIMIT = 4096
 DETAIL_KEYS = ("city", "author", "platform")
 GONE_TEXT = "That item no longer exists."
+CHANGED_TEXT = "That changed meanwhile — try again."
+BUSY_TEXT = "The stash is busy — try again in a moment."
 REFUSED_TEXT = "I can't do that: {message}"
 DONE_LABEL = "Done ✓"
 DEFERRED_TEXT = MappingProxyType[DeferralReason, str](
@@ -72,6 +74,14 @@ def deferred(reason: DeferralReason) -> Reply:
 
 def gone() -> Reply:
     return Reply(GONE_TEXT)
+
+
+def changed() -> Reply:
+    return Reply(CHANGED_TEXT)
+
+
+def busy() -> Reply:
+    return Reply(BUSY_TEXT)
 
 
 def refused(message: str) -> Reply:

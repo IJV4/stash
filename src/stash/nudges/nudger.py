@@ -59,8 +59,7 @@ class Nudger:
         return sorted(unsent, key=lambda due: due.due_at)
 
     def mark_sent(self, message: NudgeMessage, sent_at: dt.datetime) -> bool:
-        recorded = [self._store.record_sent(nudge, sent_at) for nudge in message.nudges]
-        return all(recorded)
+        return self._store.record_all_sent(message.nudges, sent_at)
 
     def _step_reminders(self, window: DueWindow) -> list[StepReminder]:
         reminders = (self._step_reminder(step) for step in self._store.open_confirmed_steps())

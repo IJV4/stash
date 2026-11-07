@@ -12,8 +12,8 @@ class FailingCompletionStore(MemoryStore):
         super().__init__()
         self.fail_next_completion = False
 
-    def record_completion(self, item: Item, outcome: Outcome) -> None:
+    def record_completion(self, item: Item, outcome: Outcome, *, replacing: Item) -> None:
         if self.fail_next_completion:
             self.fail_next_completion = False
             raise CompletionFailed(item.id)
-        super().record_completion(item, outcome)
+        super().record_completion(item, outcome, replacing=replacing)

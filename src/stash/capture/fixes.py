@@ -11,9 +11,10 @@ from stash.capture.completion_buttons import CompletionButtons
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.planning_buttons import PlanningButtons
 from stash.capture.ports import FixStore, LifecycleActions, PlanningActions
-from stash.capture.replies import Reply, confirmation, gone
+from stash.capture.replies import Reply, busy, changed, confirmation, gone
 from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
+from stash.store.port import StaleItemError, StoreBusyError, UnknownItemError
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +97,7 @@ class FixHandler:
         if item_type is None:
             self._log.invalid(Subject.ITEM, item.id, ItemType.__name__, argument)
             return gone()
-        updated = item.retyped(item_type, self._clock())
-        self._store.save_item(updated)
-        return confirmation(updated, unsure=False)
+        return self._replaced(item, item.retyped(item_type, self._clock()))
 
     def _move(self, item: Item, argument: str | None) -> Reply:
         stage = enum_member(Stage, argument)
@@ -107,8 +106,20 @@ class FixHandler:
             return stage_menu(item)
         if not item.can_move_to(stage):
             return stage_menu(item)
-        updated = item.moved_to(stage, self._clock())
-        self._store.save_item(updated)
+        return self._replaced(item, item.moved_to(stage, self._clock()))
+
+    def _replaced(self, read: Item, updated: Item) -> Reply:
+        try:
+            self._store.update_item(updated, replacing=read)
+        except UnknownItemError:
+            self._log.unknown(Subject.ITEM, read.id)
+            return gone()
+        except StaleItemError:
+            self._log.changed(Subject.ITEM, read.id)
+            return changed()
+        except StoreBusyError:
+            self._log.busy()
+            return busy()
         return confirmation(updated, unsure=False)
 
     def _question(self, capture_id: str) -> Reply | Reroute:
