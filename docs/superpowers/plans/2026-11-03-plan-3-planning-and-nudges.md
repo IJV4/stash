@@ -312,7 +312,8 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 >    - One production delivery loop: due → `batch_messages` → `nudge_reply` → send → `mark_sent` of
 >      the part the reply showed (`mark_sent` returns False on a lost race: log it, do not resend).
 >      The test rig's loop must call it rather than reimplement it.
->    - `Reply`'s 4096 limit should count UTF-16 code units (Telegram's unit); check on the PC.
+>    - ~~`Reply`'s 4096 limit should count UTF-16 code units~~ **Parked (owner ruling R15, 2026-11-07):**
+     not built until the PC sees a real over-limit failure.
 >    - Add `stash.app.build` to the nudges guard's allowed importers; the app wiring is the first
 >      type-check that `SqliteStore` satisfies `NudgeStore`.
 > 7. Carried from the Task 5 review:
@@ -371,6 +372,9 @@ Tests: `tests/unit/suggestions/*`, `tests/unit/nudges/test_digest.py`,
 - [ ] **Step 6: Commit** `feat: reminders, digest and follow-ups delivered by the ticker`.
 
 ### Task 7: Purchase cool-off (spec: optional, off by default)
+
+> **Deferred (owner ruling R15, 2026-11-07):** build after Plans 4 and 6. Plan 3's final review
+> runs after Task 6b without it. The `cool_off_until` column already exists (migration 0003).
 
 **Files:** Modify `src/stash/domain/item.py` (`cool_off_until: date | None`), migration `0003` (column `cool_off_until TEXT`; this task lands in the same migration as Task 1 — do not add a separate file), `config` (`[nudges] purchase_cool_off_days = 0` — 0 disables), `src/stash/capture/pipeline.py` (set it for new PURCHASE items when enabled), `src/stash/nudges/*` (`NudgeKind.COOL_OFF`), `capture/callbacks.py` (`FixKind STILL_WANT="w"`); Tests unit + `tests/acceptance/test_cool_off.py`.
 
