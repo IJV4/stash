@@ -1249,10 +1249,11 @@ message each, with `proposal_reply` (`Looks good ✓` and `No steps` buttons).
 - The call runs the model, so the ticker runs it off the event loop.
 
 Pinned by `tests/acceptance/test_delivery.py`: a dated planned item is proposed
-and sent, at most three per call, a failed send withdraws the steps so the
-item can be proposed again, an AI outage leaves the item for the next call
+and sent, at most three per call, an AI outage leaves the item for the next call
 without stopping the next item, a stale answer is not logged, and a busy store
 on a planning button gets the busy reply (`tests/acceptance/test_hermes_buttons.py`).
+A failed send withdraws the steps without declining, so the next tick proposes the item
+again (`tests/acceptance/test_hermes_ticker.py`).
 
 Every refusal raises a `PlanningError`: `UnknownItem(item_id)`,
 `UnknownStep(step_id)` or `PlanningRefused(message)`. A refused call writes
