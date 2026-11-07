@@ -84,13 +84,13 @@ def _step_line(reminder: StepReminder) -> str:
 def _person_date_lines(reminder: PersonDateReminder) -> list[str]:
     occasion = occasion_of(reminder.person, reminder.key_date)
     emoji = emoji_of(reminder.key_date)
-    if reminder.lead == 0:
+    if reminder.days_left == 0:
         age = _age_suffix(reminder)
         return [PERSON_DATE_TODAY_LINE.format(emoji=emoji, occasion=occasion, age=age)]
     ahead = PERSON_DATE_AHEAD_LINE.format(
         emoji=emoji,
         occasion=occasion,
-        lead=counted(reminder.lead, "day"),
+        lead=counted(reminder.days_left, "day"),
         day=short_day(reminder.on),
     )
     return [ahead, _gift_ideas_line(reminder.gift_ideas)]

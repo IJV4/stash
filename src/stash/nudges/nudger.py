@@ -93,7 +93,7 @@ class Nudger:
         )
 
     def _person_date_reminders(self, window: DueWindow) -> list[PersonDateReminder]:
-        return window.keep(self._person_dates.reminders(*self._local_dates(window)))
+        return window.keep(self._person_dates.reminders(window.now))
 
     def _follow_ups(self, window: DueWindow) -> list[FollowUp]:
         if self._followup_slot_taken(window.now):

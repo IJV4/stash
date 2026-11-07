@@ -32,10 +32,26 @@ def test_a_reminder_before_the_day_names_the_lead_the_date_and_the_gift_ideas() 
 
 def test_a_reminder_the_day_before_says_one_day_in_the_singular() -> None:
     # Execute
-    text = text_of(a_person_date_reminder(lead=1))
+    text = text_of(a_person_date_reminder(lead=2, days_left=1))
 
     # Assert
     assert text.splitlines()[0] == "🎂 Ana's birthday in 1 day (Sat Mar 6)."
+
+
+def test_a_reminder_names_the_days_left_not_the_nominal_lead() -> None:
+    # Execute
+    text = text_of(a_person_date_reminder(lead=14, days_left=5))
+
+    # Assert
+    assert text.splitlines()[0] == "🎂 Ana's birthday in 5 days (Sat Mar 6)."
+
+
+def test_a_reminder_with_no_days_left_is_worded_as_the_day_itself_whatever_its_lead() -> None:
+    # Execute
+    text = text_of(a_person_date_reminder(lead=2, days_left=0))
+
+    # Assert
+    assert text == "🎂 Today: Ana's birthday (turns 34)."
 
 
 def test_a_reminder_before_the_day_without_gift_ideas_says_none_are_saved() -> None:

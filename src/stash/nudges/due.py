@@ -100,6 +100,7 @@ class PersonDateReminder:
     key_date: KeyDate
     on: dt.date
     lead: int
+    days_left: int
     gift_ideas: tuple[str, ...]
     due_at: dt.datetime
 
@@ -108,6 +109,8 @@ class PersonDateReminder:
         require_key_date_of(self.person, self.key_date)
         if self.lead < 0:
             raise ValueError("lead must be >= 0")
+        if self.days_left < 0:
+            raise ValueError("days_left must be >= 0")
 
     @property
     def nudge(self) -> Nudge:

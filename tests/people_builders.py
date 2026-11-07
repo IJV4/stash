@@ -63,11 +63,13 @@ def a_person_date_reminder(**overrides: Any) -> PersonDateReminder:
     key_date = overrides.pop("key_date", None) or a_key_date(
         person_id=person.id, month=3, day=6, year=1993
     )
+    lead = overrides.get("lead", 0)
     fields: dict[str, Any] = {
         "person": person,
         "key_date": key_date,
         "on": date(2027, 3, 6),
-        "lead": 0,
+        "lead": lead,
+        "days_left": lead,
         "gift_ideas": (),
         "due_at": in_los_angeles(date(2027, 3, 6), 9),
     }

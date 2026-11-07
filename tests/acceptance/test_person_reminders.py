@@ -10,7 +10,7 @@ MARCH_SIXTH = date(2027, 3, 6)
 FEBRUARY_TWENTIETH_MORNING = in_los_angeles(date(2027, 2, 20), 9)
 MARCH_FOURTH_MORNING = in_los_angeles(date(2027, 3, 4), 9)
 MARCH_SIXTH_MORNING = in_los_angeles(MARCH_SIXTH, 9)
-MARCH_SEVENTH_NOON = in_los_angeles(date(2027, 3, 7), 12)
+MARCH_SIXTH_NOON = in_los_angeles(MARCH_SIXTH, 12)
 TWO_DAYS_BEFORE_LINE = "🎂 Ana's birthday in 2 days (Sat Mar 6)."
 NO_GIFT_IDEAS_LINE = "No gift ideas saved yet."
 ON_THE_DAY_LINE = "🎂 Today: Ana's birthday (turns 34)."
@@ -49,17 +49,15 @@ def test_birthday_reminders_missed_with_the_pc_off_arrive_with_the_digest_in_one
     rig.tick(pc_goes_off)
 
     # Execute
-    rig.tick_through([MARCH_SEVENTH_NOON])
+    rig.tick_through([MARCH_SIXTH_NOON])
 
     # Assert
     assert rig.sent_texts() == [
         (
-            MARCH_SEVENTH_NOON,
+            MARCH_SIXTH_NOON,
             "\n".join(
                 [
                     "While I was offline:",
-                    TWO_DAYS_BEFORE_LINE,
-                    NO_GIFT_IDEAS_LINE,
                     ON_THE_DAY_LINE,
                     DIGEST_LINE,
                 ]

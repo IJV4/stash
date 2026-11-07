@@ -82,3 +82,93 @@ def test_only_the_configured_lead_days_get_a_reminder() -> None:
 
     # Assert
     assert [reminder.lead for reminder in reminders] == [7]
+
+
+def test_a_birthday_five_days_ahead_gets_the_fourteen_day_lead_once_with_five_days_left() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_ana_with_a_march_sixth_birthday(store)
+    five_days_before = in_los_angeles(date(2027, 3, 1), 9)
+
+    # Execute
+    reminders = person_dates(store, five_days_before)
+
+    # Assert
+    assert [(reminder.lead, reminder.days_left) for reminder in reminders] == [(14, 5)]
+
+
+def test_a_birthday_tomorrow_gets_the_two_day_lead_alone_with_one_day_left() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_ana_with_a_march_sixth_birthday(store)
+    the_day_before = in_los_angeles(date(2027, 3, 5), 9)
+
+    # Execute
+    reminders = person_dates(store, the_day_before)
+
+    # Assert
+    assert [(reminder.lead, reminder.days_left) for reminder in reminders] == [(2, 1)]
+
+
+def test_a_birthday_reached_with_the_pc_off_since_the_two_day_lead_gets_one_reminder() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_ana_with_a_march_sixth_birthday(store)
+
+    # Execute
+    reminders = person_dates(store, in_los_angeles(MARCH_SIXTH, 12))
+
+    # Assert
+    assert [(reminder.lead, reminder.days_left) for reminder in reminders] == [(0, 0)]
+
+
+def test_a_birthday_that_has_already_passed_gets_no_reminder() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_ana_with_a_march_sixth_birthday(store)
+
+    # Execute
+    reminders = person_dates(store, in_los_angeles(date(2027, 3, 7), 12))
+
+    # Assert
+    assert reminders == []
+
+
+def test_a_december_30_birthday_is_first_reminded_fourteen_days_ahead_on_december_16() -> None:
+    # Setup
+    store = MemoryStore()
+    ana = stored_ana_with_a_march_sixth_birthday(store)
+    store.save_key_date(a_key_date(id="winter", person_id=ana.id, month=12, day=30, year=1990))
+    december_mornings = [in_los_angeles(date(2027, 12, day), 9) for day in (15, 16)]
+
+    # Execute
+    reminded = [len(person_dates(store, morning, lead_days=(14,))) for morning in december_mornings]
+
+    # Assert
+    assert reminded == [0, 1]
+
+
+def test_nothing_is_due_on_the_day_before_the_reminder_time_even_with_an_earlier_lead_unsent() -> (
+    None
+):
+    # Setup
+    store = MemoryStore()
+    stored_ana_with_a_march_sixth_birthday(store)
+
+    # Execute
+    reminders = person_dates(store, in_los_angeles(MARCH_SIXTH, 7))
+
+    # Assert
+    assert reminders == []
+
+
+def test_on_the_day_at_the_reminder_time_only_the_day_of_lead_is_due() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_ana_with_a_march_sixth_birthday(store)
+
+    # Execute
+    reminders = person_dates(store, MARCH_SIXTH_MORNING)
+
+    # Assert
+    assert [(reminder.lead, reminder.days_left) for reminder in reminders] == [(0, 0)]
