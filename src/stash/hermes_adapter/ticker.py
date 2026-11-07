@@ -14,6 +14,7 @@ SEND_TIMEOUT_S = 30.0
 NUDGE_DELIVERY_FAILED_LOG = "nudge delivery failed; the next tick tries again"
 PROPOSAL_DELIVERY_FAILED_LOG = "proposal delivery failed; the next tick tries again"
 TICKER_ALREADY_RUNNING_LOG = "the ticker is already running; reusing it"
+TICKER_STOPPED_LOG = "the ticker stopped; no reminders or proposals will be sent"
 
 Send = Callable[[Reply], None]
 Spawn = Callable[[Coroutine[Any, Any, None]], object]
@@ -103,4 +104,5 @@ class TickerLauncher:
         try:
             await ticker.run_forever()
         finally:
+            logger.warning(TICKER_STOPPED_LOG)
             self._running = False

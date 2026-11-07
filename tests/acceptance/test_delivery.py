@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable
-from datetime import time, timedelta
+from datetime import UTC, datetime, time, timedelta
 
 import pytest
 from builders import stored
@@ -91,7 +91,7 @@ def test_a_message_another_sender_recorded_meanwhile_is_logged_and_not_sent_agai
     stored_date_night_with_its_step(store)
 
     def another_sender_records_the_date_reminder(reply: Reply) -> None:
-        store.record_sent(a_date_reminder().nudge, SATURDAY_MORNING)
+        store.record_all_sent([a_date_reminder().nudge], SATURDAY_MORNING)
 
     rig = a_nudge_rig(store, send=another_sender_records_the_date_reminder)
     rig.digests_before_were_sent(SATURDAY_MORNING)
@@ -123,7 +123,7 @@ def test_a_failed_send_is_logged_by_the_error_type_only() -> None:
 def a_stash_with_a_reminder_and_a_follow_up_due_together() -> LedgerRecordingStore:
     store = LedgerRecordingStore()
     stored(store, a_planned_date_night())
-    store.record_sent(a_date_reminder().nudge, SATURDAY_MORNING)
+    store.record_all_sent([a_date_reminder().nudge], SATURDAY_MORNING)
     stored(store, a_planned_date_night(id="sunday-night", date=SUNDAY))
     store.crash_on = NudgeKind.ITEM_DATE
     return store
@@ -145,7 +145,8 @@ def test_a_ledger_failure_after_a_sent_message_does_not_stop_the_next_message_be
 def a_first_run_with_three_separate_messages_due() -> tuple[LedgerRecordingStore, NudgeDelivery]:
     store = LedgerRecordingStore()
     stored(store, a_planned_date_night())
-    store.record_sent(a_date_reminder(SATURDAY_MORNING + HOUR).nudge, SATURDAY_MORNING + HOUR)
+    seeded = [a_date_reminder(SATURDAY_MORNING + HOUR).nudge]
+    MemoryStore.record_all_sent(store, seeded, SATURDAY_MORNING + HOUR)
     stored(store, a_planned_date_night(id="sunday-night", date=SUNDAY))
     nudger = Nudger(store, a_nudge_schedule(reminder_time=DIGEST_TIME, followup_time=DIGEST_TIME))
     return store, NudgeDelivery(nudger, UnbuiltDigests())
@@ -212,6 +213,35 @@ def test_a_planned_dated_item_with_no_steps_is_proposed_and_the_proposal_reply_i
     assert sent == [proposal_reply(proposed, DATE_NIGHT_ON)]
 
 
+def test_a_proposal_the_model_leaves_empty_is_sent_as_nothing_to_prep() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_date_night(store)
+    planning = planning_over(store, FakeStepProposals(()))
+    sent: list[Reply] = []
+
+    # Execute
+    ProposalDelivery(planning, store).deliver(sent.append)
+
+    # Assert
+    assert sent == [Reply("🗓 Nothing to prep for Date night (Fri Feb 12).")]
+
+
+def test_after_a_nothing_to_prep_message_the_item_is_not_proposed_again() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_date_night(store)
+    proposals = FakeStepProposals(())
+    delivery = ProposalDelivery(planning_over(store, proposals), store)
+    delivery.deliver(lambda reply: None)
+
+    # Execute
+    delivery.deliver(lambda reply: None)
+
+    # Assert
+    assert len(proposals.asked_about) == 1
+
+
 def test_at_most_three_items_are_proposed_per_call() -> None:
     # Setup
     store = MemoryStore()
@@ -226,6 +256,22 @@ def test_at_most_three_items_are_proposed_per_call() -> None:
 
     # Assert
     assert len(sent) == 3
+
+
+def test_a_planned_item_whose_date_has_passed_is_not_proposed_and_the_model_is_not_asked() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_date_night(store)
+    proposals = FakeStepProposals(PROPOSALS)
+    day_after = datetime.combine(DATE_NIGHT_ON + timedelta(days=1), time(12), tzinfo=UTC)
+    planning = planning_over(store, proposals, lambda: day_after)
+    sent: list[Reply] = []
+
+    # Execute
+    ProposalDelivery(planning, store).deliver(sent.append)
+
+    # Assert
+    assert (sent, proposals.asked_about) == ([], [])
 
 
 class PlanningThatCannotWithdraw:

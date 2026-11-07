@@ -97,6 +97,21 @@ SET_STAGE_SCHEMA = _schema(
     ["item_id", "stage"],
 )
 
+SET_DATE_SCHEMA = _schema(
+    "stash_set_date",
+    f"Change an item's date, or pass a null date to clear it; a planned item without a date "
+    f"goes back to Want to, and its reminders and follow-up move with the date. {FIND_THE_ID}",
+    {
+        "item_id": ITEM_ID,
+        "date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "YYYY-MM-DD, or null.",
+        },
+    },
+    ["item_id", "date"],
+)
+
 KEEP_SCHEMA = _schema(
     "stash_keep",
     f"Put a done item in the library, or take it out. {FIND_THE_ID}",

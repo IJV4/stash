@@ -2,6 +2,7 @@ import threading
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from stash.domain import Item, Stage, Step
 from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
@@ -42,17 +43,21 @@ class Planning:
         declines: ProposalDeclines,
         new_id: Callable[[], str],
         clock: Callable[[], datetime],
+        timezone: ZoneInfo,
     ) -> None:
         self._store = store
         self._proposer = proposer
         self._declines = declines
         self._new_id = new_id
         self._clock = clock
+        self._timezone = timezone
         self._lock = threading.Lock()
 
     def needs_proposal(self, item: Item) -> bool:
         return (
             item.stage is Stage.PLANNED
+            and item.date is not None
+            and item.date >= self._today()
             and not self._store.steps_for(item.id)
             and not self._declines.is_declined(item)
         )
@@ -156,6 +161,9 @@ class Planning:
                 proposal.as_step(self._new_id(), item_id, position, now)
                 for position, proposal in enumerate(proposals)
             )
+
+    def _today(self) -> date:
+        return self._clock().astimezone(self._timezone).date()
 
     def _item(self, item_id: str) -> Item:
         item = self._store.get_item(item_id)

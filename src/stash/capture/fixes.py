@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import assert_never
+from zoneinfo import ZoneInfo
 
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import FixAction, FixKind
@@ -36,10 +37,11 @@ class FixHandler:
         lifecycle: LifecycleActions,
         planning: PlanningActions,
         clock: Callable[[], datetime],
+        timezone: ZoneInfo,
     ) -> None:
         self._store = store
         self._log = CallbackLog(logger)
-        self._completion = CompletionButtons(store, lifecycle, self._log, clock)
+        self._completion = CompletionButtons(store, lifecycle, self._log, clock, timezone)
         self._planning = PlanningButtons(store, planning, self._log)
         self._clock = clock
         self._lock = threading.Lock()
@@ -81,7 +83,7 @@ class FixHandler:
             case FixKind.STEP_DONE:
                 return self._planning.step_done(action.subject_id)
             case FixKind.NOT_HAPPENED:
-                return self._completion.didnt_happen(action.subject_id)
+                return self._completion.didnt_happen(action.subject_id, action.argument)
             case _:
                 assert_never(action.kind)
 

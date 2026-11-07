@@ -28,6 +28,7 @@ from stash.hermes_adapter.lifecycle_schemas import (
     GROUP_SCHEMA,
     KEEP_SCHEMA,
     LIBRARY_SCHEMA,
+    SET_DATE_SCHEMA,
     SET_STAGE_SCHEMA,
 )
 from stash.hermes_adapter.tool_schema import owners_data
@@ -43,6 +44,7 @@ ALL = [
     COMPLETE_SCHEMA,
     ANNOTATE_SCHEMA,
     SET_STAGE_SCHEMA,
+    SET_DATE_SCHEMA,
     KEEP_SCHEMA,
     GROUP_SCHEMA,
     LIBRARY_SCHEMA,
@@ -52,11 +54,19 @@ SUCCESSFUL_CALLS = {
     "stash_complete": ({"item_id": WANT_TO_ITEM}, "outcome"),
     "stash_annotate": ({"outcome_id": DONE_ITEM_OUTCOME, "notes": "Better"}, "outcome"),
     "stash_set_stage": ({"item_id": WANT_TO_ITEM, "stage": "doing"}, "item"),
+    "stash_set_date": ({"item_id": WANT_TO_ITEM, "date": "2026-11-20"}, "item"),
     "stash_keep": ({"item_id": DONE_ITEM, "kept": True}, "item"),
     "stash_group": ({"child_id": WANT_TO_ITEM, "parent_id": PARENT_ITEM}, "item"),
     "stash_library": ({}, "items"),
 }
-TAKING_AN_ITEM_ID = [GET_SCHEMA, COMPLETE_SCHEMA, ANNOTATE_SCHEMA, SET_STAGE_SCHEMA, KEEP_SCHEMA]
+TAKING_AN_ITEM_ID = [
+    GET_SCHEMA,
+    COMPLETE_SCHEMA,
+    ANNOTATE_SCHEMA,
+    SET_STAGE_SCHEMA,
+    SET_DATE_SCHEMA,
+    KEEP_SCHEMA,
+]
 
 
 def properties(schema: dict[str, Any]) -> dict[str, Any]:
@@ -74,6 +84,7 @@ def test_the_lifecycle_tools_are_named_as_the_usage_document_says() -> None:
         "stash_complete",
         "stash_annotate",
         "stash_set_stage",
+        "stash_set_date",
         "stash_keep",
         "stash_group",
         "stash_library",
@@ -165,6 +176,7 @@ def test_set_stage_offers_every_stage_but_done() -> None:
         (COMPLETE_SCHEMA, ["item_id"]),
         (ANNOTATE_SCHEMA, ["outcome_id"]),
         (SET_STAGE_SCHEMA, ["item_id", "stage"]),
+        (SET_DATE_SCHEMA, ["item_id", "date"]),
         (KEEP_SCHEMA, ["item_id", "kept"]),
         (GROUP_SCHEMA, ["child_id", "parent_id"]),
     ],
@@ -233,6 +245,11 @@ def test_annotate_takes_the_same_notes_and_takeaways_as_complete() -> None:
 def test_the_reason_limit_comes_from_the_domain() -> None:
     # Assert
     assert properties(SET_STAGE_SCHEMA)["reason"]["maxLength"] == DROP_REASON_LIMIT
+
+
+def test_the_date_may_be_text_or_null() -> None:
+    # Assert
+    assert properties(SET_DATE_SCHEMA)["date"]["type"] == ["string", "null"]
 
 
 def test_the_parent_may_be_text_or_null() -> None:

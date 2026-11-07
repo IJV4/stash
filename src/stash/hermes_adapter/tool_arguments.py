@@ -110,6 +110,11 @@ class ToolArguments:
             raise ValueError(f"{name} must be a date like {DATE_EXAMPLE}")
         return parsed
 
+    def nullable_date(self, name: str) -> date | None:
+        if name not in self.values:
+            raise ValueError(f"{name} is required (a date, or null)")
+        return self.optional_date(name)
+
     def stage(self) -> Stage:
         return parse_member(Stage, "stage", self.required_text("stage"), listed=MOVEABLE_STAGES)
 

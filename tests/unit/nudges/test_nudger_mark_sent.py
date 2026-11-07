@@ -40,7 +40,7 @@ def test_marking_a_message_sent_when_another_sender_recorded_one_of_its_nudges_r
     # Setup
     store = MemoryStore()
     nudger = a_nudger(store)
-    store.record_sent(a_follow_up().nudge, SUNDAY_MORNING)
+    store.record_all_sent([a_follow_up().nudge], SUNDAY_MORNING)
     message = NudgeMessage((a_follow_up(), a_step_reminder()), catch_up=True)
 
     # Execute
@@ -56,7 +56,7 @@ def test_marking_a_message_sent_still_records_the_other_nudges_when_one_was_alre
     # Setup
     store = MemoryStore()
     nudger = a_nudger(store)
-    store.record_sent(a_follow_up().nudge, SUNDAY_MORNING)
+    store.record_all_sent([a_follow_up().nudge], SUNDAY_MORNING)
     message = NudgeMessage((a_follow_up(), a_step_reminder()), catch_up=True)
 
     # Execute

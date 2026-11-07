@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from datetime import datetime
 
-from builders import BASE
+from builders import BASE, LOS_ANGELES
 from capture_builders import sequential_ids
 from planning_builders import a_proposer
 
@@ -16,7 +16,9 @@ def planning_over(
     clock: Callable[[], datetime] = lambda: BASE,
     new_id: Callable[[], str] | None = None,
 ) -> Planning:
-    return Planning(store, proposals, Declines(store), new_id or sequential_ids(), clock)
+    return Planning(
+        store, proposals, Declines(store), new_id or sequential_ids(), clock, LOS_ANGELES
+    )
 
 
 def a_planning(

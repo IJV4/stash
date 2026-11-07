@@ -3,6 +3,7 @@ from dataclasses import dataclass, replace
 
 import pytest
 from builders import (
+    PLANNED_FOR,
     a_parent_item,
     an_item,
     an_item_at,
@@ -34,11 +35,16 @@ OPERATIONS = [
     pytest.param(Operation(an_item_at(Stage.DONE), lambda lc: lc.reopen("i1")), id="reopen"),
     pytest.param(Operation(an_item_at(Stage.INBOX), lambda lc: lc.drop("i1", None)), id="drop"),
     pytest.param(
-        Operation(an_item_at(Stage.PLANNED), lambda lc: lc.didnt_happen("i1")), id="didnt_happen"
+        Operation(an_item_at(Stage.PLANNED), lambda lc: lc.didnt_happen("i1", PLANNED_FOR)),
+        id="didnt_happen",
     ),
     pytest.param(
         Operation(an_item_at(Stage.INBOX), lambda lc: lc.set_stage("i1", Stage.WANT_TO)),
         id="set_stage",
+    ),
+    pytest.param(
+        Operation(an_item_at(Stage.PLANNED), lambda lc: lc.reschedule("i1", PLANNED_FOR)),
+        id="reschedule",
     ),
     pytest.param(Operation(an_item(), lambda lc: lc.group("i1", "p1")), id="group"),
     pytest.param(Operation(an_item(parent_id="p1"), lambda lc: lc.ungroup("i1")), id="ungroup"),

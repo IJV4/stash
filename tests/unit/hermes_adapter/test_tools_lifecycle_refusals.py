@@ -12,7 +12,7 @@ from tool_rig import (
     store_snapshot,
 )
 
-TOOLS = ["get", "complete", "annotate", "set_stage", "keep", "group", "library"]
+TOOLS = ["get", "complete", "annotate", "set_stage", "set_date", "keep", "group", "library"]
 NOT_OBJECTS = [None, "w1", ["w1"], 3]
 TWENTY_ONE = [f"point {number}" for number in range(21)]
 NOT_TEXT = [5, True, ["w1"]]
@@ -30,6 +30,7 @@ NOT_WIRE_SAFE_MESSAGE = "must be non-blank, printable ASCII, without whitespace 
 COMPLETE = {"item_id": WANT_TO_ITEM}
 ANNOTATE = {"outcome_id": DONE_ITEM_OUTCOME, "notes": "Better"}
 SET_STAGE = {"item_id": WANT_TO_ITEM, "stage": "doing"}
+SET_DATE = {"item_id": WANT_TO_ITEM, "date": "2026-11-20"}
 KEEP = {"item_id": DONE_ITEM, "kept": True}
 GROUP = {"child_id": WANT_TO_ITEM, "parent_id": PARENT_ITEM}
 
@@ -141,6 +142,17 @@ REFUSED_CALLS: list[Row] = [
         "drop_reason must be at most 300 characters",
     ),
     ("set_stage", {"item_id": WANT_TO_ITEM, "stage": "planned"}, "planned items need a date"),
+    *bad_ids("set_date", SET_DATE, "item_id"),
+    ("set_date", {**SET_DATE, "item_id": "zz"}, "no item 'zz'"),
+    *refusing("set_date", SET_DATE, "date", [20261120, True], "date must be text"),
+    *refusing(
+        "set_date",
+        SET_DATE,
+        "date",
+        ["tomorrow", "2026-13-01", "2026-1-5"],
+        "date must be a date like 2026-11-05",
+    ),
+    ("set_date", {"item_id": WANT_TO_ITEM}, "date is required (a date, or null)"),
     *bad_ids("keep", KEEP, "item_id"),
     ("keep", {**KEEP, "item_id": "zz"}, "no item 'zz'"),
     *refusing("keep", KEEP, "kept", [*BAD_BOOLEANS, None], "kept must be true or false"),

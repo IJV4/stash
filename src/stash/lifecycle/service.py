@@ -8,7 +8,7 @@ from stash.lifecycle._guards import (
     refusing_what_the_store_refuses_for_a_group,
     reporting_concurrent_changes,
 )
-from stash.lifecycle.errors import LifecycleRefused, UnknownItem, UnknownOutcome
+from stash.lifecycle.errors import ItemChanged, LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.ports import LifecycleStore
 from stash.lifecycle.query import DEFAULT_LIBRARY_QUERY, LibraryQuery
 from stash.lifecycle.results import Completion, ItemHistory, LibraryEntry
@@ -85,11 +85,20 @@ class Lifecycle:
             changed = item.dropped(_unless_blank(reason), now)
         return self._saved(item, changed)
 
-    def didnt_happen(self, item_id: str) -> Item:
+    def didnt_happen(self, item_id: str, on: date) -> Item:
         item = self._item(item_id)
         if not item.is_planned:
             return item
+        if item.date != on:
+            raise ItemChanged(item_id)
         return self._saved(item, item.unplanned(self._clock()))
+
+    def reschedule(self, item_id: str, on: date | None) -> Item:
+        item = self._item(item_id)
+        now = self._clock()
+        with refusing_what_the_domain_refuses():
+            changed = item.rescheduled(on, now)
+        return self._saved(item, changed)
 
     def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item:
         if stage is Stage.DROPPED:

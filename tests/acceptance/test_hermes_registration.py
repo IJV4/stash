@@ -57,6 +57,7 @@ def test_register_adds_the_hook_the_telegram_handler_the_commands_and_the_tools(
             "stash_library": ("stash", "stash_library"),
             "stash_list": ("stash", "stash_list"),
             "stash_search": ("stash", "stash_search"),
+            "stash_set_date": ("stash", "stash_set_date"),
             "stash_set_stage": ("stash", "stash_set_stage"),
             "stash_suggest": ("stash", "stash_suggest"),
         },

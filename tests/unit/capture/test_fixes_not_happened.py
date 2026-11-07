@@ -1,7 +1,7 @@
 import logging
 
 import pytest
-from builders import NOT_PLANNED_STAGES, an_item_at, fetched_item, stored
+from builders import NOT_PLANNED_STAGES, PLANNED_FOR, an_item_at, fetched_item, stored
 from capture_builders import store_with_filed_item
 from capture_rig import a_fix_handler, logged_by_applying
 from fakes.memory_store import MemoryStore
@@ -10,7 +10,7 @@ from stash.capture import gone
 from stash.capture.completion_replies import didnt_happen_reply
 from stash.domain import Stage
 
-NOT_HAPPENED = "stash:h:i1"
+NOT_HAPPENED = f"stash:h:i1:{PLANNED_FOR:%Y%m%d}"
 
 
 def a_store_with_a_planned_item() -> MemoryStore:
@@ -97,7 +97,7 @@ def test_pressing_didnt_happen_for_an_unknown_item_answers_gone() -> None:
     store, _ = store_with_filed_item()
 
     # Execute
-    reply = a_fix_handler(store).apply("stash:h:ghost")
+    reply = a_fix_handler(store).apply("stash:h:ghost:20261114")
 
     # Assert
     assert reply == gone()
@@ -108,6 +108,6 @@ def test_pressing_didnt_happen_for_an_unknown_item_is_logged_at_info() -> None:
     store, _ = store_with_filed_item()
 
     # Execute / Assert
-    assert logged_by_applying(store, "stash:h:ghost") == [
+    assert logged_by_applying(store, "stash:h:ghost:20261114") == [
         (logging.INFO, "fix callback for unknown item ghost")
     ]

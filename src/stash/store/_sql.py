@@ -142,10 +142,13 @@ ITEMS_DATED_BETWEEN = """
 SELECT * FROM items WHERE date BETWEEN :start AND :end ORDER BY date, created_at, id
 """
 
-PLANNED_WITHOUT_OUTCOME_DATED_BETWEEN = """
+PLANNED_AWAITING_OUTCOME_DATED_BETWEEN = """
 SELECT * FROM items
 WHERE stage = :planned AND date BETWEEN :start AND :end
-  AND NOT EXISTS (SELECT 1 FROM outcomes WHERE outcomes.item_id = items.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM outcomes
+    WHERE outcomes.item_id = items.id AND outcomes.completed_on = items.date
+  )
 ORDER BY date, created_at, id
 """
 

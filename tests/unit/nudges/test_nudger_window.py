@@ -91,7 +91,7 @@ def test_a_nudge_that_was_already_sent_is_not_due_again(kind: type, due_at: date
     # Setup
     store, _ = a_store_where_every_kind_comes_due()
     [reminder] = due_of_kind(kind, store, due_at)
-    store.record_sent(reminder.nudge, due_at)
+    store.record_all_sent([reminder.nudge], due_at)
 
     # Execute
     due = due_of_kind(kind, store, due_at)

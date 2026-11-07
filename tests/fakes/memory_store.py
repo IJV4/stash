@@ -208,14 +208,16 @@ class MemoryStore:
         require_date_range(start, end)
         return self._dated_between(start, end)
 
-    def planned_without_outcome_dated_between(self, start: date, end: date) -> list[Item]:
+    def planned_awaiting_outcome_dated_between(self, start: date, end: date) -> list[Item]:
         require_date_range(start, end)
         with self._lock:
-            with_outcome = {outcome.item_id for outcome in self._outcomes.values()}
+            completions = {
+                (outcome.item_id, outcome.completed_on) for outcome in self._outcomes.values()
+            }
         return [
             item
             for item in self._dated_between(start, end)
-            if item.stage is Stage.PLANNED and item.id not in with_outcome
+            if item.stage is Stage.PLANNED and (item.id, item.date) not in completions
         ]
 
     def want_to_older_than(self, cutoff: datetime, limit: int) -> list[Item]:
@@ -250,9 +252,6 @@ class MemoryStore:
 
     def was_sent(self, key: NudgeKey) -> bool:
         return self._ledger.was_sent(key)
-
-    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
-        return self._ledger.record_sent(nudge, sent_at)
 
     def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
         return self._ledger.record_all_sent(nudges, sent_at)

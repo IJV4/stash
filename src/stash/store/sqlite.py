@@ -183,14 +183,14 @@ class SqliteStore:
             sql.ITEMS_DATED_BETWEEN, {"start": start.isoformat(), "end": end.isoformat()}
         )
 
-    def planned_without_outcome_dated_between(self, start: date, end: date) -> list[Item]:
+    def planned_awaiting_outcome_dated_between(self, start: date, end: date) -> list[Item]:
         require_date_range(start, end)
         parameters = {
             "planned": Stage.PLANNED.value,
             "start": start.isoformat(),
             "end": end.isoformat(),
         }
-        return self._items_from(sql.PLANNED_WITHOUT_OUTCOME_DATED_BETWEEN, parameters)
+        return self._items_from(sql.PLANNED_AWAITING_OUTCOME_DATED_BETWEEN, parameters)
 
     def want_to_older_than(self, cutoff: datetime, limit: int) -> list[Item]:
         return self._stage_older_than(Stage.WANT_TO, cutoff, limit)
@@ -240,9 +240,6 @@ class SqliteStore:
 
     def was_sent(self, key: NudgeKey) -> bool:
         return self._ledger.was_sent(key)
-
-    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
-        return self._ledger.record_sent(nudge, sent_at)
 
     def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
         return self._ledger.record_all_sent(nudges, sent_at)

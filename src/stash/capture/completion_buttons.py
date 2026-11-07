@@ -1,13 +1,14 @@
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from functools import partial
+from zoneinfo import ZoneInfo
 
 from stash.capture.callback_log import CallbackLog, Subject
-from stash.capture.callbacks import KeepChoice, rating_for
+from stash.capture.callbacks import KeepChoice, date_for, rating_for
 from stash.capture.completion_replies import didnt_happen_reply, done_reply, kept_reply, rated_reply
 from stash.capture.ports import FixStore, LifecycleActions
 from stash.capture.replies import Reply, busy, changed, gone, refused
-from stash.domain import enum_member
+from stash.domain import Item, enum_member
 from stash.lifecycle.errors import (
     ItemChanged,
     LifecycleRefused,
@@ -18,6 +19,7 @@ from stash.lifecycle.errors import (
 from stash.lifecycle.results import Completion, ItemHistory
 
 RATING_KIND = "rating"
+DAY_KIND = "day"
 DOUBLE_TAP_WINDOW = timedelta(seconds=60)
 
 
@@ -28,11 +30,13 @@ class CompletionButtons:
         lifecycle: LifecycleActions,
         callback_log: CallbackLog,
         clock: Callable[[], datetime],
+        timezone: ZoneInfo,
     ) -> None:
         self._store = store
         self._lifecycle = lifecycle
         self._log = callback_log
         self._clock = clock
+        self._timezone = timezone
 
     def done(self, item_id: str) -> Reply:
         return self._answering(partial(self._completed, item_id))
@@ -51,14 +55,25 @@ class CompletionButtons:
             return gone()
         return self._answering(partial(self._kept, item_id, choice))
 
-    def didnt_happen(self, item_id: str) -> Reply:
-        return self._answering(partial(self._didnt_happen, item_id))
+    def didnt_happen(self, item_id: str, argument: str | None) -> Reply:
+        on = date_for(argument)
+        if on is None:
+            self._log.invalid(Subject.ITEM, item_id, DAY_KIND, argument)
+            return gone()
+        return self._answering(partial(self._didnt_happen, item_id, on))
 
     def _completed(self, item_id: str) -> Reply:
-        double_tap = self._double_tap_of(self._lifecycle.history(item_id))
+        history = self._lifecycle.history(item_id)
+        double_tap = self._double_tap_of(history)
         if double_tap is not None:
             return done_reply(double_tap)
-        return done_reply(self._lifecycle.complete(item_id))
+        return done_reply(
+            self._lifecycle.complete(item_id, on=self._date_already_past(history.item))
+        )
+
+    def _date_already_past(self, item: Item) -> date | None:
+        today = self._clock().astimezone(self._timezone).date()
+        return item.date if item.date is not None and item.date <= today else None
 
     def _double_tap_of(self, history: ItemHistory) -> Completion | None:
         latest = history.latest_recorded
@@ -81,8 +96,8 @@ class CompletionButtons:
         self._lifecycle.keep(item_id, choice.kept)
         return kept_reply(self._lifecycle.history(item_id))
 
-    def _didnt_happen(self, item_id: str) -> Reply:
-        return didnt_happen_reply(self._lifecycle.didnt_happen(item_id))
+    def _didnt_happen(self, item_id: str, on: date) -> Reply:
+        return didnt_happen_reply(self._lifecycle.didnt_happen(item_id, on))
 
     def _answering(self, build_reply: Callable[[], Reply]) -> Reply:
         try:

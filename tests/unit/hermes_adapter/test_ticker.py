@@ -1,12 +1,14 @@
 import asyncio
 import logging
 import threading
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
 from typing import Any
 
 import pytest
+from fakes.pausing_scheduler import PausingScheduler
 from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals
 from fakes.scripted_sender import ScriptedSender
+from hermes_rig import until
 from log_records import recording_logs
 from threads import OVERLAP_GRACE_SECONDS
 from ticker_rig import (
@@ -18,6 +20,7 @@ from stash.capture import Reply
 from stash.hermes_adapter.ticker import (
     NUDGE_DELIVERY_FAILED_LOG,
     PROPOSAL_DELIVERY_FAILED_LOG,
+    TICKER_STOPPED_LOG,
     TickerLauncher,
 )
 
@@ -140,3 +143,54 @@ def test_a_launcher_whose_spawn_refused_can_start_a_ticker_again() -> None:
 
     # Assert
     assert started == ["started"]
+
+
+class WaitingScheduler(PausingScheduler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.waiting = False
+
+    async def pause(self, seconds: float) -> None:
+        self.waiting = True
+        await asyncio.Event().wait()
+
+
+class FailingScheduler(PausingScheduler):
+    async def pause(self, seconds: float) -> None:
+        raise RuntimeError("scheduler broke")
+
+
+async def stopped_ticker_logs(
+    scheduler: PausingScheduler, cancelled_once: Callable[[], object] | None = None
+) -> list[tuple[int, str]]:
+    tasks: list[asyncio.Task[None]] = []
+    launcher = TickerLauncher()
+    with recording_logs(TICKER_LOGGER) as logs:
+        launcher.start_once(
+            lambda coro: tasks.append(asyncio.create_task(coro)),
+            lambda: a_ticker(scheduler=scheduler),
+        )
+        if cancelled_once is not None:
+            await until(cancelled_once)
+            tasks[0].cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+    return logs.entries()
+
+
+def test_a_cancelled_ticker_logs_a_warning_that_it_stopped() -> None:
+    # Setup
+    scheduler = WaitingScheduler()
+
+    # Execute
+    entries = asyncio.run(stopped_ticker_logs(scheduler, lambda: scheduler.waiting))
+
+    # Assert
+    assert entries == [(logging.WARNING, TICKER_STOPPED_LOG)]
+
+
+def test_a_ticker_that_fails_logs_a_warning_that_it_stopped() -> None:
+    # Execute
+    entries = asyncio.run(stopped_ticker_logs(FailingScheduler()))
+
+    # Assert
+    assert entries == [(logging.WARNING, TICKER_STOPPED_LOG)]

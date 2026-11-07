@@ -54,7 +54,7 @@ def test_with_no_follow_up_ever_sent_a_follow_up_is_due() -> None:
 def test_a_follow_up_sent_before_todays_follow_up_time_does_not_hold_back_todays() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SATURDAY_MORNING)
+    store.record_all_sent([a_follow_up_sent_for_another_item()], SATURDAY_MORNING)
 
     # Execute
     due = follow_ups(store, SUNDAY_NOON)
@@ -69,7 +69,7 @@ def test_a_nudge_that_is_not_a_follow_up_sent_after_the_follow_up_time_holds_not
 ) -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(other.nudge, SUNDAY_MORNING + timedelta(minutes=30))
+    store.record_all_sent([other.nudge], SUNDAY_MORNING + timedelta(minutes=30))
 
     # Execute
     due = follow_ups(store, SUNDAY_NOON)
@@ -81,7 +81,7 @@ def test_a_nudge_that_is_not_a_follow_up_sent_after_the_follow_up_time_holds_not
 def test_a_follow_up_sent_a_microsecond_before_todays_slot_does_not_hold_back_todays() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SUNDAY_MORNING - MICROSECOND)
+    store.record_all_sent([a_follow_up_sent_for_another_item()], SUNDAY_MORNING - MICROSECOND)
 
     # Execute
     due = follow_ups(store, SUNDAY_NOON)
@@ -93,7 +93,7 @@ def test_a_follow_up_sent_a_microsecond_before_todays_slot_does_not_hold_back_to
 def test_a_follow_up_sent_exactly_at_todays_follow_up_time_holds_back_the_others() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SUNDAY_MORNING)
+    store.record_all_sent([a_follow_up_sent_for_another_item()], SUNDAY_MORNING)
 
     # Execute
     due = follow_ups(store, SUNDAY_NOON)
@@ -105,7 +105,9 @@ def test_a_follow_up_sent_exactly_at_todays_follow_up_time_holds_back_the_others
 def test_a_follow_up_sent_after_todays_follow_up_time_holds_back_the_others() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SUNDAY_MORNING + timedelta(minutes=30))
+    store.record_all_sent(
+        [a_follow_up_sent_for_another_item()], SUNDAY_MORNING + timedelta(minutes=30)
+    )
 
     # Execute
     due = follow_ups(store, SUNDAY_NOON)
@@ -117,7 +119,9 @@ def test_a_follow_up_sent_after_todays_follow_up_time_holds_back_the_others() ->
 def test_a_held_back_follow_up_waits_until_just_before_the_next_follow_up_time() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SUNDAY_MORNING + timedelta(minutes=30))
+    store.record_all_sent(
+        [a_follow_up_sent_for_another_item()], SUNDAY_MORNING + timedelta(minutes=30)
+    )
     next_slot = SUNDAY_MORNING + timedelta(days=1)
 
     # Execute
@@ -130,7 +134,9 @@ def test_a_held_back_follow_up_waits_until_just_before_the_next_follow_up_time()
 def test_a_held_back_follow_up_is_sent_at_the_next_follow_up_time() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SUNDAY_MORNING + timedelta(minutes=30))
+    store.record_all_sent(
+        [a_follow_up_sent_for_another_item()], SUNDAY_MORNING + timedelta(minutes=30)
+    )
     next_slot = SUNDAY_MORNING + timedelta(days=1)
 
     # Execute
@@ -143,7 +149,9 @@ def test_a_held_back_follow_up_is_sent_at_the_next_follow_up_time() -> None:
 def test_a_follow_up_held_back_by_every_slot_is_dropped_once_the_window_passes_it() -> None:
     # Setup
     store = a_store_with_a_pending_follow_up()
-    store.record_sent(a_follow_up_sent_for_another_item(), SUNDAY_MORNING + timedelta(minutes=30))
+    store.record_all_sent(
+        [a_follow_up_sent_for_another_item()], SUNDAY_MORNING + timedelta(minutes=30)
+    )
 
     # Execute
     due = follow_ups(store, SUNDAY_MORNING + FOURTEEN_DAYS + MICROSECOND)

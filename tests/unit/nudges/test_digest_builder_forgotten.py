@@ -25,7 +25,7 @@ def forgotten_ids(store: MemoryStore, at: datetime = DIGEST_AT) -> list[str]:
 
 
 def shown_in_the_digest_at(store: MemoryStore, item_id: str, instant: datetime) -> None:
-    store.record_sent(Nudge(NudgeKind.FORGOTTEN, item_id, instant, item_id), instant)
+    store.record_all_sent([Nudge(NudgeKind.FORGOTTEN, item_id, instant, item_id)], instant)
 
 
 def test_forgotten_items_are_the_want_to_items_untouched_for_the_configured_days_oldest_first() -> (
@@ -152,7 +152,7 @@ def test_an_item_recorded_under_another_nudge_kind_is_still_forgotten() -> None:
     store = MemoryStore()
     stored(store, a_forgotten_want_to("sail"))
     previous = DIGEST_AT - ONE_WEEK
-    store.record_sent(Nudge(NudgeKind.STUCK, "sail", previous, "sail"), previous)
+    store.record_all_sent([Nudge(NudgeKind.STUCK, "sail", previous, "sail")], previous)
 
     # Execute
     ids = forgotten_ids(store)

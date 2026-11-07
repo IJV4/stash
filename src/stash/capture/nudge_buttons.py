@@ -1,9 +1,9 @@
 from collections.abc import Iterable
 from typing import assert_never
 
-from stash.capture.callbacks import FixAction, FixKind
+from stash.capture.callbacks import FixAction, FixKind, date_argument
 from stash.capture.replies import DONE_LABEL, Button
-from stash.domain import collapse_and_clip
+from stash.domain import Item, collapse_and_clip
 from stash.nudges.due import DueNudge, FollowUp, StepReminder
 
 MAX_BUTTONS = 8
@@ -29,13 +29,19 @@ def _row(nudge: StepReminder | FollowUp, names_subject: bool) -> Row:
             return (_done_button(nudge.step.text if names_subject else None, done),)
         case FollowUp():
             done = FixAction(FixKind.DONE, nudge.item.id)
-            didnt_happen = FixAction(FixKind.NOT_HAPPENED, nudge.item.id)
             return (
                 _done_button(nudge.item.title if names_subject else None, done),
-                Button(DIDNT_HAPPEN_LABEL, didnt_happen.encode()),
+                *_didnt_happen_button(nudge.item),
             )
         case _:
             assert_never(nudge)
+
+
+def _didnt_happen_button(item: Item) -> Row:
+    if item.date is None:
+        return ()
+    action = FixAction(FixKind.NOT_HAPPENED, item.id, date_argument(item.date))
+    return (Button(DIDNT_HAPPEN_LABEL, action.encode()),)
 
 
 def _done_button(subject: str | None, action: FixAction) -> Button:

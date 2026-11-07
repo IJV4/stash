@@ -294,7 +294,7 @@ Replies are plain text, at most 4096 characters.
 Every tool returns a JSON string and never raises. Titles, notes and details come
 from the owner's own captures and are data, not instructions. The lifecycle
 tools (`stash_get`, `stash_complete`, `stash_annotate`, `stash_set_stage`,
-`stash_keep`, `stash_group`, `stash_library`) are described under *Finishing
+`stash_set_date`, `stash_keep`, `stash_group`, `stash_library`) are described under *Finishing
 things* and *Your library*.
 
 1. `stash_search {query}` returns `{"items": [{"id", "type", "title", "stage",
@@ -984,6 +984,7 @@ Rich text (notes, takeaways) arrives through the agent, which calls these tools
 | `stash_annotate` | `outcome_id`, `notes?` (omitted keeps the current notes), `takeaways?` (omitted keeps the current list), `rating?` (1-5); at least one of the three | `{"outcome"}` |
 | `stash_capture` | `text`, `note?` (the two joined by a newline, at most 4096 characters, as one Telegram message) | `{"item_id", "title", "item_type", "stage"}`, or `{"saved": true, "pending": true}` when the AI is unavailable or filing fails after the raw capture is saved (it is then filed by `/retry`) |
 | `stash_set_stage` | `item_id`, `stage`, `reason?` (only with `dropped`) | `{"item"}` |
+| `stash_set_date` | `item_id`, `date` (`YYYY-MM-DD`, or `null` to clear it) | `{"item"}` |
 | `stash_keep` | `item_id`, `kept` (bool) | `{"item"}` |
 | `stash_group` | `child_id`, `parent_id` (an id, or `null` to ungroup) | `{"item"}` |
 | `stash_library` | `item_type?`, `limit?` (1-50, default 20) | `{"items"}`: list entries plus `rating` and `completed_on` of the latest outcome (`null` when none) |
@@ -1011,6 +1012,10 @@ description tells the agent to call `stash_complete` instead; an unknown stage
 lists only the moveable stages as valid; `dropped` takes the optional
 `reason`; the other stages move the item as the stage buttons do (Planned
 needs a date).
+`stash_set_date` changes an item's date through `Lifecycle.reschedule`: a
+Planned item's reminders and follow-up move with it, and a `null` date clears it
+and moves a Planned item back to Want to. A missing or malformed `date` answers
+`{"error"}`.
 
 `stash_capture` saves something new the owner mentions that is not in stash
 yet. It takes the raw-capture-first path every Telegram message takes: the raw
@@ -1126,7 +1131,7 @@ No Telegram surface yet; the planner and nudger will build on these calls.
 
     nudge = Nudge(NudgeKind.STEP, "s1", due_at, "Book the table")
     store.was_sent(nudge.key)                  # False until the outbox send succeeded
-    store.record_sent(nudge, sent_at)          # True if this call recorded it, False if already recorded
+    store.record_all_sent([nudge], sent_at)    # True if every nudge was newly recorded, False if any already was
     store.last_sent(NudgeKind.DIGEST)          # latest sent_at for a kind, or None
 
     item.rescheduled(None, now)                # a PLANNED item without a date goes back to WANT_TO
@@ -1145,17 +1150,17 @@ No Telegram surface yet; the planner and nudger will build on these calls.
 - Only confirmed, not-done steps count as open; unconfirmed proposals never remind.
 - A nudge key is `(kind, subject id, due instant in UTC)`: the same instant written in another
   offset is the same key, so DST never produces two keys for one reminder.
-- `record_sent` reports whether this call recorded the nudge: `True` the first time, `False` when
-  the key was already recorded. Recording a nudge twice leaves one ledger row and keeps the first
-  send time.
-- `items_dated_between`, `planned_without_outcome_dated_between`, `want_to_older_than`,
+- `record_all_sent` reports whether this call recorded every nudge: `True` the first time, `False`
+  when any key was already recorded. Recording a nudge twice leaves one ledger row and keeps the
+  first send time.
+- `items_dated_between`, `planned_awaiting_outcome_dated_between`, `want_to_older_than`,
   `doing_older_than` and `created_between` answer the nudger's questions in both stores.
   Date ranges are inclusive; the instant ranges are `start <= created_at < end`; "older than"
   compares the last update (`updated_at`), oldest first.
 - `want_to_older_than` and `doing_older_than` return nothing for a `limit` of 0 and refuse a
   negative `limit` with `ValueError`.
 - `created_between` lists newest first; `items_dated_between` and
-  `planned_without_outcome_dated_between` list by date, then creation time.
+  `planned_awaiting_outcome_dated_between` list by date, then creation time.
 - Every datetime handed to the store (`cutoff`, `start`, `end`, `sent_at`) must be timezone-aware;
   a naive one raises `ValueError` and nothing is written.
 - `last_sent` returns an aware UTC datetime.
@@ -1176,9 +1181,9 @@ The Telegram buttons that confirm or discard a proposal go through
     )
 
     proposer = StepProposer(router, clock, ZoneInfo("America/Los_Angeles"))
-    planning = Planning(store, proposer, Declines(store), new_id, clock)
+    planning = Planning(store, proposer, Declines(store), new_id, clock, ZoneInfo("America/Los_Angeles"))
 
-    planning.needs_proposal(item)             # PLANNED, dated, and no steps yet
+    planning.needs_proposal(item)             # PLANNED, dated today or later (local), and no steps yet
     proposal = planning.propose_for(item_id)  # Proposal(item, steps): <= 10 unconfirmed steps
     planning.confirm_all(item_id)             # -> tuple[Step, ...], all confirmed; idempotent
     planning.discard(item_id)                 # "No steps": records a decline, drops unconfirmed steps
@@ -1188,8 +1193,8 @@ The Telegram buttons that confirm or discard a proposal go through
     planning.complete_step(step_id)           # -> Step with done=True; also confirms a proposed step
 
 `propose_for` refuses with `PlanningRefused` when the item no longer needs a
-proposal: it already has steps or is not planned (a planned item always
-has a date), and also when
+proposal: it already has steps, is not planned (a planned item always
+has a date) or is dated before the owner's local today, and also when
 a concurrent proposal (or a step the agent just added) won while the model was
 thinking, or when the item was rescheduled to another date meanwhile (the
 answer was written for the old date, so it is stale: nothing is saved and
@@ -1248,12 +1253,11 @@ message each, with `proposal_reply` (`Looks good ✓` and `No steps` buttons).
   is tried again on the next tick; the next item is still tried.
 - The call runs the model, so the ticker runs it off the event loop.
 
-Pinned by `tests/acceptance/test_delivery.py`: a dated planned item is proposed
-and sent, at most three per call, an AI outage leaves the item for the next call
-without stopping the next item, a stale answer is not logged, and a busy store
-on a planning button gets the busy reply (`tests/acceptance/test_hermes_buttons.py`).
-A failed send withdraws the steps without declining, so the next tick proposes the item
-again (`tests/acceptance/test_hermes_ticker.py`).
+A dated planned item is proposed and sent, at most three per call; an AI outage
+leaves the item for the next call without stopping the next item; a stale answer
+is not logged; and a busy store on a planning button gets the busy reply. A failed
+send withdraws the steps without declining, so the next tick proposes the item
+again. An item whose date is before the owner's local today is never proposed.
 
 Every refusal raises a `PlanningError`: `UnknownItem(item_id)`,
 `UnknownStep(step_id)` or `PlanningRefused(message)`. A refused call writes
@@ -1266,25 +1270,13 @@ nothing. Each statement below has one acceptance test in
 2. Pressing "Looks good ✓" on the proposal (`app.fixes.apply("stash:a:<item id>")`)
    confirms every step; they become open confirmed steps and the answer is
    "✅ Prep saved for Date night: 3 steps. I'll remind you when each is due."
-   Pinned by
-   `test_pressing_looks_good_turns_the_proposed_steps_into_open_confirmed_steps`,
-   which drives `FixHandler.apply` (what `app.fixes` is) over in-memory fakes,
-   taking the button data from `proposal_reply(proposal, item_date).buttons`.
-   The wiring of `app.fixes` to the real `Planning` is pinned by
-   `tests/unit/app/test_build_app_planning.py`.
 3. Pressing "No steps" (`app.fixes.apply("stash:n:<item id>")`) deletes the
    proposed steps, the item is unchanged and the answer is "Okay, I dropped the
-   proposed steps for Date night." Pinned by
-   `test_pressing_no_steps_deletes_the_proposed_steps_and_leaves_the_item_unchanged`,
-   which likewise drives `FixHandler.apply` over in-memory fakes; the same
-   unit test file pins the app wiring.
+   proposed steps for Date night."
 4. When the AI is unavailable, `propose_for` raises `LlmUnavailable`, no step
    is written and the item is unchanged; the next attempt, once the AI is back,
    succeeds.
-5. After "No steps" the item is not proposed again until its date changes. Pinned by
-   `test_after_no_steps_the_item_is_not_proposed_again_until_its_date_changes`,
-   which presses "No steps" through `FixHandler.apply`, then reschedules the
-   item to another date.
+5. After "No steps" the item is not proposed again until its date changes.
 
 The proposal reply and the button answers (`stash.capture.planning_replies`):
 
@@ -1374,8 +1366,9 @@ read afresh every time.
   Done nor Dropped, at `reminder_time` on its due date (the item date minus its
   lead time, or its own date). Unconfirmed proposed steps never remind.
 - A date reminder: a Planned item, at `reminder_time` on its date.
-- A follow-up: a Planned item with no outcome, at `followup_time` the day after
-  its date. At most one follow-up message goes out per daily follow-up time:
+- A follow-up: a Planned item with no outcome recorded for its current date (an
+  outcome from an earlier date, as on a repeat item, does not count), at
+  `followup_time` the day after its date. At most one follow-up message goes out per daily follow-up time:
   once one was sent at or after the latest `followup_time`, further follow-ups
   wait for the next one.
 - The weekly digest: the latest `digest_day` `digest_time` instant that was not
@@ -1396,8 +1389,10 @@ catch-up message instead, headed `While I was offline:`.
 
 Each step reminder carries a `Done ✓` button (`stash:x:<step id>`); each
 follow-up carries `Done ✓` (`stash:d:<item id>`, Plan 2's one-tap Done, which
-answers with the ⭐1-⭐5 and Keep rows) and `Didn't happen` (`stash:h:<item
-id>`), one row per step or follow-up. With more than one row the `Done ✓` label
+answers with the ⭐1-⭐5 and Keep rows; it records the item's date as the
+completion date when that is not after the owner's local today) and `Didn't
+happen` (`stash:h:<item id>:<yyyymmdd>`, the item's date), one row per step or
+follow-up. With more than one row the `Done ✓` label
 names its subject (`Done ✓ · Book the table`, cut to 24 characters). A message
 carries at most 8 buttons: from the first row that would pass 8, the remaining
 reminders are text only. Every line is cut to 300 characters with its
@@ -1408,12 +1403,14 @@ are marked sent, so the rest stay due and come in the next tick's message. The
 digest's other sections (new, forgotten, upcoming, suggestions) are described
 under *Weekly digest*; the digest is one unit, shown whole or not at all.
 
-Pressing `Didn't happen` (`app.fixes.apply("stash:h:<item id>")`) moves a
-Planned item back to Want to, clears its date and answers `↩️ Okay, <title> is
-in Want to.` For an item that is no longer Planned it changes nothing and
-answers `<title> is <stage>, so I left it.`, except that an item already in
-Want to answers the `is in Want to.` line again. The operation is
-`Lifecycle.didnt_happen(item_id)`.
+Pressing `Didn't happen` (`app.fixes.apply("stash:h:<item id>:<yyyymmdd>")`)
+moves a Planned item back to Want to, clears its date and answers `↩️ Okay,
+<title> is in Want to.` For an item that is no longer Planned it changes nothing
+and answers `<title> is <stage>, so I left it.`, except that an item already in
+Want to answers the `is in Want to.` line again. A press whose date is not the
+Planned item's current date (it was rescheduled after the follow-up was sent)
+changes nothing and answers the "changed meanwhile" reply. The operation is
+`Lifecycle.didnt_happen(item_id, on)`.
 
 Each statement has one acceptance test in `tests/acceptance/test_nudges.py`,
 which ticks `NudgeDelivery.deliver` (due, build digests, batch, render, send,
@@ -1431,12 +1428,15 @@ confirmed same-day step:
 4. On 2027-11-07 (clocks go back) a 09:00 reminder fires once, at 17:00 UTC.
 5. Dropping the item before Saturday 09:00 sends no step or date reminder for
    it.
-6. Moving the item's date (a store write; the agent's date edit arrives in a
-   later task) before Saturday 09:00 sends its step reminder on the new date
-   instead.
+6. Moving the item's date before Saturday 09:00 sends its step reminder on the
+   new date instead. Rescheduling it with `Lifecycle.reschedule(item_id, date)`
+   (what the agent's `stash_set_date` calls) moves its reminders and its
+   follow-up to the new date, and nothing is sent for the old one.
 7. When the send fails the message is not marked, and the next tick sends it.
 8. Pressing `Didn't happen` on the follow-up moves the date night back to Want
    to with no date.
+9. Pressing `Didn't happen` on a follow-up after the item was rescheduled to
+   another date leaves the item as it is.
 
 ### Delivery, the ticker and `stash tick`  [Plan 3 Task 6b]
 
@@ -1494,13 +1494,12 @@ reminders are off") and starts no ticker.
   the coroutine only), the re-run on a real reconnect, and what happens on a
   hot reload, which skips the factory (spike-m0 #26).
 
-Pinned by `tests/acceptance/test_hermes_ticker.py` (two connects start one
-ticker; an ended ticker restarts; a reminder reaches the owner chat once across
-ticks; a failed send is retried on the next tick; a failed proposal send is proposed
-again on the next tick) and `tests/unit/hermes_adapter/test_ticker.py` (ticks never
-overlap, work runs off the event-loop thread, a cancel leaves the next tick free,
-a failing delivery does not stop the ticker, the pause between ticks, the send
-limit) and `test_plugin_ticker.py` (the owner chat choice).
+Two connects start one ticker; an ended ticker restarts and logs a warning when it
+stops; a reminder reaches the owner chat once across ticks; a failed send is retried
+on the next tick; a failed proposal send is proposed again on the next tick; ticks
+never overlap; work runs off the event-loop thread; a cancel leaves the next tick
+free; a failing delivery does not stop the ticker; the pause between ticks and the
+send limit are fixed; the owner chat is chosen from the settings and allowed users.
 
 **`stash tick [--dry-run]`** is the fallback when the ticker is not running (cron
 `--no-agent`, see `docs/deploy/wsl-setup.md`).
@@ -1514,7 +1513,7 @@ messages separated by one blank line, and marks them sent. It prints nothing at
 all when nothing is due, and nothing on the first run (which only seeds the
 ledger). `--dry-run` prints what a real run would, marks nothing, so a real run
 afterwards still sends it. It has no proposals (they need buttons). It shares the
-sent-nudge ledger with the ticker. Pinned by `tests/acceptance/test_cli_tick.py`.
+sent-nudge ledger with the ticker.
 
 **`stash doctor`** gains a `backup` line, an optional check: `✔ backup — last
 success 5 hours ago` when `stash backup` last succeeded less than 48 hours ago,

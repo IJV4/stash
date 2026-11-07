@@ -29,12 +29,14 @@ def every_stage(store: Store, start: date, end: date) -> list[Item]:
     return store.items_dated_between(start, end)
 
 
-def planned_without_outcome(store: Store, start: date, end: date) -> list[Item]:
-    return store.planned_without_outcome_dated_between(start, end)
+def planned_awaiting_outcome(store: Store, start: date, end: date) -> list[Item]:
+    return store.planned_awaiting_outcome_dated_between(start, end)
 
 
 both_dated_queries = pytest.mark.parametrize(
-    "query", [every_stage, planned_without_outcome], ids=["items_dated", "planned_without_outcome"]
+    "query",
+    [every_stage, planned_awaiting_outcome],
+    ids=["items_dated", "planned_awaiting_outcome"],
 )
 
 
@@ -255,7 +257,7 @@ def test_items_dated_between_returns_an_item_that_already_has_an_outcome(
     # Setup
     with open_store() as store:
         planned_on(store, "i1", MIDDLE)
-        store.add_outcome(an_outcome(item_id="i1"))
+        store.add_outcome(an_outcome(item_id="i1", completed_on=MIDDLE))
 
         # Execute
         listed = store.items_dated_between(START, END)
@@ -268,7 +270,7 @@ def test_items_dated_between_returns_an_item_that_already_has_an_outcome(
 @pytest.mark.parametrize(
     "stage", [stage for stage in Stage if stage is not Stage.PLANNED], ids=lambda stage: stage.value
 )
-def test_planned_without_outcome_leaves_out_a_dated_item_of_another_stage(
+def test_planned_awaiting_outcome_leaves_out_a_dated_item_of_another_stage(
     open_store: StoreFactory, stage: Stage
 ) -> None:
     # Setup
@@ -276,57 +278,73 @@ def test_planned_without_outcome_leaves_out_a_dated_item_of_another_stage(
         stored_item(store, id="other", title="other", stage=stage, date=MIDDLE)
 
         # Execute
-        listed = store.planned_without_outcome_dated_between(START, END)
+        listed = store.planned_awaiting_outcome_dated_between(START, END)
 
         # Assert
         assert listed == []
 
 
 @all_stores
-def test_planned_without_outcome_leaves_out_a_planned_item_that_has_an_outcome(
+def test_planned_awaiting_outcome_leaves_out_a_planned_item_that_has_an_outcome(
     open_store: StoreFactory,
 ) -> None:
     # Setup
     with open_store() as store:
         planned_on(store, "i1", MIDDLE)
-        store.add_outcome(an_outcome(item_id="i1"))
+        store.add_outcome(an_outcome(item_id="i1", completed_on=MIDDLE))
 
         # Execute
-        listed = store.planned_without_outcome_dated_between(START, END)
+        listed = store.planned_awaiting_outcome_dated_between(START, END)
 
         # Assert
         assert listed == []
 
 
 @all_stores
-def test_planned_without_outcome_leaves_out_a_planned_item_with_several_outcomes(
+def test_planned_awaiting_outcome_leaves_out_a_planned_item_with_several_outcomes(
     open_store: StoreFactory,
 ) -> None:
     # Setup
     with open_store() as store:
         planned_on(store, "i1", MIDDLE)
-        store.add_outcome(an_outcome(id="o1", item_id="i1"))
-        store.add_outcome(an_outcome(id="o2", item_id="i1"))
+        store.add_outcome(an_outcome(id="o1", item_id="i1", completed_on=MIDDLE))
+        store.add_outcome(an_outcome(id="o2", item_id="i1", completed_on=MIDDLE))
 
         # Execute
-        listed = store.planned_without_outcome_dated_between(START, END)
+        listed = store.planned_awaiting_outcome_dated_between(START, END)
 
         # Assert
         assert listed == []
 
 
 @all_stores
-def test_planned_without_outcome_keeps_a_planned_item_whose_neighbour_has_an_outcome(
+def test_planned_awaiting_outcome_keeps_a_repeat_item_whose_outcome_is_from_an_earlier_date(
+    open_store: StoreFactory,
+) -> None:
+    # Setup
+    with open_store() as store:
+        planned_on(store, "repeat", MIDDLE)
+        store.add_outcome(an_outcome(item_id="repeat", completed_on=DAY_BEFORE))
+
+        # Execute
+        listed = store.planned_awaiting_outcome_dated_between(START, END)
+
+        # Assert
+        assert titles(listed) == ["repeat"]
+
+
+@all_stores
+def test_planned_awaiting_outcome_keeps_a_planned_item_whose_neighbour_has_an_outcome(
     open_store: StoreFactory,
 ) -> None:
     # Setup
     with open_store() as store:
         planned_on(store, "with-outcome", MIDDLE)
         planned_on(store, "without-outcome", MIDDLE)
-        store.add_outcome(an_outcome(item_id="with-outcome"))
+        store.add_outcome(an_outcome(item_id="with-outcome", completed_on=MIDDLE))
 
         # Execute
-        listed = store.planned_without_outcome_dated_between(START, END)
+        listed = store.planned_awaiting_outcome_dated_between(START, END)
 
         # Assert
         assert titles(listed) == ["without-outcome"]

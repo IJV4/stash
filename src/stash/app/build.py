@@ -86,6 +86,7 @@ def build_app(
             Declines(sqlite),
             _new_id,
             clock,
+            config.timezone,
         )
         suggestions = SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone))
         schedule = Schedule(config.nudges, config.timezone)
@@ -95,7 +96,7 @@ def build_app(
             store=sqlite,
             pipeline=pipeline,
             agent_capture=AgentCapture(pipeline, _new_id, clock),
-            fixes=FixHandler(sqlite, lifecycle, planning, clock),
+            fixes=FixHandler(sqlite, lifecycle, planning, clock, config.timezone),
             lifecycle=lifecycle,
             planning=planning,
             suggestions=suggestions,

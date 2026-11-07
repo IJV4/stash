@@ -44,5 +44,5 @@ def a_digest_rig(
         store, schedule, nudger, send, NudgeDelivery(nudger, builder), model=model, builder=builder
     )
     if not first_run:
-        store.record_sent(WeeklyDigest(LONG_AGO, ()).nudge, LONG_AGO)
+        MemoryStore.record_all_sent(store, [WeeklyDigest(LONG_AGO, ()).nudge], LONG_AGO)
     return rig

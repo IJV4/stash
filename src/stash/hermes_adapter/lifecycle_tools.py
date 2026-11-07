@@ -8,6 +8,7 @@ from stash.hermes_adapter.lifecycle_schemas import (
     GROUP_SCHEMA,
     KEEP_SCHEMA,
     LIBRARY_SCHEMA,
+    SET_DATE_SCHEMA,
     SET_STAGE_SCHEMA,
 )
 from stash.hermes_adapter.ports import ItemLifecycle
@@ -40,6 +41,7 @@ class LifecycleTools:
             ToolSpec(COMPLETE_SCHEMA, self.complete),
             ToolSpec(ANNOTATE_SCHEMA, self.annotate),
             ToolSpec(SET_STAGE_SCHEMA, self.set_stage),
+            ToolSpec(SET_DATE_SCHEMA, self.set_date),
             ToolSpec(KEEP_SCHEMA, self.keep),
             ToolSpec(GROUP_SCHEMA, self.group),
             ToolSpec(LIBRARY_SCHEMA, self.library),
@@ -56,6 +58,9 @@ class LifecycleTools:
 
     def set_stage(self, args: object, **kwargs: object) -> str:
         return answering(args, UNWRITABLE, self._set_stage, logger)
+
+    def set_date(self, args: object, **kwargs: object) -> str:
+        return answering(args, UNWRITABLE, self._set_date, logger)
 
     def keep(self, args: object, **kwargs: object) -> str:
         return answering(args, UNWRITABLE, self._keep, logger)
@@ -95,6 +100,13 @@ class LifecycleTools:
         if stage not in MOVEABLE_STAGES:
             raise ValueError(USE_STASH_COMPLETE)
         return item_answer(self._lifecycle.set_stage(item_id, stage, arguments.optional_reason()))
+
+    def _set_date(self, arguments: ToolArguments) -> str:
+        return item_answer(
+            self._lifecycle.reschedule(
+                arguments.required_id("item_id"), arguments.nullable_date("date")
+            )
+        )
 
     def _keep(self, arguments: ToolArguments) -> str:
         kept = self._lifecycle.keep(

@@ -1,4 +1,5 @@
 import threading
+from datetime import date
 
 from stash.capture.ports import LifecycleActions
 from stash.domain import Item, Outcome
@@ -21,8 +22,8 @@ class OverlapWaitingLifecycle:
             self._overlapped.set()
         return history
 
-    def complete(self, item_id: str) -> Completion:
-        return self._inner.complete(item_id)
+    def complete(self, item_id: str, *, on: date | None = None) -> Completion:
+        return self._inner.complete(item_id, on=on)
 
     def rate(self, outcome_id: str, rating: int) -> Outcome:
         return self._inner.rate(outcome_id, rating)
@@ -30,8 +31,8 @@ class OverlapWaitingLifecycle:
     def keep(self, item_id: str, kept: bool) -> Item:
         return self._inner.keep(item_id, kept)
 
-    def didnt_happen(self, item_id: str) -> Item:
-        return self._inner.didnt_happen(item_id)
+    def didnt_happen(self, item_id: str, on: date) -> Item:
+        return self._inner.didnt_happen(item_id, on)
 
     def _arrived_first(self) -> bool:
         with self._counting:

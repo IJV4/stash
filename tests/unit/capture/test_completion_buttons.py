@@ -1,11 +1,11 @@
 import logging
 
-from builders import BASE, an_item_at, fetched_outcome, stored
+from builders import BASE, PLANNED_FOR, an_item_at, fetched_item, fetched_outcome, stored
 from capture_builders import COMPLETED_OUTCOME_ID, a_store_with_a_completed_item
 from fakes.busy_store import BusyStore
 from fakes.changing_item_store import ChangingItemStore
 from fakes.memory_store import MemoryStore
-from lifecycle_rig import a_lifecycle
+from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from log_records import recording_logs
 
 from stash.capture import busy, changed, gone
@@ -15,11 +15,16 @@ from stash.domain import Stage
 
 LOGGER_NAME = "stash.capture.test_completion_buttons"
 STORED_RATING = 4
+PLANNED_DAY = f"{PLANNED_FOR:%Y%m%d}"
 
 
 def completion_buttons_over(store: MemoryStore) -> CompletionButtons:
     return CompletionButtons(
-        store, a_lifecycle(store), CallbackLog(logging.getLogger(LOGGER_NAME)), lambda: BASE
+        store,
+        a_lifecycle(store),
+        CallbackLog(logging.getLogger(LOGGER_NAME)),
+        lambda: BASE,
+        LOCAL_ZONE,
     )
 
 
@@ -69,7 +74,7 @@ def test_a_press_on_an_item_changed_meanwhile_answers_changed() -> None:
     store.change_after_reading_item("i1")
 
     # Execute
-    reply = completion_buttons_over(store).didnt_happen("i1")
+    reply = completion_buttons_over(store).didnt_happen("i1", PLANNED_DAY)
 
     # Assert
     assert reply == changed()
@@ -84,7 +89,7 @@ def test_a_press_on_an_item_changed_meanwhile_is_logged_at_info() -> None:
 
     # Execute
     with recording_logs(LOGGER_NAME) as recorder:
-        buttons.didnt_happen("i1")
+        buttons.didnt_happen("i1", PLANNED_DAY)
 
     # Assert
     assert recorder.entries() == [(logging.INFO, "fix callback for item i1 changed meanwhile")]
@@ -96,7 +101,7 @@ def test_a_press_while_the_store_is_busy_answers_busy() -> None:
     stored(store, an_item_at(Stage.PLANNED))
 
     # Execute
-    reply = completion_buttons_over(store).didnt_happen("i1")
+    reply = completion_buttons_over(store).didnt_happen("i1", PLANNED_DAY)
 
     # Assert
     assert reply == busy()
@@ -110,7 +115,55 @@ def test_a_press_while_the_store_is_busy_is_logged_at_warning() -> None:
 
     # Execute
     with recording_logs(LOGGER_NAME) as recorder:
-        buttons.didnt_happen("i1")
+        buttons.didnt_happen("i1", PLANNED_DAY)
 
     # Assert
     assert recorder.entries() == [(logging.WARNING, "fix callback while the stash was busy")]
+
+
+def test_a_press_without_a_readable_day_answers_gone() -> None:
+    # Setup
+    store = MemoryStore()
+    stored(store, an_item_at(Stage.PLANNED))
+
+    # Execute
+    reply = completion_buttons_over(store).didnt_happen("i1", None)
+
+    # Assert
+    assert reply == gone()
+
+
+def test_a_press_without_a_readable_day_changes_nothing() -> None:
+    # Setup
+    store = MemoryStore()
+    planned = stored(store, an_item_at(Stage.PLANNED))
+
+    # Execute
+    completion_buttons_over(store).didnt_happen("i1", "soon")
+
+    # Assert
+    assert fetched_item(store, "i1") == planned
+
+
+def test_a_press_for_a_day_other_than_the_items_date_answers_changed() -> None:
+    # Setup
+    store = MemoryStore()
+    stored(store, an_item_at(Stage.PLANNED))
+
+    # Execute
+    reply = completion_buttons_over(store).didnt_happen("i1", "20990101")
+
+    # Assert
+    assert reply == changed()
+
+
+def test_a_press_for_a_day_other_than_the_items_date_leaves_the_item_planned() -> None:
+    # Setup
+    store = MemoryStore()
+    planned = stored(store, an_item_at(Stage.PLANNED))
+
+    # Execute
+    completion_buttons_over(store).didnt_happen("i1", "20990101")
+
+    # Assert
+    assert fetched_item(store, "i1") == planned

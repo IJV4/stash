@@ -57,7 +57,7 @@ def test_with_two_digest_instants_in_the_window_only_the_latest_is_due() -> None
 def test_when_the_latest_digest_was_sent_the_older_unsent_one_is_not_offered() -> None:
     # Setup
     store = MemoryStore()
-    store.record_sent(WeeklyDigest(SUNDAY_DIGEST_TIME, ()).nudge, SUNDAY_DIGEST_TIME)
+    store.record_all_sent([WeeklyDigest(SUNDAY_DIGEST_TIME, ()).nudge], SUNDAY_DIGEST_TIME)
 
     # Execute
     due = digests(store, SUNDAY_NOON)
@@ -69,7 +69,7 @@ def test_when_the_latest_digest_was_sent_the_older_unsent_one_is_not_offered() -
 def test_when_the_latest_digest_is_unsent_and_the_older_one_was_sent_the_latest_is_due() -> None:
     # Setup
     store = MemoryStore()
-    store.record_sent(WeeklyDigest(PREVIOUS_SUNDAY_DIGEST_TIME, ()).nudge, LONG_AGO)
+    store.record_all_sent([WeeklyDigest(PREVIOUS_SUNDAY_DIGEST_TIME, ()).nudge], LONG_AGO)
 
     # Execute
     due = digests(store, SUNDAY_NOON)
@@ -94,7 +94,7 @@ def test_stuck_items_are_never_due_without_their_digest() -> None:
     # Setup
     store = MemoryStore()
     stored(store, a_stuck_book())
-    store.record_sent(WeeklyDigest(SUNDAY_DIGEST_TIME, ()).nudge, SUNDAY_DIGEST_TIME)
+    store.record_all_sent([WeeklyDigest(SUNDAY_DIGEST_TIME, ()).nudge], SUNDAY_DIGEST_TIME)
 
     # Execute
     due = a_nudger(store).due(SUNDAY_NOON)
@@ -167,7 +167,7 @@ def test_a_stuck_item_already_sent_with_an_earlier_attempt_is_left_out_of_the_di
     # Setup
     store = MemoryStore()
     book = stored(store, a_stuck_book())
-    store.record_sent(StuckItem(book, SUNDAY_DIGEST_TIME).nudge, SUNDAY_DIGEST_TIME)
+    store.record_all_sent([StuckItem(book, SUNDAY_DIGEST_TIME).nudge], SUNDAY_DIGEST_TIME)
 
     # Execute
     due = digests(store, SUNDAY_DIGEST_TIME)

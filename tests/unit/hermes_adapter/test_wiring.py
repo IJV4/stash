@@ -167,6 +167,7 @@ def test_the_tools_are_search_list_lifecycle_capture_the_step_tools_and_suggest(
         "stash_complete",
         "stash_annotate",
         "stash_set_stage",
+        "stash_set_date",
         "stash_keep",
         "stash_group",
         "stash_library",

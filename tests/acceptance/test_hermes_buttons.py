@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import replace
 
-from builders import an_item_at, stored
+from builders import PLANNED_FOR, an_item_at, stored
 from capture_builders import (
     QUESTION,
     a_filing_answer,
@@ -19,7 +19,7 @@ from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_button_rig, build
 from planning_builders import DATE_NIGHT_ID, stored_date_night
 from step_builders import a_step
 
-from stash.capture.callbacks import FixAction, FixKind
+from stash.capture.callbacks import FixAction, FixKind, date_argument
 from stash.domain import Stage
 from stash.hermes_adapter.events import Chat
 
@@ -149,7 +149,7 @@ def test_pressing_didnt_happen_on_an_item_deleted_meanwhile_says_it_no_longer_ex
     rig = build_button_rig(store)
 
     # Execute
-    shown = rig.pressed(FixAction(FixKind.NOT_HAPPENED, "i1").encode())
+    shown = rig.pressed(FixAction(FixKind.NOT_HAPPENED, "i1", date_argument(PLANNED_FOR)).encode())
 
     # Assert
     assert (shown, store.get_item("i1")) == (GONE, None)

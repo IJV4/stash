@@ -31,6 +31,7 @@ from stash.hermes_adapter.lifecycle_schemas import (
     GROUP_SCHEMA,
     KEEP_SCHEMA,
     LIBRARY_SCHEMA,
+    SET_DATE_SCHEMA,
     SET_STAGE_SCHEMA,
 )
 from stash.hermes_adapter.plugin import NO_OWNER_CHAT_LOG, register
@@ -48,6 +49,7 @@ LIFECYCLE_SCHEMAS = (
     COMPLETE_SCHEMA,
     ANNOTATE_SCHEMA,
     SET_STAGE_SCHEMA,
+    SET_DATE_SCHEMA,
     KEEP_SCHEMA,
     GROUP_SCHEMA,
     LIBRARY_SCHEMA,

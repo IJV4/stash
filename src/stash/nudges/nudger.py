@@ -92,7 +92,7 @@ class Nudger:
         if self._followup_slot_taken(window.now):
             return []
         first, last = self._schedule.item_dates_followed_up_between(*self._local_dates(window))
-        items = self._store.planned_without_outcome_dated_between(first, last)
+        items = self._store.planned_awaiting_outcome_dated_between(first, last)
         return window.keep(
             FollowUp(item, self._schedule.followup_at(day)) for item, day in _dated(items)
         )

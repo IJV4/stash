@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date, datetime
 from enum import StrEnum
 from types import MappingProxyType
 
@@ -27,7 +28,13 @@ class FixKind(StrEnum):
 
     @property
     def takes_argument(self) -> bool:
-        return self in (FixKind.SET_TYPE, FixKind.SET_STAGE, FixKind.RATE, FixKind.KEEP)
+        return self in (
+            FixKind.SET_TYPE,
+            FixKind.SET_STAGE,
+            FixKind.RATE,
+            FixKind.KEEP,
+            FixKind.NOT_HAPPENED,
+        )
 
 
 class KeepChoice(StrEnum):
@@ -46,6 +53,23 @@ RATING_ARGUMENTS = MappingProxyType[str, int](
 
 def rating_for(argument: str | None) -> int | None:
     return None if argument is None else RATING_ARGUMENTS.get(argument)
+
+
+DAY_ARGUMENT_FORMAT = "%Y%m%d"
+DAY_ARGUMENT_LENGTH = 8
+
+
+def date_argument(day: date) -> str:
+    return day.strftime(DAY_ARGUMENT_FORMAT)
+
+
+def date_for(argument: str | None) -> date | None:
+    if argument is None or len(argument) != DAY_ARGUMENT_LENGTH or not argument.isdecimal():
+        return None
+    try:
+        return datetime.strptime(argument, DAY_ARGUMENT_FORMAT).date()
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True, slots=True)

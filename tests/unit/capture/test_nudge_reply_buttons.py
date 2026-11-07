@@ -15,6 +15,7 @@ from nudge_builders import (
 
 from stash.capture.nudge_replies import nudge_reply
 from stash.capture.replies import Button
+from stash.domain import Stage
 from stash.nudges import DueNudge, FollowUp, StepReminder
 
 SPEC_MAX_BUTTONS = 8
@@ -39,7 +40,10 @@ def test_a_follow_up_alone_carries_bare_done_and_didnt_happen_buttons_for_the_it
 
     # Assert
     assert reply.buttons == (
-        (Button("Done ✓", "stash:d:date-night"), Button("Didn't happen", "stash:h:date-night")),
+        (
+            Button("Done ✓", "stash:d:date-night"),
+            Button("Didn't happen", "stash:h:date-night:20270213"),
+        ),
     )
 
 
@@ -73,7 +77,10 @@ def test_a_follow_up_beside_the_digest_keeps_the_bare_labels() -> None:
 
     # Assert
     assert reply.buttons == (
-        (Button("Done ✓", "stash:d:date-night"), Button("Didn't happen", "stash:h:date-night")),
+        (
+            Button("Done ✓", "stash:d:date-night"),
+            Button("Didn't happen", "stash:h:date-night:20270213"),
+        ),
     )
 
 
@@ -93,7 +100,7 @@ def test_with_several_rows_the_didnt_happen_button_keeps_its_bare_label() -> Non
     reply = nudge_reply(a_nudge_message(a_step_reminder(), a_follow_up())).reply
 
     # Assert
-    assert reply.buttons[1][1] == Button("Didn't happen", "stash:h:date-night")
+    assert reply.buttons[1][1] == Button("Didn't happen", "stash:h:date-night:20270213")
 
 
 def test_a_subject_is_cut_to_twenty_four_characters_in_the_button_label() -> None:
@@ -188,3 +195,15 @@ def test_callback_data_for_the_longest_allowed_ids_fits_the_telegram_limit() -> 
 
     # Assert
     assert max(len(button.data.encode()) for row in reply.buttons for button in row) <= 64
+
+
+def test_a_follow_up_for_an_item_without_a_date_carries_only_the_done_button() -> None:
+    # Execute
+    reply = nudge_reply(
+        a_nudge_message(
+            FollowUp(a_planned_date_night(stage=Stage.WANT_TO, date=None), SUNDAY_MORNING)
+        )
+    ).reply
+
+    # Assert
+    assert reply.buttons == ((Button("Done ✓", "stash:d:date-night"),),)

@@ -48,7 +48,7 @@ def test_recording_nudges_when_one_was_already_recorded_reports_false(
     # Setup
     with open_store() as store:
         nudges = two_new_nudges()
-        store.record_sent(nudges[0], BASE)
+        store.record_all_sent([nudges[0]], BASE)
 
         # Execute
         recorded_all = store.record_all_sent(nudges, LATER)
@@ -64,7 +64,7 @@ def test_recording_nudges_when_one_was_already_recorded_still_records_the_others
     # Setup
     with open_store() as store:
         nudges = two_new_nudges()
-        store.record_sent(nudges[0], BASE)
+        store.record_all_sent([nudges[0]], BASE)
 
         # Execute
         store.record_all_sent(nudges, LATER)
@@ -80,7 +80,7 @@ def test_a_nudge_that_was_already_recorded_keeps_its_original_send_time(
     # Setup
     with open_store() as store:
         nudges = two_new_nudges()
-        store.record_sent(nudges[0], BASE)
+        store.record_all_sent([nudges[0]], BASE)
         store.record_all_sent(nudges, LATER)
 
         # Execute

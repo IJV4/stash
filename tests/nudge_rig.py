@@ -47,7 +47,7 @@ class NudgeRig:
 
     def digests_before_were_sent(self, first_tick: datetime) -> None:
         for instant in self.schedule.digest_instants_between(first_tick - LOOKBACK, first_tick):
-            self.store.record_sent(WeeklyDigest(instant, ()).nudge, instant)
+            self.store.record_all_sent([WeeklyDigest(instant, ()).nudge], instant)
 
 
 def sending_nowhere(reply: Reply) -> None:

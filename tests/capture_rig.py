@@ -11,7 +11,7 @@ from fakes.memory_store import MemoryStore
 from fakes.recording_chat_model import RecordingChatModel
 from fakes.scripted_chat_model import ScriptedChatModel
 from filing_rig import build_filer
-from lifecycle_rig import a_lifecycle
+from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from log_records import recording_logs
 from planning_rig import a_planning
 
@@ -34,6 +34,7 @@ def a_fix_handler(
         a_lifecycle(store, clock),
         planning or a_planning(store, FakeChatModel(), clock),
         clock,
+        LOCAL_ZONE,
     )
 
 

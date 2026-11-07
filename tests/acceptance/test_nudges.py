@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from builders import FALL_BACK_DAY, SPRING_FORWARD_DAY, fetched_item, in_los_angeles
 from capture_rig import a_fix_handler
@@ -162,6 +162,37 @@ def test_a_date_moved_in_the_store_before_saturday_morning_moves_the_step_remind
     ] == [(SUNDAY_MORNING, "⏰ Book the table — for Date night (Sun Feb 14)")]
 
 
+def test_rescheduling_moves_the_reminders_and_the_follow_up_to_the_new_date() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_date_night_with_its_step(store)
+    rig = a_nudge_rig(store)
+    friday_evening = in_los_angeles(FRIDAY, 20)
+    rig.digests_before_were_sent(friday_evening)
+    a_lifecycle(store, clock=lambda: friday_evening).reschedule(DATE_NIGHT_ID, SUNDAY)
+    monday_morning = in_los_angeles(MONDAY, 9)
+
+    # Execute
+    rig.tick_through(
+        hourly_ticks_with_minutes_around(
+            friday_evening,
+            in_los_angeles(MONDAY, 12),
+            (SATURDAY_MORNING, SUNDAY_MORNING, monday_morning),
+        )
+    )
+
+    # Assert
+    assert [
+        (at, line)
+        for at, text in rig.sent_texts()
+        for line in text.splitlines()
+        if line.startswith("⏰") or line == FOLLOW_UP_LINE
+    ] == [
+        (SUNDAY_MORNING, "⏰ Book the table — for Date night (Sun Feb 14)"),
+        (monday_morning, FOLLOW_UP_LINE),
+    ]
+
+
 def test_a_failed_send_leaves_the_message_unmarked_and_the_next_tick_sends_it_once() -> None:
     # Setup
     store = MemoryStore()
@@ -193,3 +224,20 @@ def test_pressing_didnt_happen_moves_the_date_night_back_to_want_to_with_no_date
     # Assert
     item = fetched_item(store, DATE_NIGHT_ID)
     assert (item.stage, item.date) == (Stage.WANT_TO, None)
+
+
+def test_pressing_didnt_happen_after_the_item_was_rescheduled_leaves_it_as_it_is() -> None:
+    # Setup
+    store = MemoryStore()
+    stored_date_night_with_its_step(store)
+    rig = a_nudge_rig(store)
+    rig.digests_before_were_sent(SATURDAY_MORNING)
+    rig.tick_through([SATURDAY_MORNING, SUNDAY_MORNING])
+    [[_, didnt_happen]] = rig.sent[-1][1].buttons
+    rescheduled = a_lifecycle(store).reschedule(DATE_NIGHT_ID, SATURDAY + timedelta(days=7))
+
+    # Execute
+    a_fix_handler(store).apply(didnt_happen.data)
+
+    # Assert
+    assert fetched_item(store, DATE_NIGHT_ID) == rescheduled

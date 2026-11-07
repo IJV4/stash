@@ -17,14 +17,6 @@ class SqliteLedger:
         with self._lock:
             return self._connection.execute(sql.NUDGE_WAS_SENT, key).fetchone() is not None
 
-    def record_sent(self, nudge: Nudge, sent_at: datetime) -> bool:
-        require_aware("sent_at", sent_at)
-        with self._lock:
-            inserted = self._connection.execute(
-                sql.INSERT_SENT_NUDGE, (*nudge.key, utc_text(sent_at))
-            )
-        return inserted.rowcount == 1
-
     def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool:
         require_aware("sent_at", sent_at)
         sent_text = utc_text(sent_at)

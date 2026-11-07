@@ -181,7 +181,7 @@ def test_a_migrated_database_remembers_a_sent_nudge_after_reopening(tmp_path: Pa
     # Setup
     path = lifecycle_database(tmp_path)
     with opened(path) as store:
-        store.record_sent(a_nudge(), BASE)
+        store.record_all_sent([a_nudge()], BASE)
 
     # Execute
     with opened(path) as reopened:

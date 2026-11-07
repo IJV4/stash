@@ -15,7 +15,7 @@ from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.recording_unloader import RecordingUnloader
 from gate_rig import a_gate, a_sample
-from lifecycle_rig import a_lifecycle
+from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from nudge_builders import a_nudge_schedule
 from planning_rig import a_planning
 from router_builders import default_thinking_models
@@ -58,7 +58,7 @@ def an_app(**overrides: Any) -> StashApp:
         "store": store,
         "pipeline": pipeline,
         "agent_capture": AgentCapture(pipeline, sequential_ids(), clock),
-        "fixes": FixHandler(store, lifecycle, planning, clock),
+        "fixes": FixHandler(store, lifecycle, planning, clock, LOCAL_ZONE),
         "lifecycle": lifecycle,
         "planning": planning,
         "suggestions": suggestions,
