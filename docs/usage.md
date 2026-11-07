@@ -1181,7 +1181,8 @@ The Telegram buttons that confirm or discard a proposal go through
     planning.needs_proposal(item)             # PLANNED, dated, and no steps yet
     proposal = planning.propose_for(item_id)  # Proposal(item, steps): <= 10 unconfirmed steps
     planning.confirm_all(item_id)             # -> tuple[Step, ...], all confirmed; idempotent
-    planning.discard(item_id)                 # drops unconfirmed steps, keeps confirmed ones
+    planning.discard(item_id)                 # "No steps": records a decline, drops unconfirmed steps
+    planning.withdraw(item_id)                # drops unconfirmed steps only; records no decline
     planning.add_step(item_id, "Book the table", lead_days=7)   # -> confirmed Step, last position
     planning.edit_step(step_id, text="Call the venue", due_on=date(2027, 2, 1))  # -> Step
     planning.complete_step(step_id)           # -> Step with done=True; also confirms a proposed step
@@ -1213,11 +1214,12 @@ that `Planning` takes; the composition root builds it over the SQLite store.
 An outage (`LlmUnavailable`, `LlmDeferred`) is not a decline: the item still needs a
 proposal and is retried next tick. A decline is never deleted; with steps
 present, or the item out of PLANNED, it is irrelevant. When sending a proposal
-fails, the ticker calls `planning.discard(item_id)` so no unconfirmed steps stay
-hidden and the item is not retried forever (see *Proposals reach the owner*).
+fails, the ticker calls `planning.withdraw(item_id)` so no unconfirmed steps stay
+hidden; no decline is recorded, so the next tick proposes the item again (see
+*Proposals reach the owner*).
 
 A store that stays busy (another writer holds the write lock for more than 5 s)
-makes the writing calls (`propose_for`, `confirm_all`, `discard`, `add_step`,
+makes the writing calls (`propose_for`, `confirm_all`, `discard`, `withdraw`, `add_step`,
 `edit_step`, `complete_step`) raise `PlanningBusy`, a `PlanningError`; nothing is
 written. The Telegram buttons answer it "The stash is busy — try again in a
 moment." and log it; the agent tools answer `{"error": ...}` with its message.
@@ -1236,10 +1238,9 @@ message each, with `proposal_reply` (`Looks good ✓` and `No steps` buttons).
 
 - A proposal the model leaves empty is sent as `🗓 Nothing to prep for <title>
   (<day>).`
-- If the send fails, `planning.discard(item_id)` removes the unconfirmed steps
-  and records the decline for that date, so the item is not proposed again until
-  its date changes. The owner can still ask the agent for steps. If that
-  `discard` itself fails (a busy store), it is logged by its type name, the steps
+- If the send fails, `planning.withdraw(item_id)` removes the unconfirmed steps
+  without recording a decline, so the next tick proposes the item again. If that
+  `withdraw` itself fails (a busy store), it is logged by its type name, the steps
   stay saved unseen, and the next item is still proposed.
 - A stale answer (`PlanningRefused`: the item was rescheduled or got steps
   meanwhile) is skipped silently. Any other failure for one item (the AI
@@ -1248,8 +1249,8 @@ message each, with `proposal_reply` (`Looks good ✓` and `No steps` buttons).
 - The call runs the model, so the ticker runs it off the event loop.
 
 Pinned by `tests/acceptance/test_delivery.py`: a dated planned item is proposed
-and sent, at most three per call, a failed send discards the steps and the
-decline holds for that date, an AI outage leaves the item for the next call
+and sent, at most three per call, a failed send withdraws the steps so the
+item can be proposed again, an AI outage leaves the item for the next call
 without stopping the next item, a stale answer is not logged, and a busy store
 on a planning button gets the busy reply (`tests/acceptance/test_hermes_buttons.py`).
 
@@ -1494,8 +1495,8 @@ reminders are off") and starts no ticker.
 
 Pinned by `tests/acceptance/test_hermes_ticker.py` (two connects start one
 ticker; an ended ticker restarts; a reminder reaches the owner chat once across
-ticks; a failed send is retried on the next tick; a failed proposal send discards
-the proposal) and `tests/unit/hermes_adapter/test_ticker.py` (ticks never
+ticks; a failed send is retried on the next tick; a failed proposal send is proposed
+again on the next tick) and `tests/unit/hermes_adapter/test_ticker.py` (ticks never
 overlap, work runs off the event-loop thread, a cancel leaves the next tick free,
 a failing delivery does not stop the ticker, the pause between ticks, the send
 limit) and `test_plugin_ticker.py` (the owner chat choice).

@@ -3,7 +3,7 @@ from builders import stored_item
 from fakes.fake_step_proposals import FakeStepProposals
 from fakes.memory_store import MemoryStore
 from fakes.watched_step_store import WatchedStepStore
-from planning_builders import DATE_NIGHT_ID, stored_date_night
+from planning_builders import DATE_NIGHT_ID, a_date_night, stored_date_night
 from planning_rig import planning_over
 from step_builders import a_step
 from step_edit_rig import confirmed, date_night_with, proposed
@@ -178,3 +178,39 @@ def test_discarding_for_an_item_deleted_just_before_the_write_is_unknown() -> No
     # Execute / Assert
     with pytest.raises(UnknownItem):
         planning.discard(DATE_NIGHT_ID)
+
+
+def test_withdrawing_removes_the_proposed_steps() -> None:
+    # Setup
+    store = MemoryStore()
+    planning = date_night_with(store, proposed("s1", 0), proposed("s2", 1))
+
+    # Execute
+    planning.withdraw(DATE_NIGHT_ID)
+
+    # Assert
+    assert store.steps_for(DATE_NIGHT_ID) == []
+
+
+def test_withdrawing_keeps_the_steps_already_confirmed() -> None:
+    # Setup
+    store = MemoryStore()
+    planning = date_night_with(store, confirmed("s1", 0), proposed("s2", 1))
+
+    # Execute
+    planning.withdraw(DATE_NIGHT_ID)
+
+    # Assert
+    assert [step.id for step in store.steps_for(DATE_NIGHT_ID)] == ["s1"]
+
+
+def test_withdrawing_leaves_the_item_in_need_of_a_proposal() -> None:
+    # Setup
+    store = MemoryStore()
+    planning = date_night_with(store, proposed("s1", 0))
+
+    # Execute
+    planning.withdraw(DATE_NIGHT_ID)
+
+    # Assert
+    assert planning.needs_proposal(a_date_night())

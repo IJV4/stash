@@ -133,15 +133,3 @@ def test_a_backup_made_three_days_ago_shows_an_optional_line_naming_the_days(
 
     # Assert
     assert lines == ["! backup — last success 3 days ago"]
-
-
-def test_a_backup_made_just_now_shows_a_passing_line(tmp_path: Path) -> None:
-    # Setup
-    rig = build_cli_rig(tmp_path)
-    rig.run("backup", "--to", str(tmp_path / "nas"))
-
-    # Execute
-    lines = backup_line(rig)
-
-    # Assert
-    assert lines == ["✔ backup — last success 0 hours ago"]

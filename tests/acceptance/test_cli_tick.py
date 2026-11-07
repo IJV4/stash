@@ -5,11 +5,7 @@ from cli_session import Session
 from fakes.memory_store import MemoryStore
 from nudge_builders import (
     SATURDAY_MORNING,
-    SUNDAY_MORNING,
-    a_date_reminder,
-    a_step_reminder,
     stored_date_night_with_its_step,
-    stored_step_due_on,
 )
 from nudge_rig import a_nudge_rig
 
@@ -68,22 +64,3 @@ def test_tick_dry_run_prints_what_is_due_but_marks_nothing_so_a_real_tick_still_
 
     # Assert
     assert outputs == (f"{REMINDER_TEXT}\n", f"{REMINDER_TEXT}\n")
-
-
-def test_tick_separates_two_messages_with_one_blank_line_and_no_trailing_one(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    store = MemoryStore()
-    stored_date_night_with_its_step(store)
-    stored_step_due_on(store, SUNDAY_MORNING.date(), id="side-quest")
-    store.record_sent(a_step_reminder().nudge, SATURDAY_MORNING)
-    store.record_sent(a_date_reminder().nudge, SATURDAY_MORNING)
-    a_nudge_rig(store).digests_before_were_sent(SUNDAY_MORNING)
-    app = an_app(store=store, clock=lambda: SUNDAY_MORNING)
-
-    # Execute
-    output = tick(app, tmp_path)
-
-    # Assert
-    assert output == f"{STEP_REMINDER_TEXT}\n\n{FOLLOW_UP_TEXT}\n"

@@ -84,9 +84,11 @@ class Planning:
     def discard(self, item_id: str) -> None:
         with self._locked_item(item_id):
             self._declines.record(self._item(item_id))
-            steps = self._store.steps_for(item_id)
-            if _any_unconfirmed(steps):
-                self._store.save_steps(item_id, [step for step in steps if step.confirmed])
+            self._drop_unconfirmed_steps(item_id)
+
+    def withdraw(self, item_id: str) -> None:
+        with self._locked_item(item_id):
+            self._drop_unconfirmed_steps(item_id)
 
     def add_step(
         self,
@@ -139,6 +141,11 @@ class Planning:
         self._item(item_id)
         with self._lock, _translating_store_errors():
             yield
+
+    def _drop_unconfirmed_steps(self, item_id: str) -> None:
+        steps = self._store.steps_for(item_id)
+        if _any_unconfirmed(steps):
+            self._store.save_steps(item_id, [step for step in steps if step.confirmed])
 
     def _as_unconfirmed_steps(
         self, item_id: str, proposals: Sequence[ProposedStep]

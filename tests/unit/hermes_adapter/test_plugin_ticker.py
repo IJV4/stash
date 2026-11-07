@@ -53,24 +53,19 @@ def test_reminders_go_to_the_owner_chat_chosen_from_the_settings_and_allowed_use
     assert chat == expected_chat
 
 
-def test_with_no_owner_chat_connecting_starts_no_ticker() -> None:
+def test_with_no_owner_chat_no_ticker_starts_and_one_warning_says_reminders_are_off() -> None:
     # Setup
-    plugin = a_stash_with_a_reminder_due("")
+    with recording_logs(PLUGIN_LOGGER) as logs:
+        plugin = a_stash_with_a_reminder_due("")
 
     # Execute
     plugin.connect_telegram()
 
     # Assert
-    assert plugin.ctx.spawned == []
-
-
-def test_with_no_owner_chat_one_warning_says_reminders_are_off() -> None:
-    # Execute
-    with recording_logs(PLUGIN_LOGGER) as logs:
-        a_stash_with_a_reminder_due("")
-
-    # Assert
-    assert logs.entries().count((logging.WARNING, NO_OWNER_CHAT_LOG)) == 1
+    assert (plugin.ctx.spawned, logs.entries().count((logging.WARNING, NO_OWNER_CHAT_LOG))) == (
+        [],
+        1,
+    )
 
 
 def test_a_second_register_points_the_reminders_at_the_newest_owner_chat() -> None:

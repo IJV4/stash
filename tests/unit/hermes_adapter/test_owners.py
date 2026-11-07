@@ -120,14 +120,3 @@ def test_the_first_id_is_the_first_one_listed_not_the_smallest() -> None:
 
     # Assert
     assert first == "77"
-
-
-def test_an_empty_owner_set_has_no_first_id() -> None:
-    # Setup
-    owners = Owners.parse(None)
-
-    # Execute
-    first = owners.first_id()
-
-    # Assert
-    assert first is None

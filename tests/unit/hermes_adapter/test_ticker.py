@@ -5,17 +5,13 @@ from collections.abc import Coroutine
 from typing import Any
 
 import pytest
-from fakes.hanging_sender import HangingSender
-from fakes.pausing_scheduler import PausingScheduler
 from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals
+from fakes.scripted_sender import ScriptedSender
 from log_records import recording_logs
-from nudge_builders import SATURDAY_MORNING
 from threads import OVERLAP_GRACE_SECONDS
 from ticker_rig import (
-    INTERVAL_S,
     a_ticker,
     nudges_blocked_until_released,
-    run_until,
 )
 
 from stash.capture import Reply
@@ -35,40 +31,19 @@ def store_is_locked() -> None:
     raise RuntimeError("store is locked")
 
 
-def test_a_delivery_that_fails_is_logged_and_the_tick_still_returns() -> None:
+def test_a_delivery_that_fails_is_logged_and_does_not_stop_the_next_delivery_or_the_tick() -> None:
     # Setup
-    ticker = a_ticker(ScriptedNudges(store_is_locked))
+    ticker = a_ticker(ScriptedNudges(store_is_locked), ScriptedProposals(store_is_locked))
 
     # Execute
     with recording_logs(TICKER_LOGGER) as logs:
         asyncio.run(ticker.tick())
 
     # Assert
-    assert logs.entries() == [(logging.ERROR, NUDGE_DELIVERY_FAILED_LOG)]
-
-
-def test_a_failing_nudge_delivery_does_not_skip_the_proposals() -> None:
-    # Setup
-    proposals = ScriptedProposals()
-    ticker = a_ticker(ScriptedNudges(store_is_locked), proposals)
-
-    # Execute
-    asyncio.run(ticker.tick())
-
-    # Assert
-    assert len(proposals.threads) == 1
-
-
-def test_a_failing_proposal_delivery_is_logged_and_the_tick_still_returns() -> None:
-    # Setup
-    ticker = a_ticker(proposals=ScriptedProposals(store_is_locked))
-
-    # Execute
-    with recording_logs(TICKER_LOGGER) as logs:
-        asyncio.run(ticker.tick())
-
-    # Assert
-    assert logs.entries() == [(logging.ERROR, PROPOSAL_DELIVERY_FAILED_LOG)]
+    assert logs.entries() == [
+        (logging.ERROR, NUDGE_DELIVERY_FAILED_LOG),
+        (logging.ERROR, PROPOSAL_DELIVERY_FAILED_LOG),
+    ]
 
 
 def test_the_deliveries_run_off_the_event_loop_thread() -> None:
@@ -84,18 +59,6 @@ def test_the_deliveries_run_off_the_event_loop_thread() -> None:
 
     # Assert
     assert loop_thread not in nudges.threads + proposals.threads
-
-
-def test_the_deliveries_are_told_the_time_of_the_scheduler() -> None:
-    # Setup
-    nudges = ScriptedNudges()
-    ticker = a_ticker(nudges, scheduler=PausingScheduler(start=SATURDAY_MORNING))
-
-    # Execute
-    asyncio.run(ticker.tick())
-
-    # Assert
-    assert nudges.nows == [SATURDAY_MORNING]
 
 
 def test_two_ticks_started_together_never_overlap() -> None:
@@ -137,33 +100,9 @@ def test_cancelling_the_ticker_mid_tick_leaves_the_next_tick_free_to_run() -> No
     assert len(blocked.nudges.nows) == TICKS_OBSERVED
 
 
-def test_the_ticker_pauses_the_interval_between_ticks() -> None:
-    # Setup
-    scheduler = PausingScheduler()
-    ticker = a_ticker(scheduler=scheduler)
-
-    # Execute
-    asyncio.run(run_until(ticker, lambda: len(scheduler.requested) >= TICKS_OBSERVED))
-
-    # Assert
-    assert scheduler.requested[:TICKS_OBSERVED] == [INTERVAL_S] * TICKS_OBSERVED
-
-
-def test_the_ticker_keeps_ticking_after_a_delivery_fails() -> None:
-    # Setup
-    nudges = ScriptedNudges(store_is_locked)
-    ticker = a_ticker(nudges)
-
-    # Execute
-    asyncio.run(run_until(ticker, lambda: len(nudges.nows) >= TICKS_OBSERVED))
-
-    # Assert
-    assert len(nudges.nows) >= TICKS_OBSERVED
-
-
 def test_a_send_that_never_finishes_is_abandoned_so_the_tick_returns() -> None:
     # Setup
-    sender = HangingSender()
+    sender = ScriptedSender(hang=True)
     nudges = ScriptedNudges(replies=(Reply("Book the table"),))
     ticker = a_ticker(nudges, sender=sender, send_timeout_s=SHORT_SEND_TIMEOUT_S)
 

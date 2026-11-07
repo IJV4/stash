@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 PROPOSAL_SCAN_LIMIT = 200
 MAX_PROPOSALS_PER_TICK = 3
 PROPOSAL_FAILED_LOG = "step proposal failed (%s); left for the next tick"
-PROPOSAL_SEND_FAILED_LOG = "proposal send failed (%s); proposed steps discarded"
-PROPOSAL_DISCARD_FAILED_LOG = "discarding unsent proposed steps failed (%s); steps left in place"
+PROPOSAL_SEND_FAILED_LOG = "proposal send failed (%s); proposed steps withdrawn"
+PROPOSAL_WITHDRAW_FAILED_LOG = "withdrawing unsent proposed steps failed (%s); steps left in place"
 
 
 class ProposalPlanning(Protocol):
@@ -21,7 +21,7 @@ class ProposalPlanning(Protocol):
 
     def propose_for(self, item_id: str) -> Proposal: ...
 
-    def discard(self, item_id: str) -> None: ...
+    def withdraw(self, item_id: str) -> None: ...
 
 
 class PlannedItems(Protocol):
@@ -60,10 +60,10 @@ class ProposalDelivery:
             send(reply)
         except Exception as error:
             logger.warning(PROPOSAL_SEND_FAILED_LOG, type(error).__name__)
-            self._discard(item)
+            self._withdraw(item)
 
-    def _discard(self, item: Item) -> None:
+    def _withdraw(self, item: Item) -> None:
         try:
-            self._planning.discard(item.id)
+            self._planning.withdraw(item.id)
         except Exception as error:
-            logger.warning(PROPOSAL_DISCARD_FAILED_LOG, type(error).__name__)
+            logger.warning(PROPOSAL_WITHDRAW_FAILED_LOG, type(error).__name__)

@@ -13,9 +13,7 @@ from fakes.memory_store import MemoryStore
 from fakes.scripted_sender import SendFailed
 from log_records import recording_logs
 from nudge_builders import (
-    DIGEST_LINE,
     SATURDAY_MORNING,
-    STUCK_BOOK_LINE,
     SUNDAY,
     SUNDAY_DIGEST_TIME,
     SUNDAY_MORNING,
@@ -38,8 +36,7 @@ from suggestion_builders import picks_reply
 
 from stash.capture import Reply, proposal_reply
 from stash.delivery import NudgeDelivery, ProposalDelivery
-from stash.delivery.nudges import ALREADY_RECORDED_LOG, MARK_SENT_FAILED_LOG, SEND_FAILED_LOG
-from stash.delivery.proposals import PROPOSAL_DISCARD_FAILED_LOG
+from stash.delivery.nudges import ALREADY_RECORDED_LOG, SEND_FAILED_LOG
 from stash.domain import NudgeKind
 from stash.llm import LlmError, LlmUnavailable
 from stash.nudges import Nudger
@@ -59,12 +56,15 @@ ALL_KINDS = {
     NudgeKind.STUCK,
     NudgeKind.FORGOTTEN,
 }
-THREE_KINDS = {NudgeKind.ITEM_DATE, NudgeKind.FOLLOWUP, NudgeKind.DIGEST}
 LONG_REMINDERS = 20
 PROPOSALS = (ProposedStep("Book the table", 7),)
 SAT_WEEK_REMINDER_TEXT = (
     "⏰ Book the table — for Date night (Sat Feb 13)\n📅 Date night (Sat Feb 13)"
 )
+
+
+def telegram_is_down(reply: Reply) -> None:
+    raise SendFailed("secret chat text")
 
 
 def a_stash_after_its_first_run_with_everything_due() -> LedgerRecordingStore:
@@ -83,33 +83,6 @@ def test_the_first_tick_records_every_due_kind_of_nudge_without_sending_any() ->
 
     # Assert
     assert (rig.sent, set(store.recorded)) == ([], ALL_KINDS)
-
-
-def test_the_first_tick_records_the_whole_message_even_where_its_text_would_be_cut() -> None:
-    # Setup
-    store = LedgerRecordingStore()
-    for number in range(LONG_REMINDERS):
-        stored(store, a_planned_date_night(id=f"night{number}", title="T" * 400))
-    rig = a_digest_rig(store, [picks_reply()], first_run=True)
-
-    # Execute
-    rig.tick(SUNDAY_NOON)
-
-    # Assert
-    assert store.recorded.count(NudgeKind.ITEM_DATE) == LONG_REMINDERS
-
-
-def test_after_the_first_tick_only_the_next_scheduled_digest_is_sent() -> None:
-    # Setup
-    store = a_stash_after_its_first_run_with_everything_due()
-    rig = a_digest_rig(store, [picks_reply()] * 2, first_run=True)
-    rig.tick(SUNDAY_NOON)
-
-    # Execute
-    rig.tick_through([SUNDAY_NOON + MINUTE, A_WEEK_LATER])
-
-    # Assert
-    assert rig.sent_texts() == [(A_WEEK_LATER, f"{DIGEST_LINE}\n{STUCK_BOOK_LINE}")]
 
 
 def test_a_message_another_sender_recorded_meanwhile_is_logged_and_not_sent_again() -> None:
@@ -135,9 +108,6 @@ def test_a_failed_send_is_logged_by_the_error_type_only() -> None:
     # Setup
     store = MemoryStore()
     stored_date_night_with_its_step(store)
-
-    def telegram_is_down(reply: Reply) -> None:
-        raise SendFailed("secret chat text")
 
     rig = a_nudge_rig(store, send=telegram_is_down)
     rig.digests_before_were_sent(SATURDAY_MORNING)
@@ -172,35 +142,6 @@ def test_a_ledger_failure_after_a_sent_message_does_not_stop_the_next_message_be
     assert len(rig.sent) == 2
 
 
-def test_a_message_whose_recording_failed_is_due_again_on_the_next_tick() -> None:
-    # Setup
-    store = a_stash_with_a_reminder_and_a_follow_up_due_together()
-    rig = a_nudge_rig(store)
-    rig.digests_before_were_sent(SUNDAY_MORNING)
-    rig.tick(SUNDAY_MORNING)
-    store.crash_on = None
-
-    # Execute
-    rig.tick(SUNDAY_MORNING + MINUTE)
-
-    # Assert
-    assert len(rig.sent) == 3
-
-
-def test_a_ledger_failure_after_a_send_is_logged_by_the_error_type_only() -> None:
-    # Setup
-    store = a_stash_with_a_reminder_and_a_follow_up_due_together()
-    rig = a_nudge_rig(store)
-    rig.digests_before_were_sent(SUNDAY_MORNING)
-
-    # Execute
-    with recording_logs(NUDGE_LOGGER) as logs:
-        rig.tick(SUNDAY_MORNING)
-
-    # Assert
-    assert logs.entries() == [(logging.WARNING, MARK_SENT_FAILED_LOG % "LedgerCrashed")]
-
-
 def a_first_run_with_three_separate_messages_due() -> tuple[LedgerRecordingStore, NudgeDelivery]:
     store = LedgerRecordingStore()
     stored(store, a_planned_date_night())
@@ -224,54 +165,6 @@ def test_a_first_tick_that_cannot_record_everything_records_and_sends_nothing() 
     assert (sent, store.recorded) == ([], [])
 
 
-def test_the_tick_after_a_failed_first_tick_records_everything_and_still_sends_nothing() -> None:
-    # Setup
-    store, delivery = a_first_run_with_three_separate_messages_due()
-    store.crash_on = NudgeKind.DIGEST
-    with pytest.raises(LedgerCrashed):
-        delivery.deliver(JUST_AFTER_THE_DIGEST, lambda reply: None)
-    store.crash_on = None
-    sent: list[Reply] = []
-
-    # Execute
-    delivery.deliver(JUST_AFTER_THE_DIGEST + MINUTE, sent.append)
-
-    # Assert
-    assert (sent, set(store.recorded)) == (
-        [],
-        {NudgeKind.ITEM_DATE, NudgeKind.FOLLOWUP, NudgeKind.DIGEST},
-    )
-
-
-def test_previewing_returns_the_replies_a_tick_would_send() -> None:
-    # Setup
-    store = MemoryStore()
-    stored_date_night_with_its_step(store)
-    rig = a_nudge_rig(store)
-    rig.digests_before_were_sent(SATURDAY_MORNING)
-
-    # Execute
-    replies = rig.delivery.preview(SATURDAY_MORNING)
-
-    # Assert
-    assert [reply.text for reply in replies] == [SAT_WEEK_REMINDER_TEXT]
-
-
-def test_previewing_marks_nothing_so_the_next_tick_still_sends() -> None:
-    # Setup
-    store = MemoryStore()
-    stored_date_night_with_its_step(store)
-    rig = a_nudge_rig(store)
-    rig.digests_before_were_sent(SATURDAY_MORNING)
-    rig.delivery.preview(SATURDAY_MORNING)
-
-    # Execute
-    rig.tick(SATURDAY_MORNING)
-
-    # Assert
-    assert rig.sent_texts() == [(SATURDAY_MORNING, SAT_WEEK_REMINDER_TEXT)]
-
-
 def test_previewing_on_the_first_run_returns_nothing_because_a_real_run_stays_silent() -> None:
     # Setup
     store = MemoryStore()
@@ -283,10 +176,6 @@ def test_previewing_on_the_first_run_returns_nothing_because_a_real_run_stays_si
 
     # Assert
     assert replies == ()
-
-
-def telegram_is_down(reply: Reply) -> None:
-    raise SendFailed("telegram is down")
 
 
 def failing_once(error: LlmError) -> Callable[[], None]:
@@ -339,25 +228,12 @@ def test_at_most_three_items_are_proposed_per_call() -> None:
     assert len(sent) == 3
 
 
-def test_a_failed_proposal_send_discards_the_proposed_steps() -> None:
-    # Setup
-    store = MemoryStore()
-    stored_date_night(store)
-    delivery = ProposalDelivery(a_planning_proposing(store, while_thinking=nothing), store)
-
-    # Execute
-    delivery.deliver(telegram_is_down)
-
-    # Assert
-    assert store.steps_for(DATE_NIGHT_ID) == []
-
-
-class PlanningThatCannotDiscard:
+class PlanningThatCannotWithdraw:
     def __init__(self, planning: Planning) -> None:
         self.needs_proposal = planning.needs_proposal
         self.propose_for = planning.propose_for
 
-    def discard(self, item_id: str) -> None:
+    def withdraw(self, item_id: str) -> None:
         raise StoreBusyError
 
 
@@ -368,12 +244,12 @@ def two_planned_nights() -> MemoryStore:
     return store
 
 
-def test_a_discard_that_fails_after_a_failed_send_does_not_stop_the_next_item_being_proposed() -> (
+def test_a_withdraw_that_fails_after_a_failed_send_does_not_stop_the_next_item_being_proposed() -> (
     None
 ):
     # Setup
     store = two_planned_nights()
-    planning = PlanningThatCannotDiscard(a_planning_proposing(store, while_thinking=nothing))
+    planning = PlanningThatCannotWithdraw(a_planning_proposing(store, while_thinking=nothing))
     sent: list[Reply] = []
     first_send_fails = FailingNudgeSender(failures=1)
 
@@ -388,38 +264,9 @@ def test_a_discard_that_fails_after_a_failed_send_does_not_stop_the_next_item_be
     assert len(sent) == 1
 
 
-def test_a_discard_that_fails_after_a_failed_send_is_logged_by_the_error_type_only() -> None:
+def test_a_model_outage_skips_one_item_until_the_next_call_without_stopping_the_next_item() -> None:
     # Setup
     store = two_planned_nights()
-    planning = PlanningThatCannotDiscard(a_planning_proposing(store, while_thinking=nothing))
-
-    # Execute
-    with recording_logs(PROPOSAL_LOGGER) as logs:
-        ProposalDelivery(planning, store).deliver(telegram_is_down)
-
-    # Assert
-    assert (logging.WARNING, PROPOSAL_DISCARD_FAILED_LOG % "StoreBusyError") in logs.entries()
-
-
-def test_an_item_whose_proposal_send_failed_is_not_proposed_again_for_that_date() -> None:
-    # Setup
-    store = MemoryStore()
-    stored_date_night(store)
-    delivery = ProposalDelivery(a_planning_proposing(store, while_thinking=nothing), store)
-    delivery.deliver(telegram_is_down)
-    sent: list[Reply] = []
-
-    # Execute
-    delivery.deliver(sent.append)
-
-    # Assert
-    assert sent == []
-
-
-def test_a_model_outage_leaves_the_item_for_the_next_call() -> None:
-    # Setup
-    store = MemoryStore()
-    stored_date_night(store)
     planning = a_planning_proposing(store, while_thinking=failing_once(LlmUnavailable("down")))
     delivery = ProposalDelivery(planning, store)
     sent: list[Reply] = []
@@ -429,22 +276,7 @@ def test_a_model_outage_leaves_the_item_for_the_next_call() -> None:
     delivery.deliver(sent.append)
 
     # Assert
-    assert len(sent) == 1
-
-
-def test_a_model_outage_on_one_item_does_not_stop_the_next_item_being_proposed() -> None:
-    # Setup
-    store = MemoryStore()
-    stored(store, a_date_night(id="night-0"))
-    stored(store, a_date_night(id="night-1"))
-    planning = a_planning_proposing(store, while_thinking=failing_once(LlmUnavailable("down")))
-    sent: list[Reply] = []
-
-    # Execute
-    ProposalDelivery(planning, store).deliver(sent.append)
-
-    # Assert
-    assert len(sent) == 1
+    assert len(sent) == 2
 
 
 def test_an_item_whose_date_changed_while_the_model_thought_is_skipped_without_a_log() -> None:

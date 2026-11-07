@@ -96,31 +96,18 @@ def test_a_press_before_any_handler_is_routed_is_logged_as_a_failure_and_not_rai
     assert logs.entries() == [(logging.ERROR, "callback press failed for chat 1001")]
 
 
-def test_the_start_up_callback_runs_on_every_connect() -> None:
+def test_the_start_up_callback_runs_on_every_connect_with_the_outbox_already_connected() -> None:
     # Setup
     link = TelegramLink()
-    started: list[str] = []
-    link.start_with(lambda: started.append("started"))
-
-    # Execute
-    link.on_connect(FakeTelegramApplication(), None)
-    link.on_connect(FakeTelegramApplication(), None)
-
-    # Assert
-    assert started == ["started", "started"]
-
-
-def test_the_start_up_callback_runs_with_the_outbox_already_connected() -> None:
-    # Setup
-    link = TelegramLink()
-    application = FakeTelegramApplication()
+    first, second = FakeTelegramApplication(), FakeTelegramApplication()
     link.start_with(lambda: asyncio.run(link.outbox.send("1001", PLAIN)))
 
     # Execute
-    link.on_connect(application, None)
+    link.on_connect(first, None)
+    link.on_connect(second, None)
 
     # Assert
-    assert [sent.text for sent in application.bot.sent] == ["Saved"]
+    assert [sent.text for app in (first, second) for sent in app.bot.sent] == ["Saved", "Saved"]
 
 
 def test_a_start_up_callback_that_fails_is_logged_and_not_raised() -> None:
