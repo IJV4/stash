@@ -2,7 +2,7 @@ import pytest
 from builders import BASE, stored
 from fakes.chat_model import FakeChatModel
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.watched_step_store import WatchedStepStore
 from planning_builders import (
     DATE_NIGHT_ID,
@@ -21,7 +21,7 @@ from stash.planning.declines import Declines
 
 def test_after_discarding_a_proposal_the_item_no_longer_needs_one() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     planning = planning_over(store, FakeStepProposals())
 
@@ -34,7 +34,7 @@ def test_after_discarding_a_proposal_the_item_no_longer_needs_one() -> None:
 
 def test_after_the_model_answers_with_no_steps_the_item_no_longer_needs_a_proposal() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     planning = a_planning(store, FakeChatModel({"steps": []}))
 
@@ -47,7 +47,7 @@ def test_after_the_model_answers_with_no_steps_the_item_no_longer_needs_a_propos
 
 def test_after_an_answer_whose_every_step_is_unusable_the_item_no_longer_needs_a_proposal() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     unusable = {"steps": [a_raw_step(lead_days=True), a_raw_step(lead_days=False)]}
     planning = a_planning(store, FakeChatModel(unusable))
@@ -61,7 +61,7 @@ def test_after_an_answer_whose_every_step_is_unusable_the_item_no_longer_needs_a
 
 def test_after_unusable_model_output_the_item_no_longer_needs_a_proposal() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     planning = a_planning(store, FakeChatModel(error=LlmBadOutput("not json")))
 
@@ -75,7 +75,7 @@ def test_after_unusable_model_output_the_item_no_longer_needs_a_proposal() -> No
 @pytest.mark.parametrize("outage", [LlmUnavailable("down"), LlmDeferred("busy")])
 def test_after_an_outage_the_item_still_needs_a_proposal(outage: LlmError) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     planning = planning_over(store, FakeStepProposals(error=outage))
 
@@ -90,7 +90,7 @@ def test_after_an_outage_the_item_still_needs_a_proposal(outage: LlmError) -> No
 
 def test_a_declined_item_is_offered_again_once_its_date_changes() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     planning = planning_over(store, FakeStepProposals())
     planning.discard(DATE_NIGHT_ID)
@@ -106,7 +106,7 @@ def test_a_declined_item_is_offered_again_once_its_date_changes() -> None:
 
 def test_proposing_for_a_declined_item_is_refused_without_asking_the_model() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     proposals = FakeStepProposals()
     planning = planning_over(store, proposals)
@@ -122,7 +122,7 @@ def test_proposing_for_a_declined_item_is_refused_without_asking_the_model() -> 
 
 def test_discarding_one_item_does_not_decline_another_item() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     other = stored(store, a_date_night(id="museum"))
     planning = planning_over(store, FakeStepProposals())
@@ -136,7 +136,7 @@ def test_discarding_one_item_does_not_decline_another_item() -> None:
 
 def test_discarding_records_the_decline_even_when_only_confirmed_steps_exist() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     store.save_steps(DATE_NIGHT_ID, [confirmed("s1", 0)])
     planning = planning_over(store, FakeStepProposals())

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from builders import MICROSECOND, NAIVE
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import (
     FOURTEEN_DAYS,
     SATURDAY_MORNING,
@@ -25,12 +25,12 @@ EACH_KIND = [
 ]
 
 
-def a_store_where_every_kind_comes_due() -> tuple[MemoryStore, Item]:
-    store = MemoryStore()
+def a_store_where_every_kind_comes_due() -> tuple[FreshStore, Item]:
+    store = FreshStore()
     return store, stored_date_night_with_its_step(store)
 
 
-def due_of_kind(kind: type, store: MemoryStore, now: datetime) -> list:
+def due_of_kind(kind: type, store: FreshStore, now: datetime) -> list:
     return only(kind, a_nudger(store).due(now))
 
 
@@ -137,4 +137,4 @@ def test_moving_the_item_date_a_day_later_moves_the_nudge_a_day_later(
 def test_asking_what_is_due_at_a_time_without_a_time_zone_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="now"):
-        a_nudger(MemoryStore()).due(NAIVE)
+        a_nudger(FreshStore()).due(NAIVE)

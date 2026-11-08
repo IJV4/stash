@@ -1,6 +1,6 @@
 import pytest
 from builders import LATER, NON_DONE_STAGES, an_item_at, fetched_item, stored, stored_completion
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
@@ -11,7 +11,7 @@ BLANK_REASONS = ["", "   ", None]
 
 def test_keeping_a_done_item_marks_it_kept_and_stores_it() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "i1")
 
     # Execute
@@ -24,7 +24,7 @@ def test_keeping_a_done_item_marks_it_kept_and_stores_it() -> None:
 @pytest.mark.parametrize("stage", NON_DONE_STAGES)
 def test_keeping_an_item_that_is_not_done_is_refused_and_changes_nothing(stage: Stage) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(stage))
 
     # Execute
@@ -37,7 +37,7 @@ def test_keeping_an_item_that_is_not_done_is_refused_and_changes_nothing(stage: 
 
 def test_unkeeping_a_reopened_item_that_is_still_kept_works() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO, kept=True))
 
     # Execute
@@ -50,7 +50,7 @@ def test_unkeeping_a_reopened_item_that_is_still_kept_works() -> None:
 def test_keeping_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).keep("nope", True)
+        a_lifecycle(FreshStore()).keep("nope", True)
 
     # Assert
     assert raised.value.item_id == "nope"
@@ -58,7 +58,7 @@ def test_keeping_an_unknown_item_raises_unknown_item_naming_it() -> None:
 
 def test_reopening_a_done_item_puts_it_back_to_want_to_still_kept_and_stores_it() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "i1", kept=True)
 
     # Execute
@@ -74,7 +74,7 @@ def test_reopening_a_done_item_puts_it_back_to_want_to_still_kept_and_stores_it(
 
 def test_reopening_a_done_item_keeps_its_outcomes() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "i1")
     outcomes = store.outcomes_for("i1")
 
@@ -88,7 +88,7 @@ def test_reopening_a_done_item_keeps_its_outcomes() -> None:
 @pytest.mark.parametrize("stage", NON_DONE_STAGES)
 def test_reopening_an_item_that_is_not_done_is_refused_and_changes_nothing(stage: Stage) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(stage))
 
     # Execute
@@ -102,7 +102,7 @@ def test_reopening_an_item_that_is_not_done_is_refused_and_changes_nothing(stage
 def test_reopening_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).reopen("nope")
+        a_lifecycle(FreshStore()).reopen("nope")
 
     # Assert
     assert raised.value.item_id == "nope"
@@ -110,7 +110,7 @@ def test_reopening_an_unknown_item_raises_unknown_item_naming_it() -> None:
 
 def test_dropping_an_item_with_a_reason_stores_it_dropped_with_that_reason() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -126,7 +126,7 @@ def test_dropping_an_item_with_a_reason_stores_it_dropped_with_that_reason() -> 
 
 def test_a_non_blank_reason_is_stored_exactly_as_given() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -139,7 +139,7 @@ def test_a_non_blank_reason_is_stored_exactly_as_given() -> None:
 @pytest.mark.parametrize("reason", BLANK_REASONS)
 def test_dropping_with_a_blank_or_missing_reason_stores_no_reason(reason: str | None) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -151,7 +151,7 @@ def test_dropping_with_a_blank_or_missing_reason_stores_no_reason(reason: str | 
 
 def test_dropping_with_a_reason_over_300_characters_is_refused_and_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -165,7 +165,7 @@ def test_dropping_with_a_reason_over_300_characters_is_refused_and_changes_nothi
 def test_dropping_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).drop("nope", "why")
+        a_lifecycle(FreshStore()).drop("nope", "why")
 
     # Assert
     assert raised.value.item_id == "nope"

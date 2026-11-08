@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from builders import NOT_PLANNED_STAGES, an_outcome, stored
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import (
     SATURDAY,
     SUNDAY_MORNING,
@@ -24,7 +24,7 @@ def follow_ups(store: Store, now: datetime) -> list[FollowUp]:
 
 def test_a_planned_item_without_an_outcome_is_followed_up_the_morning_after_its_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored(store, a_planned_date_night())
 
     # Execute
@@ -63,7 +63,7 @@ def test_a_repeat_item_done_on_an_earlier_date_is_followed_up_the_morning_after_
 @pytest.mark.parametrize("stage", NOT_PLANNED_STAGES)
 def test_an_item_that_is_not_planned_is_not_followed_up(stage: Stage) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_planned_date_night(stage=stage))
 
     # Execute

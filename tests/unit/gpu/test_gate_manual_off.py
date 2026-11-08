@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from builders import BASE
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from gate_rig import a_gate, a_sample
 
 from stash.config import GpuConfig
@@ -82,7 +82,7 @@ def test_an_expired_switch_off_hands_over_to_the_vram_rule() -> None:
 
 def test_a_corrupt_stored_switch_off_does_not_make_the_gate_busy() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "next tuesday")
     gate = a_gate(a_sample(), store=store)
 
@@ -95,7 +95,7 @@ def test_a_corrupt_stored_switch_off_does_not_make_the_gate_busy() -> None:
 
 def test_a_stored_switch_off_without_an_offset_does_not_make_the_gate_busy() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "2026-11-02T16:00:00")
     gate = a_gate(a_sample(), store=store)
 
@@ -154,7 +154,7 @@ def test_turning_off_uses_the_configured_number_of_hours() -> None:
 
 def test_a_new_gate_on_the_same_store_is_still_switched_off() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     a_gate(a_sample(), store=store).turn_off(BASE)
     restarted = a_gate(a_sample(), store=store)
 
@@ -167,7 +167,7 @@ def test_a_new_gate_on_the_same_store_is_still_switched_off() -> None:
 
 def test_a_new_gate_on_the_same_store_stays_on_after_turning_on() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     first = a_gate(a_sample(), store=store)
     first.turn_off(BASE)
     first.turn_on()

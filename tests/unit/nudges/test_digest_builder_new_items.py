@@ -9,18 +9,18 @@ from digest_builders import (
     a_new_want_to,
     building,
 )
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Stage
 
 
-def new_item_ids(store: MemoryStore) -> list[str]:
+def new_item_ids(store: FreshStore) -> list[str]:
     return [item.id for item in building(store).new_items]
 
 
 def test_new_items_are_those_created_in_the_week_before_the_digest_newest_first() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_new_want_to("older", 5))
     stored(store, a_new_want_to("newest", 1))
     stored(store, a_new_want_to("middle", 3))
@@ -34,7 +34,7 @@ def test_new_items_are_those_created_in_the_week_before_the_digest_newest_first(
 
 def test_an_item_created_exactly_a_week_before_the_digest_is_new() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_new_want_to("on-the-edge", 7))
 
     # Execute
@@ -46,7 +46,7 @@ def test_an_item_created_exactly_a_week_before_the_digest_is_new() -> None:
 
 def test_an_item_created_a_microsecond_before_the_week_began_is_not_new() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     created = DIGEST_AT - timedelta(days=7) - MICROSECOND
     stored(store, an_item(id="just-missed", created_at=created, updated_at=created))
 
@@ -59,7 +59,7 @@ def test_an_item_created_a_microsecond_before_the_week_began_is_not_new() -> Non
 
 def test_an_item_created_a_microsecond_before_the_digest_instant_is_new() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     created = DIGEST_AT - MICROSECOND
     stored(store, an_item(id="just-in-time", created_at=created, updated_at=created))
 
@@ -72,7 +72,7 @@ def test_an_item_created_a_microsecond_before_the_digest_instant_is_new() -> Non
 
 def test_an_item_created_at_the_digest_instant_is_not_new() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item(id="too-late", created_at=DIGEST_AT, updated_at=DIGEST_AT))
 
     # Execute
@@ -84,7 +84,7 @@ def test_an_item_created_at_the_digest_instant_is_not_new() -> None:
 
 def test_a_dropped_item_is_not_new() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_new_want_to("dropped", 2, stage=Stage.DROPPED))
     stored(store, a_new_want_to("kept", 2))
 
@@ -97,7 +97,7 @@ def test_a_dropped_item_is_not_new() -> None:
 
 def test_new_items_of_every_other_stage_are_listed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     for stage in (Stage.INBOX, Stage.WANT_TO, Stage.DOING, Stage.DONE):
         stored(store, a_new_want_to(f"in-{stage.value}", 2, stage=stage))
 
@@ -110,7 +110,7 @@ def test_new_items_of_every_other_stage_are_listed() -> None:
 
 def test_the_week_is_counted_back_from_the_digest_instant_not_from_the_moment_of_building() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_new_want_to("before-the-digest", 1))
     stored(store, a_new_want_to("after-the-digest", -1))
     builder = a_digest_builder(store)

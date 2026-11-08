@@ -6,12 +6,12 @@ from builders import (
     stored_completion,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Stage
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_an_item_done_on_the_start_day(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -24,7 +24,7 @@ def test_done_between_lists_an_item_done_on_the_start_day(open_store: StoreFacto
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_an_item_done_on_the_end_day(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -37,7 +37,7 @@ def test_done_between_lists_an_item_done_on_the_end_day(open_store: StoreFactory
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_leaves_out_items_done_only_outside_the_range(
     open_store: StoreFactory,
 ) -> None:
@@ -53,7 +53,7 @@ def test_done_between_leaves_out_items_done_only_outside_the_range(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_an_item_with_several_outcomes_in_range_once(
     open_store: StoreFactory,
 ) -> None:
@@ -69,7 +69,7 @@ def test_done_between_lists_an_item_with_several_outcomes_in_range_once(
         assert titles(listed) == ["redone"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_the_later_completion_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -83,7 +83,7 @@ def test_done_between_lists_the_later_completion_first(open_store: StoreFactory)
         assert titles(listed) == ["newer", "older"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_ranks_an_item_by_its_latest_completion_inside_the_range(
     open_store: StoreFactory,
 ) -> None:
@@ -102,7 +102,7 @@ def test_done_between_ranks_an_item_by_its_latest_completion_inside_the_range(
         assert titles(listed) == ["once", "redone-later"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_the_later_recording_first_on_the_same_day(
     open_store: StoreFactory,
 ) -> None:
@@ -118,7 +118,7 @@ def test_done_between_lists_the_later_recording_first_on_the_same_day(
         assert titles(listed) == ["a-later", "b-earlier"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_the_higher_item_id_first_when_day_and_recording_instant_match(
     open_store: StoreFactory,
 ) -> None:
@@ -134,7 +134,7 @@ def test_done_between_lists_the_higher_item_id_first_when_day_and_recording_inst
         assert titles(listed) == ["b", "a"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_an_item_that_was_reopened_since(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -147,7 +147,7 @@ def test_done_between_lists_an_item_that_was_reopened_since(open_store: StoreFac
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_lists_an_item_that_was_not_kept(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -160,7 +160,7 @@ def test_done_between_lists_an_item_that_was_not_kept(open_store: StoreFactory) 
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_a_single_day_lists_the_items_done_that_day(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -174,7 +174,7 @@ def test_done_between_a_single_day_lists_the_items_done_that_day(open_store: Sto
         assert titles(listed) == ["that-day"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_with_a_start_after_the_end_raises_value_error(
     open_store: StoreFactory,
 ) -> None:
@@ -184,7 +184,7 @@ def test_done_between_with_a_start_after_the_end_raises_value_error(
         store.done_between(days_after(4), days_after(1))
 
 
-@all_stores
+@on_sqlite
 def test_done_between_ranks_an_item_by_the_latest_of_its_outcomes_in_range(
     open_store: StoreFactory,
 ) -> None:
@@ -201,7 +201,7 @@ def test_done_between_ranks_an_item_by_the_latest_of_its_outcomes_in_range(
         assert titles(listed) == ["redone", "once"]
 
 
-@all_stores
+@on_sqlite
 def test_done_between_ranks_ties_by_item_id_whatever_the_outcome_ids_are(
     open_store: StoreFactory,
 ) -> None:

@@ -7,7 +7,7 @@ from builders import (
     fetched_item,
     stored,
 )
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import PLANNED_NEEDS_DATE, Stage
@@ -21,7 +21,7 @@ STAGES_WITHOUT_A_REASON = (Stage.INBOX, Stage.WANT_TO, Stage.DOING)
 
 def test_setting_a_stage_moves_the_item_and_stores_it() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.INBOX))
 
     # Execute
@@ -37,7 +37,7 @@ def test_setting_a_stage_moves_the_item_and_stores_it() -> None:
 
 def test_setting_planned_on_an_item_with_a_date_moves_it() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item(date=PLANNED_FOR))
 
     # Execute
@@ -49,7 +49,7 @@ def test_setting_planned_on_an_item_with_a_date_moves_it() -> None:
 
 def test_setting_dropped_with_a_reason_stores_it_dropped_with_that_reason() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -66,7 +66,7 @@ def test_setting_dropped_with_a_reason_stores_it_dropped_with_that_reason() -> N
 @pytest.mark.parametrize("reason", BLANK_REASONS)
 def test_setting_dropped_without_a_real_reason_stores_no_reason(reason: str | None) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -81,7 +81,7 @@ def test_a_reason_with_a_stage_other_than_dropped_is_refused_and_changes_nothing
     stage: Stage,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -95,7 +95,7 @@ def test_a_reason_with_a_stage_other_than_dropped_is_refused_and_changes_nothing
 @pytest.mark.parametrize("reason", ["", "   "])
 def test_a_blank_reason_with_a_stage_other_than_dropped_is_ignored(reason: str) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.INBOX))
 
     # Execute
@@ -107,7 +107,7 @@ def test_a_blank_reason_with_a_stage_other_than_dropped_is_ignored(reason: str) 
 
 def test_setting_done_is_refused_pointing_at_completion_and_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -120,7 +120,7 @@ def test_setting_done_is_refused_pointing_at_completion_and_changes_nothing() ->
 
 def test_setting_planned_on_an_item_without_a_date_is_refused_and_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -134,7 +134,7 @@ def test_setting_planned_on_an_item_without_a_date_is_refused_and_changes_nothin
 def test_setting_the_stage_of_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).set_stage("nope", Stage.DOING)
+        a_lifecycle(FreshStore()).set_stage("nope", Stage.DOING)
 
     # Assert
     assert raised.value.item_id == "nope"
@@ -142,7 +142,7 @@ def test_setting_the_stage_of_an_unknown_item_raises_unknown_item_naming_it() ->
 
 def test_setting_a_stage_on_a_dropped_item_clears_its_drop_reason() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DROPPED, drop_reason="too expensive"))
 
     # Execute
@@ -154,7 +154,7 @@ def test_setting_a_stage_on_a_dropped_item_clears_its_drop_reason() -> None:
 
 def test_a_reason_with_stage_done_is_refused_for_the_reason_and_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -167,7 +167,7 @@ def test_a_reason_with_stage_done_is_refused_for_the_reason_and_changes_nothing(
 
 def test_a_reason_with_stage_planned_on_a_dated_item_is_refused_and_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item(date=PLANNED_FOR))
 
     # Execute
@@ -183,7 +183,7 @@ def test_a_blank_or_missing_reason_with_stage_done_is_refused_pointing_at_comple
     reason: str | None,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute

@@ -17,7 +17,7 @@ from builders import (
     stored_item,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Stage
 
@@ -29,7 +29,7 @@ SPRING_FORWARD_DAY_START = in_los_angeles(SPRING_FORWARD_DAY)
 SPRING_FORWARD_DAY_END = in_los_angeles(SPRING_FORWARD_DAY + timedelta(days=1))
 
 
-@all_stores
+@on_sqlite
 def test_created_between_includes_an_item_created_exactly_at_the_start(
     open_store: StoreFactory,
 ) -> None:
@@ -44,7 +44,7 @@ def test_created_between_includes_an_item_created_exactly_at_the_start(
         assert titles(listed) == ["at-start"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_leaves_out_an_item_created_one_microsecond_before_the_start(
     open_store: StoreFactory,
 ) -> None:
@@ -59,7 +59,7 @@ def test_created_between_leaves_out_an_item_created_one_microsecond_before_the_s
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_created_between_leaves_out_an_item_created_exactly_at_the_end(
     open_store: StoreFactory,
 ) -> None:
@@ -74,7 +74,7 @@ def test_created_between_leaves_out_an_item_created_exactly_at_the_end(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_created_between_includes_an_item_created_one_microsecond_before_the_end(
     open_store: StoreFactory,
 ) -> None:
@@ -91,7 +91,7 @@ def test_created_between_includes_an_item_created_one_microsecond_before_the_end
         assert titles(listed) == ["just-before-end"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_an_empty_window_returns_nothing_even_at_that_instant(
     open_store: StoreFactory,
 ) -> None:
@@ -106,7 +106,7 @@ def test_created_between_an_empty_window_returns_nothing_even_at_that_instant(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_created_between_lists_the_newest_item_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -121,7 +121,7 @@ def test_created_between_lists_the_newest_item_first(open_store: StoreFactory) -
         assert titles(listed) == ["newest", "middle", "oldest"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_breaks_a_tie_on_creation_time_by_descending_id(
     open_store: StoreFactory,
 ) -> None:
@@ -137,7 +137,7 @@ def test_created_between_breaks_a_tie_on_creation_time_by_descending_id(
         assert titles(listed) == ["b", "a"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_orders_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory,
 ) -> None:
@@ -155,7 +155,7 @@ def test_created_between_orders_by_instant_rather_than_local_wall_clock(
         assert titles(listed) == ["utc-noon", "plus-five"]
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize("stage", list(Stage), ids=lambda stage: stage.value)
 def test_created_between_returns_an_item_of_every_stage(
     open_store: StoreFactory, stage: Stage
@@ -171,7 +171,7 @@ def test_created_between_returns_an_item_of_every_stage(
         assert titles(listed) == ["any"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_on_an_empty_store_returns_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -182,7 +182,7 @@ def test_created_between_on_an_empty_store_returns_nothing(open_store: StoreFact
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_created_between_with_a_start_after_the_end_raises_value_error(
     open_store: StoreFactory,
 ) -> None:
@@ -192,7 +192,7 @@ def test_created_between_with_a_start_after_the_end_raises_value_error(
         store.created_between(END, START)
 
 
-@all_stores
+@on_sqlite
 def test_created_between_with_a_naive_start_raises_value_error(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store, pytest.raises(ValueError, match="start"):
@@ -200,7 +200,7 @@ def test_created_between_with_a_naive_start_raises_value_error(open_store: Store
         store.created_between(NAIVE, END)
 
 
-@all_stores
+@on_sqlite
 def test_created_between_with_a_naive_end_raises_value_error(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store, pytest.raises(ValueError, match="end"):
@@ -208,7 +208,7 @@ def test_created_between_with_a_naive_end_raises_value_error(open_store: StoreFa
         store.created_between(START, NAIVE)
 
 
-@all_stores
+@on_sqlite
 def test_created_between_includes_a_late_evening_item_west_of_utc_in_the_next_utc_day(
     open_store: StoreFactory,
 ) -> None:
@@ -223,7 +223,7 @@ def test_created_between_includes_a_late_evening_item_west_of_utc_in_the_next_ut
         assert titles(listed) == ["west"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_leaves_out_an_early_morning_item_east_of_utc_from_the_same_utc_day(
     open_store: StoreFactory,
 ) -> None:
@@ -238,7 +238,7 @@ def test_created_between_leaves_out_an_early_morning_item_east_of_utc_from_the_s
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_created_between_accepts_bounds_written_in_another_offset(
     open_store: StoreFactory,
 ) -> None:
@@ -256,7 +256,7 @@ def test_created_between_accepts_bounds_written_in_another_offset(
         assert titles(listed) == ["at-start"]
 
 
-@all_stores
+@on_sqlite
 def test_created_between_a_twenty_three_hour_local_day_catches_exactly_the_items_created_inside_it(
     open_store: StoreFactory,
 ) -> None:

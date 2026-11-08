@@ -1,5 +1,5 @@
 from builders import stored
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import (
     SUNDAY,
     SUNDAY_DIGEST_TIME,
@@ -21,7 +21,7 @@ from stash.nudges import StepReminder, WeeklyDigest
 
 def test_everything_due_at_once_comes_back_oldest_first() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_week(store)
 
     # Execute
@@ -33,7 +33,7 @@ def test_everything_due_at_once_comes_back_oldest_first() -> None:
 
 def test_a_step_due_after_a_date_reminder_is_listed_after_it() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored(store, a_planned_date_night())
     stored_step(store, a_step_due_on(SUNDAY))
 

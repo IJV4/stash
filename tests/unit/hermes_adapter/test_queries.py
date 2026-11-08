@@ -1,7 +1,7 @@
 import pytest
 from app_builders import stored
 from builders import BASE, an_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import ItemType, Stage
 from stash.hermes_adapter.queries import (
@@ -14,7 +14,7 @@ from stash.hermes_adapter.queries import (
 from stash.hermes_adapter.tool_arguments import ToolArguments
 
 
-def three_items() -> MemoryStore:
+def three_items() -> FreshStore:
     return stored(
         an_item(id="a", capture_id="ca", title="Ichiran", stage=Stage.WANT_TO, created_at=BASE),
         an_item(

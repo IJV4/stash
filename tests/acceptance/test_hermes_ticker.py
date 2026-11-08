@@ -2,10 +2,10 @@ import asyncio
 
 from app_builders import an_app
 from fakes.fake_telegram_bot import FakeTelegramApplication
-from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.scripted_deliveries import ScriptedNudges
 from fakes.scripted_sender import ScriptedSender
+from fakes.store_factories import FreshStore
 from hermes_registration_rig import register_stash
 from hermes_rig import until
 from nudge_builders import stored_date_night_with_its_step
@@ -41,7 +41,7 @@ def test_connecting_telegram_again_starts_no_second_ticker_until_the_first_has_e
 
 def test_a_reminder_whose_send_failed_is_sent_to_the_owner_chat_once_on_the_next_tick() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     sender = ScriptedSender(failures=1)
     ticker = a_ticker_over(store, sender)
@@ -59,7 +59,7 @@ def test_a_reminder_whose_send_failed_is_sent_to_the_owner_chat_once_on_the_next
 
 def test_an_item_whose_proposal_send_failed_is_proposed_and_sent_by_the_next_tick() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     sender = ScriptedSender(failures=1)
     ticker = a_ticker(ScriptedNudges(), proposals_over(store), sender, PausingScheduler())

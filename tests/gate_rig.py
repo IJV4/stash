@@ -1,5 +1,5 @@
 from fakes.gpu import FakeGpuProbe, FakeOwnVram
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.config import GpuConfig
 from stash.gpu.gate import GpuGate
@@ -17,12 +17,12 @@ def a_sample(used_mib: int = 1000, utilization_pct: int = 5) -> GpuSample:
 def a_gate(
     sample: GpuSample | None,
     own_mib: int = 0,
-    store: MemoryStore | None = None,
+    store: FreshStore | None = None,
     config: GpuConfig = CONFIG,
 ) -> GpuGate:
     return GpuGate(
         FakeGpuProbe(sample),
         FakeOwnVram(own_mib),
-        MemoryStore() if store is None else store,
+        FreshStore() if store is None else store,
         config,
     )

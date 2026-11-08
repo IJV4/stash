@@ -1,6 +1,6 @@
 from builders import stored_item
 from fakes.failing_link_store import FailingLinkStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 from people_builders import a_directory, ids_of_people
 
@@ -13,7 +13,7 @@ def linked_item_ids(store: Store, person_id: str) -> list[str]:
 
 def test_adding_a_person_links_the_items_already_naming_them_ignoring_case_and_spacing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1", people=(" ana ",))
     directory = a_directory(store)
 
@@ -26,7 +26,7 @@ def test_adding_a_person_links_the_items_already_naming_them_ignoring_case_and_s
 
 def test_adding_a_person_does_not_link_items_naming_someone_with_a_similar_name() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1", people=("Anabel",))
     directory = a_directory(store)
 
@@ -39,7 +39,7 @@ def test_adding_a_person_does_not_link_items_naming_someone_with_a_similar_name(
 
 def test_renaming_a_person_links_the_items_naming_their_new_name() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     directory = a_directory(store)
     ana = directory.add("Ana")
     stored_item(store, id="i1", people=("Annabel",))
@@ -53,7 +53,7 @@ def test_renaming_a_person_links_the_items_naming_their_new_name() -> None:
 
 def test_adding_an_alias_links_the_items_naming_that_alias() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     directory = a_directory(store)
     ana = directory.add("Ana")
     stored_item(store, id="i1", people=("Nana",))
@@ -67,7 +67,7 @@ def test_adding_an_alias_links_the_items_naming_that_alias() -> None:
 
 def test_adding_an_alias_leaves_an_already_linked_item_linked_once() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1", people=("Ana",))
     directory = a_directory(store)
     ana = directory.add("Ana")

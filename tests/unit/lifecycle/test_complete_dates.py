@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 from builders import an_item_at, fetched_item, stored
 from clocks import EVENING_IN_LOS_ANGELES
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
@@ -13,8 +13,8 @@ TOMORROW = date(2026, 11, 3)
 DAY_AFTER_TOMORROW = date(2026, 11, 4)
 
 
-def a_doing_item_store() -> MemoryStore:
-    store = MemoryStore()
+def a_doing_item_store() -> FreshStore:
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
     return store
 

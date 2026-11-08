@@ -1,7 +1,7 @@
 import pytest
 from builders import stored
 from fakes.ledger_recording_store import LedgerCrashed, LedgerRecordingStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import (
     FRIDAY,
     SATURDAY_MORNING,
@@ -25,7 +25,7 @@ from stash.nudges import DateReminder, FollowUp, NudgeMessage, StepReminder, Wee
 
 def test_marking_a_message_sent_for_the_first_time_reports_that_all_of_it_was_recorded() -> None:
     # Setup
-    nudger = a_nudger(MemoryStore())
+    nudger = a_nudger(FreshStore())
 
     # Execute
     recorded_all = nudger.mark_sent(NudgeMessage((a_step_reminder(),), catch_up=False), SUNDAY_NOON)
@@ -38,7 +38,7 @@ def test_marking_a_message_sent_when_another_sender_recorded_one_of_its_nudges_r
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     nudger = a_nudger(store)
     store.record_all_sent([a_follow_up().nudge], SUNDAY_MORNING)
     message = NudgeMessage((a_follow_up(), a_step_reminder()), catch_up=True)
@@ -54,7 +54,7 @@ def test_marking_a_message_sent_still_records_the_other_nudges_when_one_was_alre
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     nudger = a_nudger(store)
     store.record_all_sent([a_follow_up().nudge], SUNDAY_MORNING)
     message = NudgeMessage((a_follow_up(), a_step_reminder()), catch_up=True)
@@ -68,7 +68,7 @@ def test_marking_a_message_sent_still_records_the_other_nudges_when_one_was_alre
 
 def test_a_marked_message_is_not_due_again() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_week(store)
     nudger = a_nudger(store)
     for due in nudger.due(SUNDAY_NOON):
@@ -83,7 +83,7 @@ def test_a_marked_message_is_not_due_again() -> None:
 
 def test_marking_records_the_time_the_message_was_sent() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     nudger = a_nudger(store)
 
     # Execute

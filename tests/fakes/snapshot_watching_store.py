@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from contextlib import AbstractContextManager, contextmanager
 from datetime import date
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item, ItemType
 from stash.store.port import DEFAULT_PAGE_SIZE
@@ -12,7 +12,7 @@ READ = "read"
 RELEASED = "released"
 
 
-class SnapshotWatchingStore(MemoryStore):
+class SnapshotWatchingStore(FreshStore):
     def __init__(
         self, read_failure: Exception | None = None, busy: Exception | None = None
     ) -> None:

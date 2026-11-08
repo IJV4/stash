@@ -3,7 +3,7 @@ import logging
 import pytest
 from capture_rig import a_fix_handler, logged_by_applying
 from fakes.chat_model import FakeChatModel
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from planning_builders import DATE_NIGHT_ID, steps_reply, stored_date_night
 from planning_rig import a_planning
 
@@ -20,7 +20,7 @@ NO_STEPS = f"stash:n:{DATE_NIGHT_ID}"
 
 class ProposedPrep:
     def __init__(self) -> None:
-        self.store = MemoryStore()
+        self.store = FreshStore()
         self.item: Item = stored_date_night(self.store)
         planning: Planning = a_planning(self.store, FakeChatModel(steps_reply(PROPOSED_STEP_COUNT)))
         self.steps: tuple[Step, ...] = planning.propose_for(DATE_NIGHT_ID).steps
@@ -151,7 +151,7 @@ def test_pressing_a_step_done_leaves_the_other_steps_open() -> None:
 @pytest.mark.parametrize("data", ["stash:a:ghost", "stash:n:ghost"])
 def test_pressing_a_prep_button_for_an_unknown_item_answers_gone(data: str) -> None:
     # Setup
-    handler = a_fix_handler(MemoryStore())
+    handler = a_fix_handler(FreshStore())
 
     # Execute / Assert
     assert handler.apply(data) == gone()
@@ -160,14 +160,14 @@ def test_pressing_a_prep_button_for_an_unknown_item_answers_gone(data: str) -> N
 @pytest.mark.parametrize("data", ["stash:a:ghost", "stash:n:ghost"])
 def test_pressing_a_prep_button_for_an_unknown_item_is_logged_at_info(data: str) -> None:
     # Execute / Assert
-    assert logged_by_applying(MemoryStore(), data) == [
+    assert logged_by_applying(FreshStore(), data) == [
         (logging.INFO, "fix callback for unknown item ghost")
     ]
 
 
 def test_pressing_a_step_done_for_an_unknown_step_answers_gone() -> None:
     # Setup
-    handler = a_fix_handler(MemoryStore())
+    handler = a_fix_handler(FreshStore())
 
     # Execute / Assert
     assert handler.apply("stash:x:ghost") == gone()
@@ -175,7 +175,7 @@ def test_pressing_a_step_done_for_an_unknown_step_answers_gone() -> None:
 
 def test_pressing_a_step_done_for_an_unknown_step_is_logged_at_info() -> None:
     # Execute / Assert
-    assert logged_by_applying(MemoryStore(), "stash:x:ghost") == [
+    assert logged_by_applying(FreshStore(), "stash:x:ghost") == [
         (logging.INFO, "fix callback for unknown step ghost")
     ]
 
@@ -185,7 +185,7 @@ def test_pressing_a_step_done_for_an_unknown_step_is_logged_at_info() -> None:
 )
 def test_forged_prep_button_data_answers_gone(data: str) -> None:
     # Setup
-    handler = a_fix_handler(MemoryStore())
+    handler = a_fix_handler(FreshStore())
 
     # Execute / Assert
     assert handler.apply(data) == gone()
@@ -194,6 +194,6 @@ def test_forged_prep_button_data_answers_gone(data: str) -> None:
 @pytest.mark.parametrize("data", ["stash:a:", "stash:x:s1:1"])
 def test_forged_prep_button_data_is_logged_as_unparseable(data: str) -> None:
     # Execute / Assert
-    assert logged_by_applying(MemoryStore(), data) == [
+    assert logged_by_applying(FreshStore(), data) == [
         (logging.WARNING, f"unparseable fix callback: {data!r}")
     ]

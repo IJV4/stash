@@ -1,11 +1,11 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 
 class DeleteFailed(Exception):
     pass
 
 
-class FailingDeleteStore(MemoryStore):
+class FailingDeleteStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.fail_next_delete = True

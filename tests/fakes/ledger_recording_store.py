@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Nudge, NudgeKind
 
@@ -10,7 +10,7 @@ class LedgerCrashed(Exception):
     pass
 
 
-class LedgerRecordingStore(MemoryStore):
+class LedgerRecordingStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.recorded: list[NudgeKind] = []

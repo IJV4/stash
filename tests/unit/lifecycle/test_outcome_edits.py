@@ -12,8 +12,8 @@ from builders import (
     stored_completion,
     stored_item,
 )
-from fakes.memory_store import MemoryStore
 from fakes.outcome_save_counting_store import OutcomeSaveCountingStore
+from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
@@ -38,8 +38,8 @@ REFUSED_EDITS: dict[str, Callable[[Lifecycle], Outcome]] = {
 }
 
 
-def store_with_an_outcome() -> MemoryStore:
-    store = MemoryStore()
+def store_with_an_outcome() -> FreshStore:
+    store = FreshStore()
     stored_completion(store, "i1")
     return store
 
@@ -169,7 +169,7 @@ def test_a_wiring_bug_in_annotated_takeaways_is_not_dressed_up_as_a_refusal() ->
 def test_annotating_an_unknown_outcome_raises_unknown_outcome_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownOutcome) as raised:
-        a_lifecycle(MemoryStore()).annotate("nope", notes="")
+        a_lifecycle(FreshStore()).annotate("nope", notes="")
 
     # Assert
     assert raised.value.outcome_id == "nope"
@@ -178,7 +178,7 @@ def test_annotating_an_unknown_outcome_raises_unknown_outcome_naming_it() -> Non
 def test_rating_an_unknown_outcome_raises_unknown_outcome_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownOutcome) as raised:
-        a_lifecycle(MemoryStore()).rate("nope", 3)
+        a_lifecycle(FreshStore()).rate("nope", 3)
 
     # Assert
     assert raised.value.outcome_id == "nope"
@@ -340,7 +340,7 @@ def test_annotating_notes_takeaways_and_a_rating_saves_the_outcome_once() -> Non
 
 def test_annotating_with_only_a_rating_on_an_unrated_outcome_adds_the_rating() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1", title="i1", stage=Stage.DONE)
     store.add_outcome(an_outcome(rating=None, notes="Loved it", takeaways=()))
 

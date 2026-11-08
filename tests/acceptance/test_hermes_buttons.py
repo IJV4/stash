@@ -12,8 +12,8 @@ from capture_builders import (
 )
 from fakes.busy_store import BusyStore
 from fakes.changing_item_store import RETITLED_BY_ANOTHER_WRITER, ChangingItemStore
-from fakes.memory_store import MemoryStore
 from fakes.recording_assistant import RecordingAssistant
+from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from hermes_events import OWNER_ID, STRANGER_ID, an_event
 from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_button_rig, build_hermes_rig
@@ -207,7 +207,7 @@ def test_pressing_looks_good_while_the_store_is_busy_asks_to_try_again_and_confi
 
 def test_pressing_done_on_one_of_two_follow_ups_answers_in_a_new_message() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     follow_up = two_follow_ups_in_one_message(store)
     rig = a_telegram_press_rig(store)
 
@@ -220,7 +220,7 @@ def test_pressing_done_on_one_of_two_follow_ups_answers_in_a_new_message() -> No
 
 def test_pressing_done_on_one_of_two_follow_ups_leaves_the_follow_up_message_unedited() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     follow_up = two_follow_ups_in_one_message(store)
     rig = a_telegram_press_rig(store)
 
@@ -233,7 +233,7 @@ def test_pressing_done_on_one_of_two_follow_ups_leaves_the_follow_up_message_une
 
 def test_pressing_done_on_the_second_of_two_follow_ups_after_the_first_still_works() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     follow_up = two_follow_ups_in_one_message(store)
     rig = a_telegram_press_rig(store)
     rig.press(follow_up, button_data(follow_up, "Done ✓ · First"))

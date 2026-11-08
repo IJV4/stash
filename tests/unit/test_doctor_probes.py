@@ -5,8 +5,8 @@ import pytest
 from config_builders import a_stash_config
 from fakes.failing_list_store import FailingListStore, ListFailed
 from fakes.gpu import FakeGpuProbe
-from fakes.memory_store import MemoryStore
 from fakes.search_path import FakeSearchPath
+from fakes.store_factories import FreshStore
 
 from stash.doctor_probes import (
     BackupProbe,
@@ -36,7 +36,7 @@ def test_the_config_probe_always_passes_and_names_the_provider_and_data_director
 
 def test_the_database_probe_passes_when_the_store_can_list_items() -> None:
     # Setup
-    probe = DatabaseProbe(MemoryStore(), Path("/data/stash/stash.db"))
+    probe = DatabaseProbe(FreshStore(), Path("/data/stash/stash.db"))
 
     # Execute
     result = probe.check()
@@ -137,7 +137,7 @@ def test_the_executable_probe_fails_with_its_hint_when_the_tool_is_not_on_the_pa
 
 def test_the_backup_probe_fails_when_no_backup_was_ever_recorded() -> None:
     # Setup
-    probe = BackupProbe(MemoryStore(), lambda: NOW)
+    probe = BackupProbe(FreshStore(), lambda: NOW)
 
     # Execute
     result = probe.check()
@@ -161,7 +161,7 @@ def test_the_backup_probe_passes_under_48_hours_and_fails_from_48_hours_naming_t
     age: timedelta, expected: ProbeResult
 ) -> None:
     # Setup
-    settings = MemoryStore()
+    settings = FreshStore()
     settings.put_setting(BACKUP_LAST_SUCCESS_KEY, (NOW - age).isoformat())
 
     # Execute

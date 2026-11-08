@@ -17,7 +17,7 @@ from builders import (
     stored_item,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Item, Stage
 from stash.store import Store
@@ -56,7 +56,7 @@ def stored_updated_at(store: Store, aged: AgedStage, item_id: str, updated_at: d
     return stored_item(store, id=item_id, title=item_id, stage=aged.stage, updated_at=updated_at)
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_leaves_out_an_item_updated_exactly_at_the_cutoff(
     open_store: StoreFactory, aged: AgedStage
@@ -72,7 +72,7 @@ def test_an_age_query_leaves_out_an_item_updated_exactly_at_the_cutoff(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_includes_an_item_updated_one_microsecond_before_the_cutoff(
     open_store: StoreFactory, aged: AgedStage
@@ -88,7 +88,7 @@ def test_an_age_query_includes_an_item_updated_one_microsecond_before_the_cutoff
         assert titles(listed) == ["just-before"]
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_leaves_out_an_item_updated_after_the_cutoff(
     open_store: StoreFactory, aged: AgedStage
@@ -104,7 +104,7 @@ def test_an_age_query_leaves_out_an_item_updated_after_the_cutoff(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(
     ("aged", "stage"),
     OTHER_STAGES,
@@ -124,7 +124,7 @@ def test_an_age_query_leaves_out_an_old_item_of_another_stage(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_lists_the_least_recently_updated_item_first(
     open_store: StoreFactory, aged: AgedStage
@@ -142,7 +142,7 @@ def test_an_age_query_lists_the_least_recently_updated_item_first(
         assert titles(listed) == ["oldest", "middle", "newest"]
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_breaks_a_tie_on_update_time_by_ascending_id(
     open_store: StoreFactory, aged: AgedStage
@@ -159,7 +159,7 @@ def test_an_age_query_breaks_a_tie_on_update_time_by_ascending_id(
         assert titles(listed) == ["a", "b"]
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_orders_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory, aged: AgedStage
@@ -176,7 +176,7 @@ def test_an_age_query_orders_by_instant_rather_than_local_wall_clock(
         assert titles(listed) == ["plus-five", "utc-noon"]
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_limit_keeps_the_oldest_items(
     open_store: StoreFactory, aged: AgedStage
@@ -194,7 +194,7 @@ def test_an_age_query_limit_keeps_the_oldest_items(
         assert titles(listed) == ["first", "second"]
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_with_a_limit_of_zero_returns_nothing(
     open_store: StoreFactory, aged: AgedStage
@@ -210,7 +210,7 @@ def test_an_age_query_with_a_limit_of_zero_returns_nothing(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_with_a_negative_limit_raises_value_error(
     open_store: StoreFactory, aged: AgedStage
@@ -221,7 +221,7 @@ def test_an_age_query_with_a_negative_limit_raises_value_error(
         aged.query(store, CUTOFF, -1)
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_with_a_naive_cutoff_raises_value_error(
     open_store: StoreFactory, aged: AgedStage
@@ -232,7 +232,7 @@ def test_an_age_query_with_a_naive_cutoff_raises_value_error(
         aged.query(store, NAIVE, 10)
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_on_an_empty_store_returns_nothing(
     open_store: StoreFactory, aged: AgedStage
@@ -246,7 +246,7 @@ def test_an_age_query_on_an_empty_store_returns_nothing(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_treats_a_late_evening_item_west_of_utc_as_after_a_utc_midnight_cutoff(
     open_store: StoreFactory, aged: AgedStage
@@ -262,7 +262,7 @@ def test_an_age_query_treats_a_late_evening_item_west_of_utc_as_after_a_utc_midn
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_treats_an_early_morning_item_east_of_utc_as_before_a_utc_midnight_cutoff(
     open_store: StoreFactory, aged: AgedStage
@@ -278,7 +278,7 @@ def test_an_age_query_treats_an_early_morning_item_east_of_utc_as_before_a_utc_m
         assert titles(listed) == ["east"]
 
 
-@all_stores
+@on_sqlite
 @both_age_queries
 def test_an_age_query_accepts_a_cutoff_written_in_another_offset(
     open_store: StoreFactory, aged: AgedStage

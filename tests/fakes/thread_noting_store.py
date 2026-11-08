@@ -1,12 +1,12 @@
 import threading
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item, ItemType, Stage
 from stash.store.port import DEFAULT_PAGE_SIZE
 
 
-class ThreadNotingStore(MemoryStore):
+class ThreadNotingStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.threads: list[int] = []

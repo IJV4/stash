@@ -9,7 +9,7 @@ from digest_builders import (
     building,
 )
 from fakes.fake_pick_source import FakePickSource
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import a_stuck_book
 
 from stash.domain import Pick
@@ -21,7 +21,7 @@ def test_the_digest_asks_for_three_picks_for_the_coming_week() -> None:
     source = FakePickSource()
 
     # Execute
-    a_digest_builder(MemoryStore(), source).build(a_due_digest(), DIGEST_AT)
+    a_digest_builder(FreshStore(), source).build(a_due_digest(), DIGEST_AT)
 
     # Assert
     assert source.asked == [(DIGEST_CONTEXT, 3)]
@@ -35,7 +35,7 @@ def test_the_picks_context_asks_for_things_worth_doing_in_the_coming_week() -> N
 def test_the_digest_carries_the_picks_it_was_given() -> None:
     # Setup
     pick = Pick(a_forgotten_sail(), SAIL_REASON)
-    builder = a_digest_builder(MemoryStore(), FakePickSource([pick]))
+    builder = a_digest_builder(FreshStore(), FakePickSource([pick]))
 
     # Execute
     built = builder.build(a_due_digest(), DIGEST_AT)
@@ -46,7 +46,7 @@ def test_the_digest_carries_the_picks_it_was_given() -> None:
 
 def test_a_digest_without_picks_has_an_empty_picks_section() -> None:
     # Execute
-    sections = building(MemoryStore())
+    sections = building(FreshStore())
 
     # Assert
     assert sections.picks == ()
@@ -55,7 +55,7 @@ def test_a_digest_without_picks_has_an_empty_picks_section() -> None:
 def test_the_built_digest_keeps_its_instant_and_its_stuck_items() -> None:
     # Setup
     due = a_due_digest(DIGEST_AT, a_stuck_book())
-    builder = a_digest_builder(MemoryStore())
+    builder = a_digest_builder(FreshStore())
 
     # Execute
     built = builder.build(due, DIGEST_AT)
@@ -66,7 +66,7 @@ def test_the_built_digest_keeps_its_instant_and_its_stuck_items() -> None:
 
 def test_building_records_nothing_as_sent() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_forgotten_sail())
     built = a_digest_builder(store).build(a_due_digest(), DIGEST_AT)
 
@@ -80,4 +80,4 @@ def test_building_records_nothing_as_sent() -> None:
 def test_building_with_a_now_that_has_no_time_zone_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="now"):
-        a_digest_builder(MemoryStore()).build(a_due_digest(), DIGEST_AT.replace(tzinfo=None))
+        a_digest_builder(FreshStore()).build(a_due_digest(), DIGEST_AT.replace(tzinfo=None))

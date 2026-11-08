@@ -3,7 +3,7 @@ from typing import Any
 
 from builders import BASE, an_item, in_los_angeles, stored
 from capture_builders import sequential_ids
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import ItemType, KeyDate, KeyDateKind, Person, Stage
 from stash.nudges import PersonDateReminder
@@ -80,7 +80,5 @@ def ids_of_people(people: list[Person]) -> list[str]:
     return [person.id for person in people]
 
 
-def a_directory(store: MemoryStore | None = None) -> PeopleDirectory:
-    return PeopleDirectory(
-        MemoryStore() if store is None else store, sequential_ids(), lambda: BASE
-    )
+def a_directory(store: FreshStore | None = None) -> PeopleDirectory:
+    return PeopleDirectory(FreshStore() if store is None else store, sequential_ids(), lambda: BASE)

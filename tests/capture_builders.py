@@ -3,8 +3,8 @@ from datetime import datetime
 from typing import Any
 
 from builders import BASE, a_capture, a_source, an_item, stored_completion
-from fakes.memory_store import MemoryStore
 from fakes.recording_linker import RecordingLinker
+from fakes.store_factories import FreshStore
 
 from stash.capture import (
     Button,
@@ -128,9 +128,9 @@ def a_pipeline(
 
 
 def store_with_filed_item(
-    store: MemoryStore | None = None, **overrides: Any
-) -> tuple[MemoryStore, Item]:
-    store = store or MemoryStore()
+    store: FreshStore | None = None, **overrides: Any
+) -> tuple[FreshStore, Item]:
+    store = store or FreshStore()
     capture = a_capture(status=CaptureStatus.FILED)
     store.add_capture(capture)
     item = a_placed_item(id=capture.id, capture_id=capture.id, **overrides)
@@ -146,8 +146,8 @@ def button_labels(rows: tuple[tuple[Button, ...], ...]) -> list[list[str]]:
     return [[button.label for button in row] for row in rows]
 
 
-def a_store_with_a_completed_item(**item_overrides: Any) -> MemoryStore:
-    store = MemoryStore()
+def a_store_with_a_completed_item(**item_overrides: Any) -> FreshStore:
+    store = FreshStore()
     stored_completion(store, COMPLETED_ITEM_ID, title=COMPLETED_TITLE, **item_overrides)
     return store
 

@@ -7,13 +7,13 @@ from builders import (
     a_source,
     minutes_after,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import CaptureStatus
 from stash.store import UnknownCaptureError
 
 
-@all_stores
+@on_sqlite
 def test_added_capture_is_returned_by_get_capture(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -27,7 +27,7 @@ def test_added_capture_is_returned_by_get_capture(open_store: StoreFactory) -> N
         assert found == capture
 
 
-@all_stores
+@on_sqlite
 def test_adding_a_new_capture_returns_true(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -38,7 +38,7 @@ def test_adding_a_new_capture_returns_true(open_store: StoreFactory) -> None:
         assert added is True
 
 
-@all_stores
+@on_sqlite
 def test_adding_a_capture_with_an_already_seen_source_returns_false(
     open_store: StoreFactory,
 ) -> None:
@@ -53,7 +53,7 @@ def test_adding_a_capture_with_an_already_seen_source_returns_false(
         assert added is False
 
 
-@all_stores
+@on_sqlite
 def test_a_duplicate_source_leaves_exactly_one_pending_capture(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -67,7 +67,7 @@ def test_a_duplicate_source_leaves_exactly_one_pending_capture(open_store: Store
         assert [capture.id for capture in pending] == ["c1"]
 
 
-@all_stores
+@on_sqlite
 def test_a_duplicate_source_writes_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -81,7 +81,7 @@ def test_a_duplicate_source_writes_nothing(open_store: StoreFactory) -> None:
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_adding_the_very_same_capture_twice_returns_false(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -94,7 +94,7 @@ def test_adding_the_very_same_capture_twice_returns_false(open_store: StoreFacto
         assert added is False
 
 
-@all_stores
+@on_sqlite
 def test_adding_a_capture_with_an_existing_id_from_another_source_raises_value_error(
     open_store: StoreFactory,
 ) -> None:
@@ -107,7 +107,7 @@ def test_adding_a_capture_with_an_existing_id_from_another_source_raises_value_e
             store.add_capture(a_capture(id="c1", source=a_source("m2")))
 
 
-@all_stores
+@on_sqlite
 def test_a_capture_with_a_non_utc_received_at_reads_back_at_the_same_instant(
     open_store: StoreFactory,
 ) -> None:
@@ -124,7 +124,7 @@ def test_a_capture_with_a_non_utc_received_at_reads_back_at_the_same_instant(
         assert found.received_at == BASE
 
 
-@all_stores
+@on_sqlite
 def test_get_capture_of_an_unknown_id_returns_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -135,7 +135,7 @@ def test_get_capture_of_an_unknown_id_returns_none(open_store: StoreFactory) -> 
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_changing_a_capture_status_is_visible_through_get_capture(
     open_store: StoreFactory,
 ) -> None:
@@ -150,7 +150,7 @@ def test_changing_a_capture_status_is_visible_through_get_capture(
         assert store.get_capture("c1") == a_capture(status=CaptureStatus.FILED)
 
 
-@all_stores
+@on_sqlite
 def test_changing_a_capture_status_removes_it_from_pending(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -163,7 +163,7 @@ def test_changing_a_capture_status_removes_it_from_pending(open_store: StoreFact
         assert store.pending_captures() == []
 
 
-@all_stores
+@on_sqlite
 def test_setting_the_status_of_an_unknown_capture_raises_unknown_capture_error(
     open_store: StoreFactory,
 ) -> None:
@@ -173,7 +173,7 @@ def test_setting_the_status_of_an_unknown_capture_raises_unknown_capture_error(
         store.set_capture_status("missing", CaptureStatus.FILED)
 
 
-@all_stores
+@on_sqlite
 def test_pending_captures_come_oldest_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -194,7 +194,7 @@ def test_pending_captures_come_oldest_first(open_store: StoreFactory) -> None:
         assert [capture.id for capture in pending] == ["early", "middle", "late"]
 
 
-@all_stores
+@on_sqlite
 def test_pending_captures_received_at_the_same_instant_come_in_id_order(
     open_store: StoreFactory,
 ) -> None:
@@ -210,7 +210,7 @@ def test_pending_captures_received_at_the_same_instant_come_in_id_order(
         assert [capture.id for capture in pending] == ["a", "b"]
 
 
-@all_stores
+@on_sqlite
 def test_pending_captures_order_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory,
 ) -> None:
@@ -230,7 +230,7 @@ def test_pending_captures_order_by_instant_rather_than_local_wall_clock(
         assert [capture.id for capture in pending] == ["plus-five", "utc"]
 
 
-@all_stores
+@on_sqlite
 def test_a_stored_setting_is_returned(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -243,7 +243,7 @@ def test_a_stored_setting_is_returned(open_store: StoreFactory) -> None:
         assert value == "2026-11-02T16:00:00+00:00"
 
 
-@all_stores
+@on_sqlite
 def test_putting_a_setting_again_overwrites_it(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -257,7 +257,7 @@ def test_putting_a_setting_again_overwrites_it(open_store: StoreFactory) -> None
         assert value == "new"
 
 
-@all_stores
+@on_sqlite
 def test_a_missing_setting_is_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

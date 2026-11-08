@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 from builders import BASE, COMPLETED_ON, NON_DONE_STAGES, an_item_at, stored
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
@@ -13,7 +13,7 @@ def test_completing_an_item_in_any_other_stage_leaves_it_done_unkept_and_not_a_r
     stage: Stage,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(stage))
 
     # Execute
@@ -26,7 +26,7 @@ def test_completing_an_item_in_any_other_stage_leaves_it_done_unkept_and_not_a_r
 @pytest.mark.parametrize("keep", [True, False])
 def test_completing_with_keep_sets_kept_on_the_new_done_item(keep: bool) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO))
 
     # Execute
@@ -38,7 +38,7 @@ def test_completing_with_keep_sets_kept_on_the_new_done_item(keep: bool) -> None
 
 def test_completing_a_reopened_kept_item_without_keep_leaves_it_kept() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.WANT_TO, kept=True))
 
     # Execute
@@ -50,7 +50,7 @@ def test_completing_a_reopened_kept_item_without_keep_leaves_it_kept() -> None:
 
 def test_completing_stores_the_done_item_and_its_outcome_together() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -62,7 +62,7 @@ def test_completing_stores_the_done_item_and_its_outcome_together() -> None:
 
 def test_completing_stamps_the_item_with_the_clock() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
     now = BASE.replace(hour=15)
 
@@ -75,7 +75,7 @@ def test_completing_stamps_the_item_with_the_clock() -> None:
 
 def test_completing_records_the_rating_notes_and_takeaways_given() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -91,7 +91,7 @@ def test_completing_records_the_rating_notes_and_takeaways_given() -> None:
 
 def test_completing_without_details_records_an_unrated_outcome_with_no_notes_or_takeaways() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -103,7 +103,7 @@ def test_completing_without_details_records_an_unrated_outcome_with_no_notes_or_
 
 def test_the_outcome_takes_its_id_from_the_id_source_and_belongs_to_the_item() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -115,7 +115,7 @@ def test_the_outcome_takes_its_id_from_the_id_source_and_belongs_to_the_item() -
 
 def test_the_outcome_is_recorded_at_the_clock_time_and_has_not_been_edited() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
     now = BASE.replace(hour=15)
 
@@ -128,7 +128,7 @@ def test_the_outcome_is_recorded_at_the_clock_time_and_has_not_been_edited() -> 
 
 def test_the_outcome_is_dated_with_the_date_given() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -140,7 +140,7 @@ def test_the_outcome_is_dated_with_the_date_given() -> None:
 
 def test_the_outcome_defaults_to_the_owners_local_date_not_the_utc_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
     just_after_midnight_in_utc = datetime(2026, 11, 3, 5, 0, tzinfo=UTC)
 

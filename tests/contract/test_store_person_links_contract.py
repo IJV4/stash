@@ -1,13 +1,13 @@
 import pytest
 from builders import an_item, minutes_after, stored_item, titles
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from people_builders import a_key_date, ids_of_people, stored_person
 
 from stash.domain import ItemType
 from stash.store import UnknownItemError, UnknownPersonError
 
 
-@all_stores
+@on_sqlite
 def test_a_linked_person_is_listed_for_the_item(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -22,7 +22,7 @@ def test_a_linked_person_is_listed_for_the_item(open_store: StoreFactory) -> Non
         assert ids_of_people(found) == ["p1"]
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_no_links_has_no_people(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -35,7 +35,7 @@ def test_an_item_with_no_links_has_no_people(open_store: StoreFactory) -> None:
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_an_items_people_are_listed_by_name(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -52,7 +52,7 @@ def test_an_items_people_are_listed_by_name(open_store: StoreFactory) -> None:
         assert ids_of_people(found) == ["p2", "p1"]
 
 
-@all_stores
+@on_sqlite
 def test_linking_twice_leaves_one_link(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -68,7 +68,7 @@ def test_linking_twice_leaves_one_link(open_store: StoreFactory) -> None:
         assert ids_of_people(found) == ["p1"]
 
 
-@all_stores
+@on_sqlite
 def test_an_unlinked_person_is_no_longer_listed_for_the_item(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -84,7 +84,7 @@ def test_an_unlinked_person_is_no_longer_listed_for_the_item(open_store: StoreFa
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_unlinking_a_person_who_was_never_linked_changes_nothing(
     open_store: StoreFactory,
 ) -> None:
@@ -101,7 +101,7 @@ def test_unlinking_a_person_who_was_never_linked_changes_nothing(
         assert found is not None
 
 
-@all_stores
+@on_sqlite
 def test_linking_an_unknown_item_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -112,7 +112,7 @@ def test_linking_an_unknown_item_is_refused(open_store: StoreFactory) -> None:
             store.link("missing", "p1")
 
 
-@all_stores
+@on_sqlite
 def test_linking_an_unknown_person_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -123,7 +123,7 @@ def test_linking_an_unknown_person_is_refused(open_store: StoreFactory) -> None:
             store.link("i1", "missing")
 
 
-@all_stores
+@on_sqlite
 def test_a_persons_items_are_listed_newest_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -140,7 +140,7 @@ def test_a_persons_items_are_listed_newest_first(open_store: StoreFactory) -> No
         assert titles(found) == ["New", "Old"]
 
 
-@all_stores
+@on_sqlite
 def test_a_persons_items_can_be_limited_to_one_type(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -157,7 +157,7 @@ def test_a_persons_items_can_be_limited_to_one_type(open_store: StoreFactory) ->
         assert titles(found) == ["Mug"]
 
 
-@all_stores
+@on_sqlite
 def test_a_persons_items_leave_out_other_peoples_items(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -173,7 +173,7 @@ def test_a_persons_items_leave_out_other_peoples_items(open_store: StoreFactory)
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_person_keeps_their_items(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -189,7 +189,7 @@ def test_deleting_a_person_keeps_their_items(open_store: StoreFactory) -> None:
         assert found == item
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_person_unlinks_their_items(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -206,7 +206,7 @@ def test_deleting_a_person_unlinks_their_items(open_store: StoreFactory) -> None
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_item_removes_its_links(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -223,7 +223,7 @@ def test_deleting_an_item_removes_its_links(open_store: StoreFactory) -> None:
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_item_keeps_the_person_and_their_key_dates(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -240,7 +240,7 @@ def test_deleting_an_item_keeps_the_person_and_their_key_dates(open_store: Store
         assert found == [a_key_date()]
 
 
-@all_stores
+@on_sqlite
 def test_items_naming_people_leave_out_items_that_name_nobody(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -254,7 +254,7 @@ def test_items_naming_people_leave_out_items_that_name_nobody(open_store: StoreF
         assert titles(found) == ["Mug"]
 
 
-@all_stores
+@on_sqlite
 def test_items_naming_people_are_listed_newest_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

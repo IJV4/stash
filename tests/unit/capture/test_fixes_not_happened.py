@@ -4,7 +4,7 @@ import pytest
 from builders import NOT_PLANNED_STAGES, PLANNED_FOR, an_item_at, fetched_item, stored
 from capture_builders import store_with_filed_item
 from capture_rig import a_fix_handler, logged_by_applying
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.capture import gone
 from stash.capture.completion_replies import didnt_happen_reply
@@ -13,8 +13,8 @@ from stash.domain import Stage
 NOT_HAPPENED = f"stash:h:i1:{PLANNED_FOR:%Y%m%d}"
 
 
-def a_store_with_a_planned_item() -> MemoryStore:
-    store = MemoryStore()
+def a_store_with_a_planned_item() -> FreshStore:
+    store = FreshStore()
     stored(store, an_item_at(Stage.PLANNED, title="Date night"))
     return store
 
@@ -67,7 +67,7 @@ def test_pressing_didnt_happen_twice_answers_the_same_in_want_to_text() -> None:
 
 def test_pressing_didnt_happen_on_a_done_item_says_it_is_done_and_left_alone() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DONE, title="Date night"))
 
     # Execute
@@ -82,7 +82,7 @@ def test_pressing_didnt_happen_on_an_item_that_is_not_planned_leaves_it_unchange
     stage: Stage,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(stage))
 
     # Execute

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.store.backup import Backups, BackupSettings
 from stash.store.port import BackupSource
@@ -16,4 +16,4 @@ def a_backups(
     clock: Callable[[], datetime] = lambda: BACKED_UP_AT,
     **options: Any,
 ) -> Backups:
-    return Backups(source, MemoryStore() if settings is None else settings, clock, **options)
+    return Backups(source, FreshStore() if settings is None else settings, clock, **options)

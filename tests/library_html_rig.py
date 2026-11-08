@@ -3,7 +3,7 @@ from html.parser import HTMLParser
 from typing import Any
 
 from builders import LOS_ANGELES, a_capture, an_item, an_outcome
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import (
     DROP_REASON_LIMIT,
@@ -23,7 +23,7 @@ LOCAL_NOW = datetime(2026, 11, 7, 9, 30, tzinfo=LOS_ANGELES)
 LONG_NOTE_LENGTH = 4096
 
 
-def rendered(store: MemoryStore, now: datetime = LOCAL_NOW, page_size: int = SECTION_LIMIT) -> str:
+def rendered(store: FreshStore, now: datetime = LOCAL_NOW, page_size: int = SECTION_LIMIT) -> str:
     return render_library(build_snapshot(store, now, page_size))
 
 
@@ -50,8 +50,8 @@ def parsed_markup(page: str) -> _Markup:
     return markup
 
 
-def store_of_kept_items(count: int) -> MemoryStore:
-    store = MemoryStore()
+def store_of_kept_items(count: int) -> FreshStore:
+    store = FreshStore()
     store.add_capture(a_capture())
     for number in range(count):
         item_id = f"i{number}"

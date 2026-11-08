@@ -10,11 +10,11 @@ from fakes.busy import FakeBusy
 from fakes.chat_model import FakeChatModel
 from fakes.close_counter import CloseCounter
 from fakes.fake_suggestion_picker import FakeSuggestionPicker
-from fakes.memory_store import MemoryStore
 from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.recording_library_servers import RecordingLibraryServers
 from fakes.recording_unloader import RecordingUnloader
+from fakes.store_factories import FreshStore
 from gate_rig import a_gate, a_sample
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from nudge_builders import a_nudge_schedule, a_person_dates
@@ -37,8 +37,8 @@ from stash.suggestions import QuietPicks, SuggestionDesk
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 
 
-def stored(*items: Item) -> MemoryStore:
-    store = MemoryStore()
+def stored(*items: Item) -> FreshStore:
+    store = FreshStore()
     for item in items:
         store.add_capture(a_capture(id=item.capture_id, source=a_source(item.capture_id)))
         store.save_item(item)
@@ -47,7 +47,7 @@ def stored(*items: Item) -> MemoryStore:
 
 def an_app(**overrides: Any) -> StashApp:
     config = a_stash_config()
-    store = overrides.get("store", MemoryStore())
+    store = overrides.get("store", FreshStore())
     clock = overrides.get("clock", lambda: NOON)
     lifecycle = overrides.get("lifecycle", a_lifecycle(store, clock))
     gate = a_gate(a_sample(), store=store)

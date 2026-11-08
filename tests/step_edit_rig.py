@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from builders import BASE
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from planning_builders import DATE_NIGHT_ID, stored_date_night
 from planning_rig import planning_over
 from step_builders import a_step
@@ -14,7 +14,7 @@ LATER = BASE + timedelta(hours=1)
 NEW_DAY = date(2027, 2, 1)
 
 
-def date_night_with(store: MemoryStore, *steps: Step) -> Planning:
+def date_night_with(store: FreshStore, *steps: Step) -> Planning:
     stored_date_night(store)
     store.save_steps(DATE_NIGHT_ID, list(steps))
     return planning_over(store, FakeStepProposals(), lambda: LATER)

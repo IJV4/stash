@@ -3,7 +3,7 @@ from builders import BASE, LATER, a_filing
 from capture_builders import a_message, a_pipeline
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from link_builders import a_link_info
 
 from stash.capture import Filed, IsRequest
@@ -16,7 +16,7 @@ SECOND_URL = "https://example.com/second"
 def test_a_message_with_a_link_inspects_only_the_first_link() -> None:
     # Setup
     inspector = FakeLinkInspector()
-    pipeline = a_pipeline(MemoryStore(), inspector, FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), inspector, FakeCaptureFiler())
 
     # Execute
     pipeline.handle(a_message(f"{FIRST_URL} and {SECOND_URL}"))
@@ -28,7 +28,7 @@ def test_a_message_with_a_link_inspects_only_the_first_link() -> None:
 def test_a_message_without_a_link_inspects_nothing() -> None:
     # Setup
     inspector = FakeLinkInspector()
-    pipeline = a_pipeline(MemoryStore(), inspector, FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), inspector, FakeCaptureFiler())
 
     # Execute
     pipeline.handle(a_message("just a thought"))
@@ -41,7 +41,7 @@ def test_the_filer_receives_the_whole_text_and_the_inspected_link() -> None:
     # Setup
     info = a_link_info(url=FIRST_URL, platform="web")
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector({FIRST_URL: info}), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector({FIRST_URL: info}), filer)
     text = f"{FIRST_URL} try this"
 
     # Execute
@@ -54,7 +54,7 @@ def test_the_filer_receives_the_whole_text_and_the_inspected_link() -> None:
 def test_the_filer_receives_no_link_for_a_message_without_one() -> None:
     # Setup
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
 
     # Execute
     pipeline.handle(a_message("just a thought"))
@@ -66,7 +66,7 @@ def test_the_filer_receives_no_link_for_a_message_without_one() -> None:
 def test_the_item_is_the_filing_with_the_first_link_as_source_and_the_clock_as_time() -> None:
     # Setup
     filing = a_filing()
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(
         store, FakeLinkInspector(), FakeCaptureFiler(filing=filing), clock=lambda: LATER
     )
@@ -84,7 +84,7 @@ def test_the_item_is_the_filing_with_the_first_link_as_source_and_the_clock_as_t
 
 def test_a_message_without_a_link_has_no_source_url() -> None:
     # Setup
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
     result = pipeline.handle(a_message("just a thought"))
@@ -95,7 +95,7 @@ def test_a_message_without_a_link_has_no_source_url() -> None:
 
 def test_the_filed_item_is_saved_under_the_id_derived_from_its_capture() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
@@ -108,7 +108,7 @@ def test_the_filed_item_is_saved_under_the_id_derived_from_its_capture() -> None
 
 def test_filing_marks_the_capture_filed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
@@ -129,7 +129,7 @@ def test_the_result_is_unsure_only_when_the_filing_route_is_unsure(
 ) -> None:
     # Setup
     filer = FakeCaptureFiler(filing=a_filing(route=route))
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
 
     # Execute
     result = pipeline.handle(a_message())
@@ -140,7 +140,7 @@ def test_the_result_is_unsure_only_when_the_filing_route_is_unsure(
 
 def test_a_request_route_returns_the_capture_marked_as_a_request() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     filer = FakeCaptureFiler(filing=a_filing(route=Route.REQUEST))
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
     capture = pipeline.receive(a_message("what can I do Saturday?"))
@@ -155,7 +155,7 @@ def test_a_request_route_returns_the_capture_marked_as_a_request() -> None:
 
 def test_a_request_route_stores_the_capture_as_a_request() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     filer = FakeCaptureFiler(filing=a_filing(route=Route.REQUEST))
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
     capture = pipeline.receive(a_message("what can I do Saturday?"))
@@ -171,7 +171,7 @@ def test_a_request_route_stores_the_capture_as_a_request() -> None:
 
 def test_a_request_route_creates_no_item() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     filer = FakeCaptureFiler(filing=a_filing(route=Route.REQUEST))
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
 
@@ -185,7 +185,7 @@ def test_a_request_route_creates_no_item() -> None:
 def test_the_item_is_stamped_with_the_injected_clock_not_the_message_time() -> None:
     # Setup
     pipeline = a_pipeline(
-        MemoryStore(), FakeLinkInspector(), FakeCaptureFiler(), clock=lambda: LATER
+        FreshStore(), FakeLinkInspector(), FakeCaptureFiler(), clock=lambda: LATER
     )
 
     # Execute

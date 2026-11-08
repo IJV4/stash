@@ -1,5 +1,5 @@
 from builders import BASE
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from planning_builders import DATE_NIGHT_ON, RESCHEDULED_ON, a_date_night
 
 from stash.domain import Stage
@@ -10,7 +10,7 @@ UNDATED = {"stage": Stage.WANT_TO, "date": None}
 
 def test_a_recorded_decline_matches_the_date_it_was_recorded_for() -> None:
     # Setup
-    declines = Declines(MemoryStore())
+    declines = Declines(FreshStore())
     item = a_date_night()
     declines.record(item)
 
@@ -23,7 +23,7 @@ def test_a_recorded_decline_matches_the_date_it_was_recorded_for() -> None:
 
 def test_a_recorded_decline_does_not_match_a_different_date() -> None:
     # Setup
-    declines = Declines(MemoryStore())
+    declines = Declines(FreshStore())
     item = a_date_night()
     declines.record(item)
 
@@ -36,7 +36,7 @@ def test_a_recorded_decline_does_not_match_a_different_date() -> None:
 
 def test_an_item_nobody_declined_is_not_declined() -> None:
     # Setup
-    declines = Declines(MemoryStore())
+    declines = Declines(FreshStore())
 
     # Execute
     declined = declines.is_declined(a_date_night())
@@ -47,7 +47,7 @@ def test_an_item_nobody_declined_is_not_declined() -> None:
 
 def test_a_decline_recorded_for_one_item_does_not_match_another_item_on_the_same_date() -> None:
     # Setup
-    declines = Declines(MemoryStore())
+    declines = Declines(FreshStore())
     declines.record(a_date_night(id="date-night"))
 
     # Execute
@@ -59,7 +59,7 @@ def test_a_decline_recorded_for_one_item_does_not_match_another_item_on_the_same
 
 def test_an_item_without_a_date_is_never_declined() -> None:
     # Setup
-    declines = Declines(MemoryStore())
+    declines = Declines(FreshStore())
     declines.record(a_date_night())
 
     # Execute
@@ -71,7 +71,7 @@ def test_an_item_without_a_date_is_never_declined() -> None:
 
 def test_recording_a_decline_for_an_item_without_a_date_writes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
 
     # Execute
     Declines(store).record(a_date_night(**UNDATED))
@@ -82,7 +82,7 @@ def test_recording_a_decline_for_an_item_without_a_date_writes_nothing() -> None
 
 def test_a_decline_is_stored_under_the_item_id_with_the_date_in_iso_format() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
 
     # Execute
     Declines(store).record(a_date_night())

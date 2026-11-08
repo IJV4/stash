@@ -1,7 +1,7 @@
 import pytest
 from builders import BASE
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.watched_step_store import WatchedStepStore
 from planning_builders import DATE_NIGHT_ID, RESCHEDULED_ON, a_date_night, stored_date_night
 from planning_rig import planning_over
@@ -23,7 +23,7 @@ def agent_adds_a_step(planning: Planning) -> None:
 
 def test_a_step_the_agent_adds_while_the_model_is_thinking_is_never_overwritten() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     proposals = FakeStepProposals(PROPOSALS, while_thinking=lambda: agent_adds_a_step(planning))
     planning = planning_over(store, proposals)
@@ -38,7 +38,7 @@ def test_a_step_the_agent_adds_while_the_model_is_thinking_is_never_overwritten(
 
 def test_an_item_moved_out_of_planned_while_the_model_is_thinking_gets_no_steps() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     moved = a_date_night(stage=Stage.WANT_TO)
     proposals = FakeStepProposals(PROPOSALS, while_thinking=lambda: store.save_item(moved))
@@ -53,7 +53,7 @@ def test_an_item_moved_out_of_planned_while_the_model_is_thinking_gets_no_steps(
 
 def test_an_item_rescheduled_while_the_model_answers_with_no_steps_is_refused() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     proposals = FakeStepProposals(
         while_thinking=lambda: store.save_item(item.rescheduled(RESCHEDULED_ON, BASE))
@@ -66,7 +66,7 @@ def test_an_item_rescheduled_while_the_model_answers_with_no_steps_is_refused() 
 
 def test_an_item_rescheduled_while_the_model_answers_with_no_steps_is_not_declined() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     moved = item.rescheduled(RESCHEDULED_ON, BASE)
     proposals = FakeStepProposals(while_thinking=lambda: store.save_item(moved))
@@ -85,7 +85,7 @@ def test_steps_proposed_for_an_item_rescheduled_while_the_model_was_thinking_are
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     proposals = FakeStepProposals(
         PROPOSALS, while_thinking=lambda: store.save_item(item.rescheduled(RESCHEDULED_ON, BASE))
@@ -101,7 +101,7 @@ def test_steps_proposed_for_an_item_rescheduled_while_the_model_was_thinking_are
 
 def test_an_item_deleted_while_the_model_is_thinking_is_unknown() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     proposals = FakeStepProposals(
         PROPOSALS, while_thinking=lambda: store.delete_item(DATE_NIGHT_ID)

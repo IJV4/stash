@@ -4,7 +4,7 @@ from itertools import product
 
 import pytest
 from builders import an_item, an_outcome, fetched_item, stored_item, stored_parent
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Stage
 
@@ -21,7 +21,7 @@ UNTOUCHED_FLAG_COMBINATIONS = [
 ]
 
 
-@all_stores
+@on_sqlite
 def test_an_untouched_item_is_deleted_and_reported_deleted(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -34,7 +34,7 @@ def test_an_untouched_item_is_deleted_and_reported_deleted(open_store: StoreFact
         assert (deleted, store.get_item("i1")) == (True, None)
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_an_outcome_is_refused_and_keeps_its_outcome(
     open_store: StoreFactory,
 ) -> None:
@@ -55,7 +55,7 @@ def test_an_item_with_an_outcome_is_refused_and_keeps_its_outcome(
         )
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_a_child_is_refused_and_keeps_the_child_grouped(
     open_store: StoreFactory,
 ) -> None:
@@ -76,7 +76,7 @@ def test_an_item_with_a_child_is_refused_and_keeps_the_child_grouped(
         )
 
 
-@all_stores
+@on_sqlite
 def test_a_done_item_is_refused_and_stays_stored(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -89,7 +89,7 @@ def test_a_done_item_is_refused_and_stays_stored(open_store: StoreFactory) -> No
         assert (deleted, store.get_item("i1")) == (False, item)
 
 
-@all_stores
+@on_sqlite
 def test_a_kept_item_that_is_no_longer_done_is_refused_and_stays_stored(
     open_store: StoreFactory,
 ) -> None:
@@ -104,7 +104,7 @@ def test_a_kept_item_that_is_no_longer_done_is_refused_and_stays_stored(
         assert (deleted, fetched_item(store, "i1")) == (False, item)
 
 
-@all_stores
+@on_sqlite
 def test_an_unknown_item_is_reported_not_deleted(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -117,7 +117,7 @@ def test_an_unknown_item_is_reported_not_deleted(open_store: StoreFactory) -> No
         assert (deleted, store.get_item("i1") is not None) == (False, True)
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_untouched_child_leaves_its_parent_stored(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -131,7 +131,7 @@ def test_deleting_an_untouched_child_leaves_its_parent_stored(open_store: StoreF
         assert (deleted, store.get_item("p1") is not None) == (True, True)
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(
     ("has_outcome", "has_child", "is_done", "is_kept"), UNTOUCHED_FLAG_COMBINATIONS
 )

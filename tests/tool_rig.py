@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from builders import BASE, stored_completion, stored_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Item, ItemType, Outcome, Stage
@@ -27,14 +27,14 @@ def calling(tools: Mapping[str, Any], name: str, arguments: dict[str, Any]) -> d
     return answer_of(tools[name].handler(arguments))
 
 
-def store_snapshot(store: MemoryStore) -> Snapshot:
+def store_snapshot(store: FreshStore) -> Snapshot:
     return tuple(
         (item, tuple(store.outcomes_for(item.id))) for item in store.list_items(limit=EVERYTHING)
     )
 
 
-def a_tool_store() -> MemoryStore:
-    store = MemoryStore()
+def a_tool_store() -> FreshStore:
+    store = FreshStore()
     stored_item(store, id=WANT_TO_ITEM, title="Dune", item_type=ItemType.BOOK, stage=Stage.WANT_TO)
     stored_completion(store, DONE_ITEM)
     stored_item(store, id=PARENT_ITEM, title="Japan trip")
@@ -42,6 +42,6 @@ def a_tool_store() -> MemoryStore:
 
 
 def lifecycle_tools_over(
-    store: MemoryStore, clock: Callable[[], datetime] = lambda: BASE
+    store: FreshStore, clock: Callable[[], datetime] = lambda: BASE
 ) -> LifecycleTools:
     return LifecycleTools(a_lifecycle(store, clock=clock))

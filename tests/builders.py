@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.config import ProviderName, ProviderSettings
 from stash.domain import (
@@ -167,8 +167,8 @@ def stored(store: Store, item: Item) -> Item:
     return item
 
 
-def store_holding(*items: Item) -> MemoryStore:
-    store = MemoryStore()
+def store_holding(*items: Item) -> FreshStore:
+    store = FreshStore()
     for item in items:
         stored(store, item)
     return store

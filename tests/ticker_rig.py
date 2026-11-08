@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals
 from fakes.scripted_sender import ScriptedSender
+from fakes.store_factories import FreshStore
 from hermes_events import OWNER_ID
 from hermes_rig import until
 from nudge_builders import SATURDAY_MORNING
@@ -44,11 +44,11 @@ def a_ticker(
     )
 
 
-def proposals_over(store: MemoryStore) -> ProposalDelivery:
+def proposals_over(store: FreshStore) -> ProposalDelivery:
     return ProposalDelivery(planning_over(store, FakeStepProposals(PROPOSED_STEPS)), store)
 
 
-def a_ticker_over(store: MemoryStore, sender: ReplySender) -> Ticker:
+def a_ticker_over(store: FreshStore, sender: ReplySender) -> Ticker:
     rig = a_nudge_rig(store)
     rig.digests_before_were_sent(SATURDAY_MORNING)
     return a_ticker(

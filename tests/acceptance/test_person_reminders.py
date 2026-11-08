@@ -4,7 +4,7 @@ from builders import in_los_angeles
 from capture_builders import a_filing_answer, a_message
 from capture_narrowing import handle_filed
 from capture_rig import build_rig
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import DIGEST_LINE
 from nudge_rig import a_nudge_rig
 from people_builders import a_directory, stored_ana_with_a_march_sixth_birthday
@@ -26,7 +26,7 @@ ON_THE_DAY_LINE = "🎂 Today: Ana's birthday (turns 34)."
 
 def test_a_birthday_is_reminded_fourteen_days_before_two_days_before_and_on_the_day() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
     rig = a_nudge_rig(store)
     ticks = [FEBRUARY_TWENTIETH_MORNING, MARCH_FOURTH_MORNING, MARCH_SIXTH_MORNING]
@@ -49,7 +49,7 @@ def test_a_birthday_is_reminded_fourteen_days_before_two_days_before_and_on_the_
 
 def test_birthday_reminders_missed_with_the_pc_off_arrive_with_the_digest_in_one_message() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
     rig = a_nudge_rig(store)
     pc_goes_off = in_los_angeles(date(2027, 2, 20), 8)
@@ -99,7 +99,7 @@ def test_a_gift_idea_filed_before_the_person_was_added_appears_in_their_reminder
 
 def test_a_birthday_added_twice_is_reminded_only_for_the_corrected_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     directory = a_directory(store)
     ana = directory.add("Ana")
     directory.add_key_date(ana.id, KeyDateKind.BIRTHDAY, 3, 6, 1993)

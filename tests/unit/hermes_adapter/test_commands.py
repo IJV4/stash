@@ -9,8 +9,8 @@ from app_builders import stored
 from builders import BASE, a_capture, an_item, days_after, stored_completion
 from fakes.failing_list_store import FailingListStore
 from fakes.failing_read_store import FailingReadStore
-from fakes.memory_store import MemoryStore
 from fakes.recording_unloader import RecordingUnloader
+from fakes.store_factories import FreshStore
 from fakes.thread_noting_library import ThreadNotingLibrary
 from fakes.thread_noting_retrier import ThreadNotingRetrier
 from fakes.thread_noting_store import ThreadNotingStore
@@ -35,7 +35,7 @@ def run(
     return asyncio.run(command.run(raw_args))
 
 
-def four_items() -> MemoryStore:
+def four_items() -> FreshStore:
     return stored(
         an_item(id="a", capture_id="ca", title="Ichiran", stage=Stage.WANT_TO, created_at=BASE),
         an_item(
@@ -63,7 +63,7 @@ def four_items() -> MemoryStore:
     )
 
 
-def many_items(count: int, title: Callable[[int], str] = "Item {}".format) -> MemoryStore:
+def many_items(count: int, title: Callable[[int], str] = "Item {}".format) -> FreshStore:
     items: list[Item] = [
         an_item(
             id=f"i{number:03}",
@@ -111,7 +111,7 @@ def test_list_accepts_the_want_to_stage_spelled_with_a_space() -> None:
 
 def test_list_with_nothing_to_show_says_no_items() -> None:
     # Execute
-    text = run(ListCommand(MemoryStore()))
+    text = run(ListCommand(FreshStore()))
 
     # Assert
     assert text == "No items."
@@ -219,7 +219,7 @@ def test_list_lets_a_failing_store_propagate() -> None:
 
 
 def a_switch(
-    store: MemoryStore | None = None, unloader: RecordingUnloader | None = None
+    store: FreshStore | None = None, unloader: RecordingUnloader | None = None
 ) -> GpuSwitch:
     gate = a_gate(a_sample(), store=store)
     return GpuSwitch(gate, RecordingUnloader() if unloader is None else unloader)
@@ -485,8 +485,8 @@ def test_retry_files_the_pending_captures_off_the_event_loop_thread() -> None:
     assert [thread != loop_thread for thread in retrier.threads] == [True]
 
 
-def kept_items(*titles: tuple[str, ItemType]) -> MemoryStore:
-    store = MemoryStore()
+def kept_items(*titles: tuple[str, ItemType]) -> FreshStore:
+    store = FreshStore()
     for number, (title, item_type) in enumerate(titles):
         stored_completion(
             store,
@@ -499,7 +499,7 @@ def kept_items(*titles: tuple[str, ItemType]) -> MemoryStore:
     return store
 
 
-def many_kept_items(count: int, title: Callable[[int], str] = "Item {}".format) -> MemoryStore:
+def many_kept_items(count: int, title: Callable[[int], str] = "Item {}".format) -> FreshStore:
     return kept_items(*[(title(number), ItemType.BOOK) for number in range(count)])
 
 
@@ -507,7 +507,7 @@ async def no_html() -> str:
     raise AssertionError("the HTML library was not asked for")
 
 
-def a_library_command(store: MemoryStore) -> LibraryCommand:
+def a_library_command(store: FreshStore) -> LibraryCommand:
     return LibraryCommand(a_lifecycle(store), no_html)
 
 
@@ -517,7 +517,7 @@ def test_library_html_in_any_case_hands_over_to_the_html_sender(argument: str) -
     async def sent() -> str:
         return "sent"
 
-    command = LibraryCommand(a_lifecycle(MemoryStore()), sent)
+    command = LibraryCommand(a_lifecycle(FreshStore()), sent)
 
     # Execute
     reply = asyncio.run(command.run(argument))
@@ -563,7 +563,7 @@ def test_library_accepts_a_type_in_any_case_with_surrounding_space() -> None:
 
 def test_library_leaves_out_items_that_are_not_kept() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "skipped", title="Not kept")
 
     # Execute
@@ -575,7 +575,7 @@ def test_library_leaves_out_items_that_are_not_kept() -> None:
 
 def test_library_with_nothing_to_show_says_no_items() -> None:
     # Execute
-    text = run(a_library_command(MemoryStore()))
+    text = run(a_library_command(FreshStore()))
 
     # Assert
     assert text == "No items."
@@ -583,7 +583,7 @@ def test_library_with_nothing_to_show_says_no_items() -> None:
 
 def test_library_with_an_unknown_type_names_it_and_lists_the_labels_in_plain_words() -> None:
     # Execute
-    text = run(a_library_command(MemoryStore()), "spaceship")
+    text = run(a_library_command(FreshStore()), "spaceship")
 
     # Assert
     assert text == (
@@ -617,7 +617,7 @@ def test_library_accepts_the_label_of_a_type_whose_value_differs_in_any_case() -
 
 def test_library_with_a_5000_character_argument_answers_within_the_telegram_limit() -> None:
     # Execute
-    text = run(a_library_command(MemoryStore()), "x" * 5000)
+    text = run(a_library_command(FreshStore()), "x" * 5000)
 
     # Assert
     assert len(text) <= TELEGRAM_TEXT_LIMIT

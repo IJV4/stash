@@ -1,9 +1,9 @@
 import pytest
 from builders import a_capture, an_item, minutes_after, titles
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 
-@all_stores
+@on_sqlite
 def test_search_matches_the_title(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -18,7 +18,7 @@ def test_search_matches_the_title(open_store: StoreFactory) -> None:
         assert titles(found) == ["Ramen in Shibuya"]
 
 
-@all_stores
+@on_sqlite
 def test_search_matches_the_note(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -33,7 +33,7 @@ def test_search_matches_the_note(open_store: StoreFactory) -> None:
         assert titles(found) == ["Lunch spot"]
 
 
-@all_stores
+@on_sqlite
 def test_search_matches_a_tag(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -48,7 +48,7 @@ def test_search_matches_a_tag(open_store: StoreFactory) -> None:
         assert titles(found) == ["Lunch spot"]
 
 
-@all_stores
+@on_sqlite
 def test_search_matches_in_the_middle_of_a_word(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -62,7 +62,7 @@ def test_search_matches_in_the_middle_of_a_word(open_store: StoreFactory) -> Non
         assert titles(found) == ["Ramen in Shibuya"]
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(
     ("title", "query"),
     [
@@ -95,7 +95,7 @@ def test_search_ignores_case(open_store: StoreFactory, title: str, query: str) -
         assert titles(found) == [title]
 
 
-@all_stores
+@on_sqlite
 def test_search_ignores_case_in_tags(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -109,7 +109,7 @@ def test_search_ignores_case_in_tags(open_store: StoreFactory) -> None:
         assert titles(found) == ["Spot"]
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(
     ("query", "matching_title"),
     [
@@ -138,7 +138,7 @@ def test_search_treats_special_characters_literally(
         assert titles(found) == [matching_title]
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize("query", ["", "   ", "\t\n"], ids=["empty", "spaces", "whitespace"])
 def test_search_with_a_blank_query_returns_nothing(open_store: StoreFactory, query: str) -> None:
     # Setup
@@ -153,7 +153,7 @@ def test_search_with_a_blank_query_returns_nothing(open_store: StoreFactory, que
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_search_without_a_match_returns_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -167,7 +167,7 @@ def test_search_without_a_match_returns_nothing(open_store: StoreFactory) -> Non
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_search_returns_the_newest_matches_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -182,7 +182,7 @@ def test_search_returns_the_newest_matches_first(open_store: StoreFactory) -> No
         assert titles(found) == ["Ramen new", "Ramen old"]
 
 
-@all_stores
+@on_sqlite
 def test_search_limit_caps_the_number_of_matches(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -197,7 +197,7 @@ def test_search_limit_caps_the_number_of_matches(open_store: StoreFactory) -> No
         assert titles(found) == ["Ramen new"]
 
 
-@all_stores
+@on_sqlite
 def test_search_with_a_negative_limit_raises_value_error(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store, pytest.raises(ValueError):

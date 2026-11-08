@@ -1,9 +1,9 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Outcome
 
 
-class OutcomeSaveCountingStore(MemoryStore):
+class OutcomeSaveCountingStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.outcome_saves = 0

@@ -1,4 +1,4 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item, ItemType
 from stash.store.port import DEFAULT_PAGE_SIZE
@@ -8,7 +8,7 @@ class ReadFailed(Exception):
     pass
 
 
-class FailingReadStore(MemoryStore):
+class FailingReadStore(FreshStore):
     def get_item(self, item_id: str) -> Item | None:
         raise ReadFailed("database is closed")
 

@@ -2,13 +2,13 @@ from dataclasses import replace
 
 import pytest
 from builders import LATER, a_capture, an_item, fetched_item, stored_item, stored_parent
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import ItemType
 from stash.store import StaleItemError, UnknownCaptureError, UnknownItemError
 
 
-@all_stores
+@on_sqlite
 def test_update_item_replaces_the_stored_item_when_it_still_equals_the_one_read(
     open_store: StoreFactory,
 ) -> None:
@@ -23,7 +23,7 @@ def test_update_item_replaces_the_stored_item_when_it_still_equals_the_one_read(
         assert store.get_item("i1") == read.retyped(ItemType.BOOK, LATER)
 
 
-@all_stores
+@on_sqlite
 def test_update_item_of_an_item_that_is_not_stored_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -37,7 +37,7 @@ def test_update_item_of_an_item_that_is_not_stored_raises_unknown_item_error(
             store.update_item(read.retyped(ItemType.BOOK, LATER), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_update_item_of_an_item_deleted_after_it_was_read_does_not_bring_it_back(
     open_store: StoreFactory,
 ) -> None:
@@ -54,7 +54,7 @@ def test_update_item_of_an_item_deleted_after_it_was_read_does_not_bring_it_back
         assert store.get_item("i1") is None
 
 
-@all_stores
+@on_sqlite
 def test_update_item_of_an_item_changed_after_it_was_read_raises_stale_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -68,7 +68,7 @@ def test_update_item_of_an_item_changed_after_it_was_read_raises_stale_item_erro
             store.update_item(read.retyped(ItemType.BOOK, LATER), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_update_item_of_an_item_changed_in_the_same_clock_tick_raises_stale_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -82,7 +82,7 @@ def test_update_item_of_an_item_changed_in_the_same_clock_tick_raises_stale_item
             store.update_item(read.retyped(ItemType.BOOK, LATER), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_update_item_of_a_changed_item_keeps_the_other_writers_version(
     open_store: StoreFactory,
 ) -> None:
@@ -100,7 +100,7 @@ def test_update_item_of_a_changed_item_keeps_the_other_writers_version(
         assert store.get_item("i1") == other
 
 
-@all_stores
+@on_sqlite
 def test_update_item_with_a_replaced_item_of_another_id_raises_value_error(
     open_store: StoreFactory,
 ) -> None:
@@ -113,7 +113,7 @@ def test_update_item_with_a_replaced_item_of_another_id_raises_value_error(
             store.update_item(read, replacing=replace(read, id="i2"))
 
 
-@all_stores
+@on_sqlite
 def test_update_item_under_a_parent_that_is_not_stored_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -126,7 +126,7 @@ def test_update_item_under_a_parent_that_is_not_stored_raises_unknown_item_error
             store.update_item(replace(read, parent_id="p1"), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_update_item_under_a_parent_that_is_not_stored_writes_nothing(
     open_store: StoreFactory,
 ) -> None:
@@ -142,7 +142,7 @@ def test_update_item_under_a_parent_that_is_not_stored_writes_nothing(
         assert store.get_item("i1") == read
 
 
-@all_stores
+@on_sqlite
 def test_update_item_under_a_stored_parent_groups_it(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -157,7 +157,7 @@ def test_update_item_under_a_stored_parent_groups_it(open_store: StoreFactory) -
         assert fetched_item(store, "i1").parent_id == "p1"
 
 
-@all_stores
+@on_sqlite
 def test_update_item_moved_to_an_unknown_capture_raises_unknown_capture_error(
     open_store: StoreFactory,
 ) -> None:
@@ -170,7 +170,7 @@ def test_update_item_moved_to_an_unknown_capture_raises_unknown_capture_error(
             store.update_item(replace(read, capture_id="c9"), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_update_item_moved_to_an_unknown_capture_writes_nothing(
     open_store: StoreFactory,
 ) -> None:

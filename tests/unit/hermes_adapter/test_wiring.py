@@ -10,13 +10,13 @@ from capture_builders import a_filing_answer, sequential_ids
 from capture_rig import build_rig
 from config_builders import a_nudge_config, a_stash_config
 from fakes.fake_suggestion_desk import FakeSuggestionDesk
-from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
 from fakes.recording_outbox import RecordingOutbox
 from fakes.recording_sender import RecordingSender
 from fakes.scripted_deliveries import ScriptedNudges
 from fakes.scripted_steps import ScriptedSteps
+from fakes.store_factories import FreshStore
 from hermes_events import OWNER_ID, an_event
 from hermes_rig import app_over, instant_bursts
 from ticker_rig import run_until
@@ -217,7 +217,7 @@ def test_the_search_and_list_tools_read_the_store_of_the_app() -> None:
 
 def test_the_library_command_lists_the_kept_items_of_the_app_lifecycle() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "k1", kept=True, title="Dune")
     command = build_commands(an_app(store=store), RecordingOutbox(), None)["library"]
 

@@ -2,8 +2,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from fakes.memory_store import MemoryStore
 from fakes.scripted_chat_model import ScriptedChatModel
+from fakes.store_factories import FreshStore
 from nudge_builders import LONG_AGO, a_nudge_schedule, a_person_dates
 from nudge_rig import NudgeRig, sending_nowhere
 from suggestion_rig import an_engine
@@ -29,13 +29,13 @@ class DigestRig(NudgeRig):
 
 
 def a_digest_rig(
-    store: MemoryStore | None = None,
+    store: FreshStore | None = None,
     model_outcomes: Sequence[dict[str, object] | LlmError] = (),
     send: Callable[[Reply], None] = sending_nowhere,
     *,
     first_run: bool = False,
 ) -> DigestRig:
-    store = store or MemoryStore()
+    store = store or FreshStore()
     model = ScriptedChatModel(model_outcomes)
     schedule = a_nudge_schedule()
     builder = DigestBuilder(
@@ -46,5 +46,5 @@ def a_digest_rig(
         store, schedule, nudger, send, NudgeDelivery(nudger, builder), model=model, builder=builder
     )
     if not first_run:
-        MemoryStore.record_all_sent(store, [WeeklyDigest(LONG_AGO, ()).nudge], LONG_AGO)
+        FreshStore.record_all_sent(store, [WeeklyDigest(LONG_AGO, ()).nudge], LONG_AGO)
     return rig

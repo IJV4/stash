@@ -1,7 +1,7 @@
 from contextlib import suppress
 
 from builders import LATER, a_capture, a_source, an_item_at, an_outcome
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from threads import run_concurrently, run_in_thread
 
 from stash.domain import CaptureStatus, RawCapture, Stage
@@ -18,7 +18,7 @@ def item_stage(store: Store, item_id: str) -> Stage | None:
     return None if item is None else item.stage
 
 
-@all_stores
+@on_sqlite
 def test_a_capture_added_on_the_main_thread_is_readable_from_another_thread(
     open_store: StoreFactory,
 ) -> None:
@@ -34,7 +34,7 @@ def test_a_capture_added_on_the_main_thread_is_readable_from_another_thread(
         assert found == capture
 
 
-@all_stores
+@on_sqlite
 def test_a_capture_added_on_another_thread_is_readable_from_the_main_thread(
     open_store: StoreFactory,
 ) -> None:
@@ -50,7 +50,7 @@ def test_a_capture_added_on_another_thread_is_readable_from_the_main_thread(
         assert found == capture
 
 
-@all_stores
+@on_sqlite
 def test_captures_added_concurrently_are_all_kept(open_store: StoreFactory) -> None:
     # Setup
     workers, captures_per_worker = 4, 15
@@ -68,7 +68,7 @@ def test_captures_added_concurrently_are_all_kept(open_store: StoreFactory) -> N
         assert (errors, len(store.pending_captures())) == ([], workers * captures_per_worker)
 
 
-@all_stores
+@on_sqlite
 def test_the_same_source_added_concurrently_is_accepted_exactly_once(
     open_store: StoreFactory,
 ) -> None:
@@ -87,7 +87,7 @@ def test_the_same_source_added_concurrently_is_accepted_exactly_once(
         assert (errors, sorted(outcomes)) == ([], [False] * (workers - 1) + [True])
 
 
-@all_stores
+@on_sqlite
 def test_completions_recorded_concurrently_are_all_kept(open_store: StoreFactory) -> None:
     # Setup
     workers = 8
@@ -115,7 +115,7 @@ def test_completions_recorded_concurrently_are_all_kept(open_store: StoreFactory
         )
 
 
-@all_stores
+@on_sqlite
 def test_a_capture_status_set_while_other_threads_write_leaves_every_effect(
     open_store: StoreFactory,
 ) -> None:

@@ -1,9 +1,9 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Outcome
 
 
-class OutcomeQueryingStore(MemoryStore):
+class OutcomeQueryingStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.outcome_queries: list[str] = []

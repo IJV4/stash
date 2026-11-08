@@ -12,7 +12,7 @@ from builders import (
     minutes_after,
     stored_item,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Stage
 from stash.store import DuplicateOutcomeError, UnknownItemError
@@ -20,7 +20,7 @@ from stash.store import DuplicateOutcomeError, UnknownItemError
 NEXT_DAY = COMPLETED_ON + timedelta(days=1)
 
 
-@all_stores
+@on_sqlite
 def test_an_added_outcome_is_returned_by_get_outcome_with_takeaways_and_edited_at(
     open_store: StoreFactory,
 ) -> None:
@@ -37,7 +37,7 @@ def test_an_added_outcome_is_returned_by_get_outcome_with_takeaways_and_edited_a
         assert found == outcome
 
 
-@all_stores
+@on_sqlite
 def test_an_outcome_without_rating_or_edit_round_trips_with_none(
     open_store: StoreFactory,
 ) -> None:
@@ -54,7 +54,7 @@ def test_an_outcome_without_rating_or_edit_round_trips_with_none(
         assert found == outcome
 
 
-@all_stores
+@on_sqlite
 def test_an_outcome_with_non_utc_timestamps_reads_back_at_the_same_instants(
     open_store: StoreFactory,
 ) -> None:
@@ -72,7 +72,7 @@ def test_an_outcome_with_non_utc_timestamps_reads_back_at_the_same_instants(
         assert (found.recorded_at, found.edited_at) == (BASE, BASE + timedelta(hours=1))
 
 
-@all_stores
+@on_sqlite
 def test_an_outcome_edited_before_it_was_recorded_round_trips(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -87,7 +87,7 @@ def test_an_outcome_edited_before_it_was_recorded_round_trips(open_store: StoreF
         assert found == outcome
 
 
-@all_stores
+@on_sqlite
 def test_get_outcome_of_an_unknown_id_returns_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -98,7 +98,7 @@ def test_get_outcome_of_an_unknown_id_returns_none(open_store: StoreFactory) -> 
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_outcomes_for_an_unknown_item_is_empty(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -109,7 +109,7 @@ def test_outcomes_for_an_unknown_item_is_empty(open_store: StoreFactory) -> None
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_outcomes_for_lists_only_the_outcomes_of_that_item(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -125,7 +125,7 @@ def test_outcomes_for_lists_only_the_outcomes_of_that_item(open_store: StoreFact
         assert [outcome.id for outcome in found] == ["o1"]
 
 
-@all_stores
+@on_sqlite
 def test_adding_an_outcome_for_an_item_that_is_not_stored_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -134,7 +134,7 @@ def test_adding_an_outcome_for_an_item_that_is_not_stored_raises_unknown_item_er
         store.add_outcome(an_outcome())
 
 
-@all_stores
+@on_sqlite
 def test_adding_an_outcome_with_a_stored_id_raises_duplicate_outcome_error(
     open_store: StoreFactory,
 ) -> None:
@@ -148,7 +148,7 @@ def test_adding_an_outcome_with_a_stored_id_raises_duplicate_outcome_error(
             store.add_outcome(an_outcome(notes="Second try"))
 
 
-@all_stores
+@on_sqlite
 def test_adding_an_outcome_with_a_stored_id_keeps_the_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -164,7 +164,7 @@ def test_adding_an_outcome_with_a_stored_id_keeps_the_first(open_store: StoreFac
         assert found == an_outcome()
 
 
-@all_stores
+@on_sqlite
 def test_outcomes_for_lists_the_earlier_completion_day_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -179,7 +179,7 @@ def test_outcomes_for_lists_the_earlier_completion_day_first(open_store: StoreFa
         assert [outcome.id for outcome in found] == ["o2", "o1"]
 
 
-@all_stores
+@on_sqlite
 def test_outcomes_for_lists_the_earlier_recording_first_on_the_same_day(
     open_store: StoreFactory,
 ) -> None:
@@ -196,7 +196,7 @@ def test_outcomes_for_lists_the_earlier_recording_first_on_the_same_day(
         assert [outcome.id for outcome in found] == ["o2", "o1"]
 
 
-@all_stores
+@on_sqlite
 def test_outcomes_for_orders_recordings_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory,
 ) -> None:
@@ -213,7 +213,7 @@ def test_outcomes_for_orders_recordings_by_instant_rather_than_local_wall_clock(
         assert [outcome.id for outcome in found] == ["o2", "o1"]
 
 
-@all_stores
+@on_sqlite
 def test_outcomes_for_lists_the_lower_id_first_when_day_and_recording_instant_match(
     open_store: StoreFactory,
 ) -> None:
@@ -230,7 +230,7 @@ def test_outcomes_for_lists_the_lower_id_first_when_day_and_recording_instant_ma
         assert [outcome.id for outcome in found] == ["o1", "o2"]
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_edited_outcome_replaces_its_notes_and_takeaways(
     open_store: StoreFactory,
 ) -> None:
@@ -249,7 +249,7 @@ def test_saving_an_edited_outcome_replaces_its_notes_and_takeaways(
         assert found == edited
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_edited_outcome_does_not_reorder_outcomes_for(
     open_store: StoreFactory,
 ) -> None:
@@ -268,7 +268,7 @@ def test_saving_an_edited_outcome_does_not_reorder_outcomes_for(
         assert [outcome.id for outcome in found] == ["o1", "o2"]
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_outcome_that_is_not_stored_adds_it(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -282,7 +282,7 @@ def test_saving_an_outcome_that_is_not_stored_adds_it(open_store: StoreFactory) 
         assert found == an_outcome()
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_outcome_for_an_item_that_is_not_stored_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -291,7 +291,7 @@ def test_saving_an_outcome_for_an_item_that_is_not_stored_raises_unknown_item_er
         store.save_outcome(an_outcome())
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_item_removes_its_outcomes(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -307,7 +307,7 @@ def test_deleting_an_item_removes_its_outcomes(open_store: StoreFactory) -> None
         assert found == (None, None, [])
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_item_keeps_the_outcomes_of_other_items(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

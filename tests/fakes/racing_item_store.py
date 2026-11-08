@@ -1,9 +1,9 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item
 
 
-class RacingItemStore(MemoryStore):
+class RacingItemStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self._saved_before_grouping: list[Item] = []

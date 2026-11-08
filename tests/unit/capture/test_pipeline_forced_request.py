@@ -10,7 +10,7 @@ from capture_builders import (
 )
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.capture import Filed, IsRequest
 from stash.domain import CaptureStatus
@@ -21,7 +21,7 @@ def test_processing_a_text_starting_with_a_question_mark_returns_the_capture_as_
     text: str,
 ) -> None:
     # Setup
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler())
     capture = received(pipeline, text)
 
     # Execute
@@ -36,7 +36,7 @@ def test_processing_a_text_starting_with_a_question_mark_stores_the_capture_as_a
     text: str,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     capture = received(pipeline, text)
 
@@ -50,7 +50,7 @@ def test_processing_a_text_starting_with_a_question_mark_stores_the_capture_as_a
 def test_processing_a_text_starting_with_a_question_mark_asks_the_ai_nothing() -> None:
     # Setup
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
     capture = received(pipeline, f"? {LINK_WITH_A_QUERY}")
 
     # Execute
@@ -63,7 +63,7 @@ def test_processing_a_text_starting_with_a_question_mark_asks_the_ai_nothing() -
 def test_processing_a_text_starting_with_a_question_mark_inspects_no_link() -> None:
     # Setup
     inspector = FakeLinkInspector()
-    pipeline = a_pipeline(MemoryStore(), inspector, FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), inspector, FakeCaptureFiler())
     capture = received(pipeline, f"? {LINK_WITH_A_QUERY}")
 
     # Execute
@@ -75,7 +75,7 @@ def test_processing_a_text_starting_with_a_question_mark_inspects_no_link() -> N
 
 def test_processing_a_text_starting_with_a_question_mark_creates_no_item() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     capture = received(pipeline, FORCED_QUESTION)
 
@@ -89,7 +89,7 @@ def test_processing_a_text_starting_with_a_question_mark_creates_no_item() -> No
 def test_a_link_containing_a_question_mark_is_classified_like_any_other_message() -> None:
     # Setup
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
 
     # Execute
     result = pipeline.handle(a_message(LINK_WITH_A_QUERY))
@@ -101,7 +101,7 @@ def test_a_link_containing_a_question_mark_is_classified_like_any_other_message(
 def test_a_pending_question_mark_text_is_a_request_on_retry_without_the_ai() -> None:
     # Setup
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
     capture = received(pipeline, FORCED_QUESTION)
 
     # Execute
@@ -113,7 +113,7 @@ def test_a_pending_question_mark_text_is_a_request_on_retry_without_the_ai() -> 
 
 def test_a_retried_request_is_no_longer_pending() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     received(pipeline, FORCED_QUESTION)
     pipeline.retry_pending()
@@ -127,7 +127,7 @@ def test_a_retried_request_is_no_longer_pending() -> None:
 
 def test_a_question_mark_capture_whose_item_already_exists_is_resumed_as_filed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     capture = received(pipeline, FORCED_QUESTION)
     item = an_item(id=capture.item_id, capture_id=capture.id)

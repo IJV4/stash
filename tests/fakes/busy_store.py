@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item, Outcome, Step
 from stash.store import StoreBusyError
 
 
-class BusyStore(MemoryStore):
+class BusyStore(FreshStore):
     def update_item(self, item: Item, *, replacing: Item) -> None:
         raise StoreBusyError
 

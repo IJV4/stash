@@ -2,7 +2,7 @@ import pytest
 from builders import BASE
 from capture_builders import sequential_ids
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.watched_step_store import WatchedStepStore
 from planning_builders import DATE_NIGHT_ID, a_date_night, stored_date_night
 from planning_rig import planning_over
@@ -17,7 +17,7 @@ TWO_PROPOSALS = (ProposedStep("Book the table", 14), ProposedStep("Pick an outfi
 
 def test_proposing_returns_the_item_with_its_unconfirmed_steps_in_the_models_order() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     new_id = sequential_ids()
     first_id, second_id = new_id(), new_id()
@@ -42,7 +42,7 @@ def test_proposing_returns_the_item_with_its_unconfirmed_steps_in_the_models_ord
 
 def test_proposing_stores_the_steps_it_returns() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     planning = planning_over(store, FakeStepProposals(TWO_PROPOSALS))
 
@@ -55,7 +55,7 @@ def test_proposing_stores_the_steps_it_returns() -> None:
 
 def test_proposing_asks_about_the_item_as_stored() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     proposals = FakeStepProposals(TWO_PROPOSALS)
 
@@ -68,7 +68,7 @@ def test_proposing_asks_about_the_item_as_stored() -> None:
 
 def test_proposing_stamps_every_step_with_the_current_instant() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     planning = planning_over(store, FakeStepProposals(TWO_PROPOSALS), lambda: BASE)
 
@@ -94,7 +94,7 @@ def test_a_model_with_nothing_to_propose_gives_an_empty_proposal_and_writes_no_s
 
 def test_proposing_for_an_unknown_item_is_refused() -> None:
     # Setup
-    planning = planning_over(MemoryStore(), FakeStepProposals(TWO_PROPOSALS))
+    planning = planning_over(FreshStore(), FakeStepProposals(TWO_PROPOSALS))
 
     # Execute / Assert
     with pytest.raises(UnknownItem) as refusal:
@@ -104,7 +104,7 @@ def test_proposing_for_an_unknown_item_is_refused() -> None:
 
 def test_proposing_for_an_item_that_already_has_steps_is_refused_and_keeps_them() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     existing = a_step(item_id=DATE_NIGHT_ID, confirmed=True)
     store.save_steps(DATE_NIGHT_ID, [existing])
@@ -120,7 +120,7 @@ def test_proposing_for_an_item_that_already_has_steps_is_refused_and_keeps_them(
 
 def test_proposing_for_an_item_that_is_not_planned_is_refused_without_asking_the_model() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store, stage=Stage.WANT_TO)
     proposals = FakeStepProposals(TWO_PROPOSALS)
 
@@ -162,7 +162,7 @@ def test_a_proposed_step_the_domain_refuses_is_a_planning_refusal_and_writes_not
 
 def test_the_proposal_reflects_the_item_as_it_is_when_the_steps_are_written() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     retitled = a_date_night(title="Anniversary dinner")
     proposals = FakeStepProposals(TWO_PROPOSALS, while_thinking=lambda: store.save_item(retitled))

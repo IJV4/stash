@@ -11,7 +11,7 @@ from builders import (
     minutes_after,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import ItemType, Stage
 from stash.store import Store, UnknownCaptureError
@@ -25,7 +25,7 @@ def seed_three_items(store: Store) -> None:
         )
 
 
-@all_stores
+@on_sqlite
 def test_a_saved_item_is_returned_by_get_item(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -40,7 +40,7 @@ def test_a_saved_item_is_returned_by_get_item(open_store: StoreFactory) -> None:
         assert found == item
 
 
-@all_stores
+@on_sqlite
 def test_get_item_of_an_unknown_id_returns_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -51,7 +51,7 @@ def test_get_item_of_an_unknown_id_returns_none(open_store: StoreFactory) -> Non
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_every_field_populated_round_trips_unchanged(
     open_store: StoreFactory,
 ) -> None:
@@ -76,7 +76,7 @@ def test_an_item_with_every_field_populated_round_trips_unchanged(
         assert found == item
 
 
-@all_stores
+@on_sqlite
 def test_non_ascii_text_in_details_tags_and_people_survives_a_round_trip(
     open_store: StoreFactory,
 ) -> None:
@@ -98,7 +98,7 @@ def test_non_ascii_text_in_details_tags_and_people_survives_a_round_trip(
         assert found == item
 
 
-@all_stores
+@on_sqlite
 def test_an_item_without_source_url_or_date_round_trips_with_none(
     open_store: StoreFactory,
 ) -> None:
@@ -115,7 +115,7 @@ def test_an_item_without_source_url_or_date_round_trips_with_none(
         assert (found.source_url, found.date) == (None, None)
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_non_utc_timestamps_reads_back_at_the_same_instants(
     open_store: StoreFactory,
 ) -> None:
@@ -135,7 +135,7 @@ def test_an_item_with_non_utc_timestamps_reads_back_at_the_same_instants(
         assert (found.created_at, found.updated_at) == (BASE, BASE + timedelta(hours=1))
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_item_again_replaces_its_fields(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -151,7 +151,7 @@ def test_saving_an_item_again_replaces_its_fields(open_store: StoreFactory) -> N
         assert found.title == "New title"
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_item_again_keeps_a_single_row(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -166,7 +166,7 @@ def test_saving_an_item_again_keeps_a_single_row(open_store: StoreFactory) -> No
         assert titles(listed) == ["New title"]
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_item_removes_it(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -180,7 +180,7 @@ def test_deleting_an_item_removes_it(open_store: StoreFactory) -> None:
         assert store.get_item("i1") is None
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_unknown_item_leaves_other_items_untouched(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -195,7 +195,7 @@ def test_deleting_an_unknown_item_leaves_other_items_untouched(open_store: Store
         assert store.get_item(item.id) == item
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_item_for_an_unknown_capture_raises_unknown_capture_error(
     open_store: StoreFactory,
 ) -> None:
@@ -205,7 +205,7 @@ def test_saving_an_item_for_an_unknown_capture_raises_unknown_capture_error(
         store.save_item(an_item(capture_id="missing"))
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_item_for_an_unknown_capture_stores_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -219,7 +219,7 @@ def test_saving_an_item_for_an_unknown_capture_stores_nothing(open_store: StoreF
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_list_items_returns_every_item_when_unfiltered(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -234,7 +234,7 @@ def test_list_items_returns_every_item_when_unfiltered(open_store: StoreFactory)
         assert titles(listed) == ["Two", "One"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_filters_by_stage(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -249,7 +249,7 @@ def test_list_items_filters_by_stage(open_store: StoreFactory) -> None:
         assert titles(listed) == ["Wanted"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_filters_by_item_type(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -264,7 +264,7 @@ def test_list_items_filters_by_item_type(open_store: StoreFactory) -> None:
         assert titles(listed) == ["A book"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_combines_stage_and_type_filters_with_and(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -284,7 +284,7 @@ def test_list_items_combines_stage_and_type_filters_with_and(open_store: StoreFa
         assert titles(listed) == ["Match"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_returns_the_newest_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -300,7 +300,7 @@ def test_list_items_returns_the_newest_first(open_store: StoreFactory) -> None:
         assert titles(listed) == ["Newest", "Middle", "Oldest"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_created_at_the_same_instant_come_in_descending_id_order(
     open_store: StoreFactory,
 ) -> None:
@@ -317,7 +317,7 @@ def test_list_items_created_at_the_same_instant_come_in_descending_id_order(
         assert titles(listed) == ["Id b", "Id a"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_orders_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory,
 ) -> None:
@@ -336,7 +336,7 @@ def test_list_items_orders_by_instant_rather_than_local_wall_clock(
         assert titles(listed) == ["UTC noon", "Plus five"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_limit_caps_the_number_returned(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -349,7 +349,7 @@ def test_list_items_limit_caps_the_number_returned(open_store: StoreFactory) -> 
         assert titles(listed) == ["Item 2", "Item 1"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_offset_skips_the_newest(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -362,7 +362,7 @@ def test_list_items_offset_skips_the_newest(open_store: StoreFactory) -> None:
         assert titles(listed) == ["Item 1"]
 
 
-@all_stores
+@on_sqlite
 def test_list_items_returns_twenty_by_default(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -377,7 +377,7 @@ def test_list_items_returns_twenty_by_default(open_store: StoreFactory) -> None:
         assert len(listed) == 20
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(("limit", "offset"), [(-1, 0), (20, -1)], ids=["limit", "offset"])
 def test_list_items_with_a_negative_limit_or_offset_raises_value_error(
     open_store: StoreFactory, limit: int, offset: int
@@ -388,7 +388,7 @@ def test_list_items_with_a_negative_limit_or_offset_raises_value_error(
         store.list_items(limit=limit, offset=offset)
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_a_cool_off_date_reads_it_back(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -402,7 +402,7 @@ def test_an_item_with_a_cool_off_date_reads_it_back(open_store: StoreFactory) ->
         assert found is not None and found.cool_off_until == date(2026, 12, 1)
 
 
-@all_stores
+@on_sqlite
 def test_an_item_without_a_cool_off_date_reads_it_back_as_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from builders import BASE, in_los_angeles
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import a_nudger, only
 from people_builders import (
     a_key_date,
@@ -29,7 +29,7 @@ def on_the_day(reminders: list[PersonDateReminder]) -> list[PersonDateReminder]:
 
 def test_a_february_29_birthday_is_reminded_on_february_28_in_a_common_year() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     ana = stored_ana_with_a_march_sixth_birthday(store)
     store.save_key_date(a_key_date(id="leap", person_id=ana.id, month=2, day=29, year=2000))
     february_28 = in_los_angeles(date(2027, 2, 28), 9)
@@ -43,7 +43,7 @@ def test_a_february_29_birthday_is_reminded_on_february_28_in_a_common_year() ->
 
 def test_the_subject_names_the_key_date_its_occurrence_and_the_lead() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     ana = stored_ana_with_a_march_sixth_birthday(store)
     store.save_key_date(a_key_date(id=UUID_HEX_ID, person_id=ana.id, month=3, day=6))
 
@@ -56,7 +56,7 @@ def test_the_subject_names_the_key_date_its_occurrence_and_the_lead() -> None:
 
 def test_gift_ideas_are_the_linked_gift_items_that_are_not_done_or_dropped_newest_first() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     ana = stored_ana_with_a_march_sixth_birthday(store)
     stored_gift_idea(store, ana, "Pottery wheel", created_at=BASE)
     stored_gift_idea(store, ana, "Ceramic class", created_at=BASE + timedelta(days=1))
@@ -73,7 +73,7 @@ def test_gift_ideas_are_the_linked_gift_items_that_are_not_done_or_dropped_newes
 
 def test_only_the_configured_lead_days_get_a_reminder() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
     one_week_before = in_los_angeles(date(2027, 2, 27), 9)
 
@@ -86,7 +86,7 @@ def test_only_the_configured_lead_days_get_a_reminder() -> None:
 
 def test_a_birthday_five_days_ahead_gets_the_fourteen_day_lead_once_with_five_days_left() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
     five_days_before = in_los_angeles(date(2027, 3, 1), 9)
 
@@ -99,7 +99,7 @@ def test_a_birthday_five_days_ahead_gets_the_fourteen_day_lead_once_with_five_da
 
 def test_a_birthday_tomorrow_gets_the_two_day_lead_alone_with_one_day_left() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
     the_day_before = in_los_angeles(date(2027, 3, 5), 9)
 
@@ -112,7 +112,7 @@ def test_a_birthday_tomorrow_gets_the_two_day_lead_alone_with_one_day_left() -> 
 
 def test_a_birthday_reached_with_the_pc_off_since_the_two_day_lead_gets_one_reminder() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
 
     # Execute
@@ -124,7 +124,7 @@ def test_a_birthday_reached_with_the_pc_off_since_the_two_day_lead_gets_one_remi
 
 def test_a_birthday_that_has_already_passed_gets_no_reminder() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
 
     # Execute
@@ -136,7 +136,7 @@ def test_a_birthday_that_has_already_passed_gets_no_reminder() -> None:
 
 def test_a_december_30_birthday_is_first_reminded_fourteen_days_ahead_on_december_16() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     ana = stored_ana_with_a_march_sixth_birthday(store)
     store.save_key_date(a_key_date(id="winter", person_id=ana.id, month=12, day=30, year=1990))
     december_mornings = [in_los_angeles(date(2027, 12, day), 9) for day in (15, 16)]
@@ -152,7 +152,7 @@ def test_nothing_is_due_on_the_day_before_the_reminder_time_even_with_an_earlier
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
 
     # Execute
@@ -164,7 +164,7 @@ def test_nothing_is_due_on_the_day_before_the_reminder_time_even_with_an_earlier
 
 def test_on_the_day_at_the_reminder_time_only_the_day_of_lead_is_due() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_ana_with_a_march_sixth_birthday(store)
 
     # Execute

@@ -1,4 +1,4 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item
 
@@ -7,7 +7,7 @@ class SaveFailed(Exception):
     pass
 
 
-class FailingSaveStore(MemoryStore):
+class FailingSaveStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.fail_next_save = False

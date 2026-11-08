@@ -1,6 +1,6 @@
 import pytest
 from builders import BASE, an_item, an_outcome, days_after, minutes_after, stored, stored_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.lifecycle import UnknownItem
@@ -8,7 +8,7 @@ from stash.lifecycle import UnknownItem
 
 def test_the_history_of_an_item_carries_the_stored_item() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_item(store, id="i1")
 
     # Execute
@@ -20,7 +20,7 @@ def test_the_history_of_an_item_carries_the_stored_item() -> None:
 
 def test_the_history_lists_the_outcomes_oldest_first() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1")
     later = an_outcome(id="o-later", completed_on=days_after(5))
     earlier = an_outcome(id="o-earlier", completed_on=days_after(1))
@@ -36,7 +36,7 @@ def test_the_history_lists_the_outcomes_oldest_first() -> None:
 
 def test_the_history_lists_the_items_children() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="trip")
     first = stored(store, an_item(id="first", parent_id="trip", created_at=BASE, updated_at=BASE))
     second = stored(
@@ -58,7 +58,7 @@ def test_the_history_lists_the_items_children() -> None:
 
 def test_the_history_of_an_item_with_no_outcomes_or_children_is_empty() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1")
 
     # Execute
@@ -70,7 +70,7 @@ def test_the_history_of_an_item_with_no_outcomes_or_children_is_empty() -> None:
 
 def test_the_history_leaves_out_the_outcomes_and_children_of_other_items() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="i1")
     stored_item(store, id="other")
     stored_item(store, id="other-child", parent_id="other")
@@ -86,7 +86,7 @@ def test_the_history_leaves_out_the_outcomes_and_children_of_other_items() -> No
 def test_the_history_of_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).history("nope")
+        a_lifecycle(FreshStore()).history("nope")
 
     # Assert
     assert raised.value.item_id == "nope"

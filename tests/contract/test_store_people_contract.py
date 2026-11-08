@@ -1,11 +1,11 @@
 import pytest
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from people_builders import a_person, ids_of_people, stored_person
 
 from stash.store import DuplicateNameError
 
 
-@all_stores
+@on_sqlite
 def test_a_saved_person_reads_back_whole(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -18,7 +18,7 @@ def test_a_saved_person_reads_back_whole(open_store: StoreFactory) -> None:
         assert found == person
 
 
-@all_stores
+@on_sqlite
 def test_an_unknown_person_reads_back_as_none(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -29,7 +29,7 @@ def test_an_unknown_person_reads_back_as_none(open_store: StoreFactory) -> None:
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_saving_a_person_again_under_the_same_id_replaces_them(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -43,7 +43,7 @@ def test_saving_a_person_again_under_the_same_id_replaces_them(open_store: Store
         assert found == renamed
 
 
-@all_stores
+@on_sqlite
 def test_people_are_listed_by_name_ignoring_case_then_id(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -58,7 +58,7 @@ def test_people_are_listed_by_name_ignoring_case_then_id(open_store: StoreFactor
         assert ids_of_people(found) == ["p2", "p1", "p3"]
 
 
-@all_stores
+@on_sqlite
 def test_a_second_person_with_the_same_name_in_another_case_is_refused(
     open_store: StoreFactory,
 ) -> None:
@@ -71,7 +71,7 @@ def test_a_second_person_with_the_same_name_in_another_case_is_refused(
             store.save_person(a_person(id="p2", name="ANA RIVERA", aliases=()))
 
 
-@all_stores
+@on_sqlite
 def test_a_person_whose_name_is_another_persons_alias_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -82,7 +82,7 @@ def test_a_person_whose_name_is_another_persons_alias_is_refused(open_store: Sto
             store.save_person(a_person(id="p2", name="anita", aliases=()))
 
 
-@all_stores
+@on_sqlite
 def test_a_person_with_an_alias_that_is_another_persons_name_is_refused(
     open_store: StoreFactory,
 ) -> None:
@@ -95,7 +95,7 @@ def test_a_person_with_an_alias_that_is_another_persons_name_is_refused(
             store.save_person(a_person(id="p2", name="Bruno", aliases=("ana rivera",)))
 
 
-@all_stores
+@on_sqlite
 def test_a_person_with_an_alias_another_person_already_has_is_refused(
     open_store: StoreFactory,
 ) -> None:
@@ -108,7 +108,7 @@ def test_a_person_with_an_alias_another_person_already_has_is_refused(
             store.save_person(a_person(id="p2", name="Bruno", aliases=("NITA",)))
 
 
-@all_stores
+@on_sqlite
 def test_a_refused_person_is_not_stored(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -128,7 +128,7 @@ def test_a_duplicate_name_refusal_is_a_value_error() -> None:
     assert issubclass(DuplicateNameError, ValueError)
 
 
-@all_stores
+@on_sqlite
 def test_a_person_can_be_found_by_name_ignoring_case(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -141,7 +141,7 @@ def test_a_person_can_be_found_by_name_ignoring_case(open_store: StoreFactory) -
         assert found == person
 
 
-@all_stores
+@on_sqlite
 def test_a_person_can_be_found_by_alias_ignoring_case(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -154,7 +154,7 @@ def test_a_person_can_be_found_by_alias_ignoring_case(open_store: StoreFactory) 
         assert found == person
 
 
-@all_stores
+@on_sqlite
 def test_a_name_that_only_partly_matches_finds_nobody(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -167,7 +167,7 @@ def test_a_name_that_only_partly_matches_finds_nobody(open_store: StoreFactory) 
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_person_removes_them(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -181,7 +181,7 @@ def test_deleting_a_person_removes_them(open_store: StoreFactory) -> None:
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_unknown_person_changes_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

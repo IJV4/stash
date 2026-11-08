@@ -2,8 +2,8 @@ import pytest
 from builders import BASE
 from capture_rig import a_fix_handler
 from fakes.chat_model import FakeChatModel
-from fakes.memory_store import MemoryStore
 from fakes.scripted_chat_model import ScriptedChatModel
+from fakes.store_factories import FreshStore
 from planning_builders import (
     DATE_NIGHT_ID,
     DATE_NIGHT_ON,
@@ -22,7 +22,7 @@ def test_a_date_night_planned_for_feb_12_gets_at_most_ten_unconfirmed_steps_and_
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     planning = a_planning(store, FakeChatModel(steps_reply(12)))
 
@@ -42,7 +42,7 @@ def test_an_outage_proposes_nothing_and_leaves_the_item_alone_and_the_next_attem
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored_date_night(store)
     model = ScriptedChatModel([LlmUnavailable("down"), steps_reply(3)])
     planning = a_planning(store, model)
@@ -59,7 +59,7 @@ def test_an_outage_proposes_nothing_and_leaves_the_item_alone_and_the_next_attem
 
 def test_pressing_looks_good_turns_the_proposed_steps_into_open_confirmed_steps() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored_date_night(store)
     planning = a_planning(store, FakeChatModel(steps_reply(3)))
     fixes = a_fix_handler(store, planning=planning)
@@ -77,7 +77,7 @@ def test_pressing_looks_good_turns_the_proposed_steps_into_open_confirmed_steps(
 
 def test_pressing_no_steps_deletes_the_proposed_steps_and_leaves_the_item_unchanged() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored_date_night(store)
     planning = a_planning(store, FakeChatModel(steps_reply(3)))
     fixes = a_fix_handler(store, planning=planning)
@@ -94,7 +94,7 @@ def test_pressing_no_steps_deletes_the_proposed_steps_and_leaves_the_item_unchan
 
 def test_after_no_steps_the_item_is_not_proposed_again_until_its_date_changes() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored_date_night(store)
     planning = a_planning(store, FakeChatModel(steps_reply(3)))
     fixes = a_fix_handler(store, planning=planning)

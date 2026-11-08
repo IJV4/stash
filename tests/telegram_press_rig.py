@@ -5,9 +5,9 @@ from typing import Any
 from app_builders import an_app
 from builders import stored
 from fakes.fake_telegram_bot import FakeTelegramApplication, FakeTelegramBot
-from fakes.memory_store import MemoryStore
 from fakes.ptb_callback_updates import AnsweringBot, callback_update
 from fakes.recording_assistant import RecordingAssistant
+from fakes.store_factories import FreshStore
 from hermes_events import OWNER_ID
 from nudge_builders import FRIDAY, SATURDAY, SUNDAY_MORNING, a_planned_date_night
 from nudge_rig import a_nudge_rig
@@ -45,7 +45,7 @@ class TelegramPressRig:
         asyncio.run(handler.callback(update, None))
 
 
-def a_telegram_press_rig(store: MemoryStore) -> TelegramPressRig:
+def a_telegram_press_rig(store: FreshStore) -> TelegramPressRig:
     outbox = LateBoundOutbox()
     callbacks = build_callbacks(
         an_app(store=store), Owners.parse(OWNER_ID), outbox, RecordingAssistant()
@@ -55,7 +55,7 @@ def a_telegram_press_rig(store: MemoryStore) -> TelegramPressRig:
     return TelegramPressRig(application)
 
 
-def two_follow_ups_in_one_message(store: MemoryStore) -> Reply:
+def two_follow_ups_in_one_message(store: FreshStore) -> Reply:
     stored(store, a_planned_date_night(id="first", title="First", date=FRIDAY))
     stored(store, a_planned_date_night(id="second", title="Second", date=SATURDAY))
     rig = a_nudge_rig(store)

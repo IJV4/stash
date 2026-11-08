@@ -1,13 +1,13 @@
 from dataclasses import replace
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item
 
 RETITLED_BY_ANOTHER_WRITER = "Retitled by another writer"
 
 
-class ChangingItemStore(MemoryStore):
+class ChangingItemStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self._changing_items: set[str] = set()

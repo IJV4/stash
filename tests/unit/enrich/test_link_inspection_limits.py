@@ -4,7 +4,7 @@ import httpx
 from capture_builders import RAMEN_URL, a_message, a_pipeline
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.hung_link_inspector import HungLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from html_rig import html_page
 
 from stash.capture import Filed
@@ -45,7 +45,7 @@ def test_a_link_that_takes_too_long_to_inspect_is_filed_from_the_owners_own_word
     # Setup
     hung = HungLinkInspector()
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), DeadlineInspector(hung, SHORT_DEADLINE_SECONDS), filer)
+    pipeline = a_pipeline(FreshStore(), DeadlineInspector(hung, SHORT_DEADLINE_SECONDS), filer)
 
     # Execute
     result = pipeline.handle(a_message(f"{RAMEN_URL} try this in March"))

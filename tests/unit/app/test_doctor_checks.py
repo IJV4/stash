@@ -5,8 +5,8 @@ from config_builders import a_stash_config, an_llm_config
 from fakes.failing_list_store import FailingListStore
 from fakes.fake_providers import FakeProviders
 from fakes.gpu import FakeGpuProbe
-from fakes.memory_store import MemoryStore
 from fakes.search_path import FakeSearchPath
+from fakes.store_factories import FreshStore
 
 from stash.app.doctor_checks import build_doctor
 from stash.config import LlmTask, ProviderName, StashConfig
@@ -36,7 +36,7 @@ def lines_of(
 ) -> list[DoctorLine]:
     doctor = build_doctor(
         config,
-        MemoryStore() if store is None else store,
+        FreshStore() if store is None else store,
         (FakeProviders() if providers is None else providers).client(),
         FakeGpuProbe(None) if gpu_probe is None else gpu_probe,
         FakeSearchPath(executables),
@@ -226,7 +226,7 @@ def test_the_yt_dlp_check_asks_whether_the_yt_dlp_module_exists() -> None:
 
     doctor = build_doctor(
         a_config(),
-        MemoryStore(),
+        FreshStore(),
         FakeProviders().client(),
         FakeGpuProbe(None),
         FakeSearchPath(),

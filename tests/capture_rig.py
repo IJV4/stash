@@ -7,9 +7,9 @@ from capture_builders import sequential_ids
 from fakes.busy import FakeBusy
 from fakes.chat_model import FakeChatModel
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
 from fakes.recording_chat_model import RecordingChatModel
 from fakes.scripted_chat_model import ScriptedChatModel
+from fakes.store_factories import FreshStore
 from filing_rig import build_filer
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from log_records import recording_logs
@@ -26,7 +26,7 @@ CAPTURE_LOGGER = "stash.capture"
 
 
 def a_fix_handler(
-    store: MemoryStore,
+    store: FreshStore,
     clock: Callable[[], datetime] = lambda: BASE,
     planning: Planning | None = None,
 ) -> FixHandler:
@@ -39,7 +39,7 @@ def a_fix_handler(
     )
 
 
-def logged_by_applying(store: MemoryStore, data: str) -> list[tuple[int, str]]:
+def logged_by_applying(store: FreshStore, data: str) -> list[tuple[int, str]]:
     with recording_logs(CAPTURE_LOGGER) as recorder:
         a_fix_handler(store).apply(data)
     return recorder.entries()
@@ -47,7 +47,7 @@ def logged_by_applying(store: MemoryStore, data: str) -> list[tuple[int, str]]:
 
 @dataclass(frozen=True, slots=True)
 class CaptureRig:
-    store: MemoryStore
+    store: FreshStore
     inspector: FakeLinkInspector
     model: RecordingChatModel
     busy: FakeBusy
@@ -74,11 +74,11 @@ def build_rig(
     links: Mapping[str, LinkInfo] | None = None,
     outcomes: Sequence[Mapping[str, object] | LlmError] | None = None,
     clock: Callable[[], datetime] = lambda: BASE,
-    store: MemoryStore | None = None,
+    store: FreshStore | None = None,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
-    store = MemoryStore() if store is None else store
+    store = FreshStore() if store is None else store
     ids = sequential_ids()
     people = PeopleDirectory(store, ids, clock)
     inspector = FakeLinkInspector(links)

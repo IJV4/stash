@@ -10,3 +10,6 @@ __pycache__/
 *.egg-info/
 dist/
 .DS_Store
+.coverage
+coverage.json
+coverage-without-unit.json

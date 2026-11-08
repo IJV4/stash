@@ -7,7 +7,7 @@ from capture_rig import a_fix_handler
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.failing_status_store import FailingStatusStore, StatusWriteFailed
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 
 from stash.capture import Filed
@@ -16,8 +16,8 @@ from stash.domain import CaptureStatus, ItemType
 PIPELINE_LOGGER = "stash.capture.pipeline"
 
 
-def two_pending_captures_where_the_first_fails() -> tuple[MemoryStore, FakeCaptureFiler, list[str]]:
-    store = MemoryStore()
+def two_pending_captures_where_the_first_fails() -> tuple[FreshStore, FakeCaptureFiler, list[str]]:
+    store = FreshStore()
     filer = FakeCaptureFiler()
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
     pipeline.receive(a_message("first", message_id="m1"))

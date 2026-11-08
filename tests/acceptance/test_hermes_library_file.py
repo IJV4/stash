@@ -7,7 +7,7 @@ from app_builders import an_app
 from builders import LOS_ANGELES
 from clocks import EVENING_IN_LOS_ANGELES
 from config_builders import a_stash_config
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from hermes_events import OWNER_ID
 from hermes_registration_rig import RegisteredStash, register_stash
 from hermes_rig import called
@@ -21,7 +21,7 @@ LIBRARY_CAPTION = "📚 Your stash library"
 
 def connected_stash(
     tmp_path: Path,
-    store: MemoryStore | None = None,
+    store: FreshStore | None = None,
     clock: datetime = EVENING_IN_LOS_ANGELES,
     owner_ids: str = OWNER_ID,
 ) -> RegisteredStash:

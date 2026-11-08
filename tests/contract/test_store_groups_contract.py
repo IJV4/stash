@@ -12,13 +12,13 @@ from builders import (
     stored_parent,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Stage
 from stash.store import UnknownItemError
 
 
-@all_stores
+@on_sqlite
 def test_a_kept_item_grouped_under_a_parent_round_trips_unchanged(
     open_store: StoreFactory,
 ) -> None:
@@ -35,7 +35,7 @@ def test_a_kept_item_grouped_under_a_parent_round_trips_unchanged(
         assert found == item
 
 
-@all_stores
+@on_sqlite
 def test_a_dropped_item_keeps_its_drop_reason_through_a_round_trip(
     open_store: StoreFactory,
 ) -> None:
@@ -50,7 +50,7 @@ def test_a_dropped_item_keeps_its_drop_reason_through_a_round_trip(
         assert found == item
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_item_under_a_parent_that_is_not_stored_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -63,7 +63,7 @@ def test_saving_an_item_under_a_parent_that_is_not_stored_raises_unknown_item_er
             store.save_item(an_item(parent_id="p1"))
 
 
-@all_stores
+@on_sqlite
 def test_saving_an_item_under_a_parent_that_is_not_stored_stores_nothing(
     open_store: StoreFactory,
 ) -> None:
@@ -79,7 +79,7 @@ def test_saving_an_item_under_a_parent_that_is_not_stored_stores_nothing(
         assert store.get_item("i1") is None
 
 
-@all_stores
+@on_sqlite
 def test_saving_a_stored_item_again_updates_its_lifecycle_fields(
     open_store: StoreFactory,
 ) -> None:
@@ -97,7 +97,7 @@ def test_saving_a_stored_item_again_updates_its_lifecycle_fields(
         assert found == regrouped
 
 
-@all_stores
+@on_sqlite
 def test_saving_a_stored_item_again_updates_its_drop_reason(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -111,7 +111,7 @@ def test_saving_a_stored_item_again_updates_its_drop_reason(open_store: StoreFac
         assert found == an_item_at(Stage.DROPPED, drop_reason="no longer wanted")
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_parent_leaves_its_children_stored_without_a_parent(
     open_store: StoreFactory,
 ) -> None:
@@ -129,7 +129,7 @@ def test_deleting_a_parent_leaves_its_children_stored_without_a_parent(
         assert found == replace(child, parent_id=None)
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_parent_leaves_its_other_groups_alone(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -146,7 +146,7 @@ def test_deleting_a_parent_leaves_its_other_groups_alone(open_store: StoreFactor
         assert found == other_child
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_child_leaves_its_parent_stored(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -161,7 +161,7 @@ def test_deleting_a_child_leaves_its_parent_stored(open_store: StoreFactory) -> 
         assert found == a_parent_item()
 
 
-@all_stores
+@on_sqlite
 def test_children_of_lists_the_items_grouped_under_a_parent_oldest_created_first(
     open_store: StoreFactory,
 ) -> None:
@@ -180,7 +180,7 @@ def test_children_of_lists_the_items_grouped_under_a_parent_oldest_created_first
         assert titles(listed) == ["first", "second", "third"]
 
 
-@all_stores
+@on_sqlite
 def test_children_of_lists_the_lower_id_first_when_created_together(
     open_store: StoreFactory,
 ) -> None:
@@ -197,7 +197,7 @@ def test_children_of_lists_the_lower_id_first_when_created_together(
         assert titles(listed) == ["a", "b"]
 
 
-@all_stores
+@on_sqlite
 def test_children_of_leaves_out_the_children_of_other_parents(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -213,7 +213,7 @@ def test_children_of_leaves_out_the_children_of_other_parents(open_store: StoreF
         assert titles(listed) == ["mine"]
 
 
-@all_stores
+@on_sqlite
 def test_children_of_a_childless_parent_is_empty(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -226,7 +226,7 @@ def test_children_of_a_childless_parent_is_empty(open_store: StoreFactory) -> No
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_children_of_an_unknown_id_is_empty(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

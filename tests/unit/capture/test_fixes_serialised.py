@@ -1,8 +1,8 @@
 from builders import BASE
 from capture_builders import store_with_filed_item
 from fakes.chat_model import FakeChatModel
-from fakes.memory_store import MemoryStore
 from fakes.overlap_waiting_lifecycle import OverlapWaitingLifecycle
+from fakes.store_factories import FreshStore
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from planning_rig import a_planning
 from threads import run_concurrently
@@ -15,7 +15,7 @@ FILED_ITEM_ID = "c1"
 DONE_PRESS = f"stash:d:{FILED_ITEM_ID}"
 
 
-def handler_whose_history_reads_overlap(store: MemoryStore) -> FixHandler:
+def handler_whose_history_reads_overlap(store: FreshStore) -> FixHandler:
     lifecycle = OverlapWaitingLifecycle(a_lifecycle(store), OVERLAP_GRACE_SECONDS)
     return FixHandler(
         store, lifecycle, a_planning(store, FakeChatModel()), lambda: BASE, LOCAL_ZONE

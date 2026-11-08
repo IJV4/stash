@@ -9,8 +9,8 @@ from digest_rig import a_digest_rig
 from fakes.failing_nudge_sender import FailingNudgeSender
 from fakes.fake_step_proposals import FakeStepProposals
 from fakes.ledger_recording_store import LedgerCrashed, LedgerRecordingStore
-from fakes.memory_store import MemoryStore
 from fakes.scripted_sender import SendFailed
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 from nudge_builders import (
     SATURDAY_MORNING,
@@ -88,7 +88,7 @@ def test_the_first_tick_records_every_due_kind_of_nudge_without_sending_any() ->
 
 def test_a_message_another_sender_recorded_meanwhile_is_logged_and_not_sent_again() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
 
     def another_sender_records_the_date_reminder(reply: Reply) -> None:
@@ -107,7 +107,7 @@ def test_a_message_another_sender_recorded_meanwhile_is_logged_and_not_sent_agai
 
 def test_a_failed_send_is_logged_by_the_error_type_only() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
 
     rig = a_nudge_rig(store, send=telegram_is_down)
@@ -147,7 +147,7 @@ def a_first_run_with_three_separate_messages_due() -> tuple[LedgerRecordingStore
     store = LedgerRecordingStore()
     stored(store, a_planned_date_night())
     seeded = [a_date_reminder(SATURDAY_MORNING + HOUR).nudge]
-    MemoryStore.record_all_sent(store, seeded, SATURDAY_MORNING + HOUR)
+    FreshStore.record_all_sent(store, seeded, SATURDAY_MORNING + HOUR)
     stored(store, a_planned_date_night(id="sunday-night", date=SUNDAY))
     schedule = a_nudge_schedule(reminder_time=DIGEST_TIME, followup_time=DIGEST_TIME)
     nudger = Nudger(store, schedule, a_person_dates(store, schedule))
@@ -170,7 +170,7 @@ def test_a_first_tick_that_cannot_record_everything_records_and_sends_nothing() 
 
 def test_previewing_on_the_first_run_returns_nothing_because_a_real_run_stays_silent() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store)
 
@@ -191,7 +191,7 @@ def failing_once(error: LlmError) -> Callable[[], None]:
     return fail
 
 
-def a_planning_proposing(store: MemoryStore, *, while_thinking: Callable[[], object]) -> Planning:
+def a_planning_proposing(store: FreshStore, *, while_thinking: Callable[[], object]) -> Planning:
     return planning_over(store, FakeStepProposals(PROPOSALS, while_thinking=while_thinking))
 
 
@@ -201,7 +201,7 @@ def nothing() -> None:
 
 def test_a_planned_dated_item_with_no_steps_is_proposed_and_the_proposal_reply_is_sent() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     item = stored_date_night(store)
     sent: list[Reply] = []
 
@@ -217,7 +217,7 @@ def test_a_planned_dated_item_with_no_steps_is_proposed_and_the_proposal_reply_i
 
 def test_a_proposal_the_model_leaves_empty_is_sent_as_nothing_to_prep() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     planning = planning_over(store, FakeStepProposals(()))
     sent: list[Reply] = []
@@ -231,7 +231,7 @@ def test_a_proposal_the_model_leaves_empty_is_sent_as_nothing_to_prep() -> None:
 
 def test_after_a_nothing_to_prep_message_the_item_is_not_proposed_again() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     proposals = FakeStepProposals(())
     delivery = ProposalDelivery(planning_over(store, proposals), store)
@@ -246,7 +246,7 @@ def test_after_a_nothing_to_prep_message_the_item_is_not_proposed_again() -> Non
 
 def test_at_most_three_items_are_proposed_per_call() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     for number in range(4):
         stored(store, a_date_night(id=f"night-{number}"))
     sent: list[Reply] = []
@@ -262,7 +262,7 @@ def test_at_most_three_items_are_proposed_per_call() -> None:
 
 def test_a_planned_item_whose_date_has_passed_is_not_proposed_and_the_model_is_not_asked() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     proposals = FakeStepProposals(PROPOSALS)
     day_after = datetime.combine(DATE_NIGHT_ON + timedelta(days=1), time(12), tzinfo=UTC)
@@ -285,8 +285,8 @@ class PlanningThatCannotWithdraw:
         raise StoreBusyError
 
 
-def two_planned_nights() -> MemoryStore:
-    store = MemoryStore()
+def two_planned_nights() -> FreshStore:
+    store = FreshStore()
     stored(store, a_date_night(id="night-0"))
     stored(store, a_date_night(id="night-1"))
     return store
@@ -329,7 +329,7 @@ def test_a_model_outage_skips_one_item_until_the_next_call_without_stopping_the_
 
 def test_an_item_whose_date_changed_while_the_model_thought_is_skipped_without_a_log() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night(store)
     moved = a_date_night(date=RESCHEDULED_ON)
     planning = a_planning_proposing(store, while_thinking=lambda: store.save_item(moved))

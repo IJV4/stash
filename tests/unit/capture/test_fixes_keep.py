@@ -11,7 +11,7 @@ from capture_builders import (
     text_of,
 )
 from capture_rig import a_fix_handler
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.capture import Reply, gone
@@ -140,7 +140,7 @@ def test_an_invalid_keep_choice_changes_nothing(choice: str) -> None:
 RATING_ROW = rating_row_data(COMPLETED_OUTCOME_ID)
 
 
-def an_unrated_store(**item_overrides: object) -> MemoryStore:
+def an_unrated_store(**item_overrides: object) -> FreshStore:
     store = a_store_with_a_completed_item(**item_overrides)
     store.save_outcome(an_outcome(id=COMPLETED_OUTCOME_ID, item_id=COMPLETED_ITEM_ID, rating=None))
     return store

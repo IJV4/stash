@@ -1,7 +1,7 @@
 import pytest
 from builders import stored_item
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.watched_step_store import WatchedStepStore
 from planning_builders import DATE_NIGHT_ID, a_date_night, stored_date_night
 from planning_rig import planning_over
@@ -13,7 +13,7 @@ from stash.planning import UnknownItem
 
 def test_confirming_all_confirms_every_proposed_step() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0), proposed("s2", 1))
 
     # Execute
@@ -25,7 +25,7 @@ def test_confirming_all_confirms_every_proposed_step() -> None:
 
 def test_confirming_all_returns_the_confirmed_steps_in_order() -> None:
     # Setup
-    planning = date_night_with(MemoryStore(), proposed("s1", 0), proposed("s2", 1))
+    planning = date_night_with(FreshStore(), proposed("s1", 0), proposed("s2", 1))
 
     # Execute
     steps = planning.confirm_all(DATE_NIGHT_ID)
@@ -36,7 +36,7 @@ def test_confirming_all_returns_the_confirmed_steps_in_order() -> None:
 
 def test_confirmed_steps_become_open_steps_that_can_remind() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0))
 
     # Execute
@@ -48,7 +48,7 @@ def test_confirmed_steps_become_open_steps_that_can_remind() -> None:
 
 def test_confirming_twice_returns_the_same_steps() -> None:
     # Setup
-    planning = date_night_with(MemoryStore(), proposed("s1", 0))
+    planning = date_night_with(FreshStore(), proposed("s1", 0))
     first = planning.confirm_all(DATE_NIGHT_ID)
 
     # Execute
@@ -73,7 +73,7 @@ def test_confirming_an_item_without_steps_returns_nothing_and_writes_nothing() -
 
 def test_confirming_leaves_another_items_steps_alone() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0))
     stored_item(store, id="other", title="Other")
     store.save_steps("other", [a_step(id="s9", item_id="other", confirmed=False)])
@@ -87,7 +87,7 @@ def test_confirming_leaves_another_items_steps_alone() -> None:
 
 def test_confirming_for_an_unknown_item_is_refused() -> None:
     # Setup
-    planning = planning_over(MemoryStore(), FakeStepProposals())
+    planning = planning_over(FreshStore(), FakeStepProposals())
 
     # Execute / Assert
     with pytest.raises(UnknownItem):
@@ -109,7 +109,7 @@ def test_confirming_for_an_item_deleted_just_before_the_write_is_unknown() -> No
 
 def test_discarding_removes_the_proposed_steps() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0), proposed("s2", 1))
 
     # Execute
@@ -121,7 +121,7 @@ def test_discarding_removes_the_proposed_steps() -> None:
 
 def test_discarding_keeps_the_steps_already_confirmed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, confirmed("s1", 0), proposed("s2", 1))
 
     # Execute
@@ -133,7 +133,7 @@ def test_discarding_keeps_the_steps_already_confirmed() -> None:
 
 def test_discarding_after_confirming_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0))
     confirmed_steps = planning.confirm_all(DATE_NIGHT_ID)
 
@@ -146,7 +146,7 @@ def test_discarding_after_confirming_changes_nothing() -> None:
 
 def test_discarding_leaves_another_items_proposed_steps_alone() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0))
     stored_item(store, id="other", title="Other")
     store.save_steps("other", [a_step(id="s9", item_id="other", confirmed=False)])
@@ -160,7 +160,7 @@ def test_discarding_leaves_another_items_proposed_steps_alone() -> None:
 
 def test_discarding_for_an_unknown_item_is_refused() -> None:
     # Setup
-    planning = planning_over(MemoryStore(), FakeStepProposals())
+    planning = planning_over(FreshStore(), FakeStepProposals())
 
     # Execute / Assert
     with pytest.raises(UnknownItem):
@@ -182,7 +182,7 @@ def test_discarding_for_an_item_deleted_just_before_the_write_is_unknown() -> No
 
 def test_withdrawing_removes_the_proposed_steps() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0), proposed("s2", 1))
 
     # Execute
@@ -194,7 +194,7 @@ def test_withdrawing_removes_the_proposed_steps() -> None:
 
 def test_withdrawing_keeps_the_steps_already_confirmed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, confirmed("s1", 0), proposed("s2", 1))
 
     # Execute
@@ -206,7 +206,7 @@ def test_withdrawing_keeps_the_steps_already_confirmed() -> None:
 
 def test_withdrawing_leaves_the_item_in_need_of_a_proposal() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planning = date_night_with(store, proposed("s1", 0))
 
     # Execute

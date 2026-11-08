@@ -4,7 +4,7 @@ import pytest
 from capture_builders import a_message, a_pipeline
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 
 from stash.llm import LlmDeferred, LlmError, LlmUnavailable
@@ -14,7 +14,7 @@ PROVIDER_TEXT = "provider says: key sk-fake-123 rejected"
 
 
 def deferred_entries(error: LlmError) -> tuple[list[tuple[int, str]], str]:
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler(error=error))
     with recording_logs(PIPELINE_LOGGER) as recorder:
         pipeline.handle(a_message())

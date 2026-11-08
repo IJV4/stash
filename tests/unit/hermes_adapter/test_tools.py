@@ -8,7 +8,7 @@ from app_builders import stored
 from builders import BASE, an_item
 from fakes.failing_list_store import FailingListStore
 from fakes.failing_search_store import FailingSearchStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 
 from stash.domain import ItemType, Stage
@@ -19,7 +19,7 @@ LOGGER = "stash.hermes_adapter.tools"
 NOT_DICTS = [None, "ramen", ["ramen"], 3]
 
 
-def ramen_and_dune() -> MemoryStore:
+def ramen_and_dune() -> FreshStore:
     return stored(
         an_item(id="a", capture_id="ca", title="Ramen in Shibuya", created_at=BASE),
         an_item(
@@ -41,12 +41,12 @@ def ramen_and_dune() -> MemoryStore:
     )
 
 
-def searched(args: Any, store: MemoryStore | None = None) -> dict[str, Any]:
+def searched(args: Any, store: FreshStore | None = None) -> dict[str, Any]:
     answer: dict[str, Any] = json.loads(StashTools(store or ramen_and_dune()).search(args))
     return answer
 
 
-def listed(args: Any, store: MemoryStore | None = None) -> dict[str, Any]:
+def listed(args: Any, store: FreshStore | None = None) -> dict[str, Any]:
     answer: dict[str, Any] = json.loads(StashTools(store or ramen_and_dune()).list_items(args))
     return answer
 

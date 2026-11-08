@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from backup_builders import BACKED_UP_AT, a_backups
 from fakes.backup_source import FakeBackupSource
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 
 from stash.store import BACKUP_LAST_SUCCESS_KEY, BackupError, StoreBusyError
@@ -336,7 +336,7 @@ def test_a_backup_error_from_the_source_propagates_and_leaves_no_temporary_file(
 
 def test_a_successful_backup_records_when_it_happened(tmp_path: Path) -> None:
     # Setup
-    settings = MemoryStore()
+    settings = FreshStore()
 
     # Execute
     a_backups(FakeBackupSource(), settings).write(tmp_path, TODAY)
@@ -347,7 +347,7 @@ def test_a_successful_backup_records_when_it_happened(tmp_path: Path) -> None:
 
 def test_a_failed_copy_records_no_success(tmp_path: Path) -> None:
     # Setup
-    settings = MemoryStore()
+    settings = FreshStore()
     source = FakeBackupSource()
     source.fail_with = OSError("disk full")
 

@@ -8,8 +8,8 @@ from fakes.capture_filer import FakeCaptureFiler
 from fakes.failing_link_store import FailingLinkStore
 from fakes.failing_status_store import FailingStatusStore, StatusWriteFailed
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
 from fakes.recording_linker import RecordingLinker
+from fakes.store_factories import FreshStore
 from log_records import recording_logs
 
 from stash.capture import Filed
@@ -26,7 +26,7 @@ def a_rig_whose_linking_fails() -> CaptureRig:
 def test_an_item_filed_from_an_agent_capture_is_handed_to_the_linker() -> None:
     # Setup
     linker = RecordingLinker()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler(), linker=linker)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler(), linker=linker)
 
     # Execute
     result = pipeline.handle(an_agent_message())

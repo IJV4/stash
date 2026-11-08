@@ -2,7 +2,7 @@ from datetime import date
 from typing import Any
 
 from builders import PLANNED_FOR, an_item, fetched_item, stored
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from tool_rig import a_tool_store, answer_of, lifecycle_tools_over
 
 from stash.domain import Stage
@@ -11,13 +11,13 @@ PLANNED_ITEM = "pl1"
 NEW_DATE = date(2026, 11, 21)
 
 
-def a_store_with_a_planned_item() -> MemoryStore:
+def a_store_with_a_planned_item() -> FreshStore:
     store = a_tool_store()
     stored(store, an_item(id=PLANNED_ITEM, stage=Stage.PLANNED, date=PLANNED_FOR))
     return store
 
 
-def dated(arguments: dict[str, Any], store: MemoryStore) -> dict[str, Any]:
+def dated(arguments: dict[str, Any], store: FreshStore) -> dict[str, Any]:
     return answer_of(lifecycle_tools_over(store).set_date({"item_id": PLANNED_ITEM, **arguments}))
 
 

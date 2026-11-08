@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app_builders import an_app
 from cli_session import Session
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import (
     SATURDAY_MORNING,
     stored_date_night_with_its_step,
@@ -22,8 +22,8 @@ def tick(app: StashApp, directory: Path, *flags: str) -> str:
     return session.out.getvalue()
 
 
-def a_stash_with_a_date_night_reminder_due() -> MemoryStore:
-    store = MemoryStore()
+def a_stash_with_a_date_night_reminder_due() -> FreshStore:
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     a_nudge_rig(store).digests_before_were_sent(SATURDAY_MORNING)
     return store
@@ -31,7 +31,7 @@ def a_stash_with_a_date_night_reminder_due() -> MemoryStore:
 
 def test_tick_with_nothing_due_prints_nothing_at_all(tmp_path: Path) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     a_nudge_rig(store).digests_before_were_sent(SATURDAY_MORNING)
     app = an_app(store=store, clock=lambda: SATURDAY_MORNING)
 

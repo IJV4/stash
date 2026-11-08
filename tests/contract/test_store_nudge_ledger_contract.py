@@ -10,7 +10,7 @@ from builders import (
     SPRING_FORWARD_DAY,
     in_los_angeles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from step_builders import DUE_AT, a_nudge
 
 from stash.domain import NudgeKind
@@ -21,7 +21,7 @@ FALL_BACK_FIRST_PASS = in_los_angeles(FALL_BACK_DAY, 1, 30, fold=0)
 FALL_BACK_SECOND_PASS = in_los_angeles(FALL_BACK_DAY, 1, 30, fold=1)
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_that_was_never_recorded_was_not_sent(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -32,7 +32,7 @@ def test_a_nudge_that_was_never_recorded_was_not_sent(open_store: StoreFactory) 
         assert sent is False
 
 
-@all_stores
+@on_sqlite
 def test_a_recorded_nudge_was_sent(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -46,7 +46,7 @@ def test_a_recorded_nudge_was_sent(open_store: StoreFactory) -> None:
         assert sent is True
 
 
-@all_stores
+@on_sqlite
 def test_recording_a_new_nudge_reports_that_it_was_recorded(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -57,7 +57,7 @@ def test_recording_a_new_nudge_reports_that_it_was_recorded(open_store: StoreFac
         assert recorded is True
 
 
-@all_stores
+@on_sqlite
 def test_recording_the_same_nudge_a_second_time_reports_that_it_was_already_recorded(
     open_store: StoreFactory,
 ) -> None:
@@ -72,7 +72,7 @@ def test_recording_the_same_nudge_a_second_time_reports_that_it_was_already_reco
         assert recorded is False
 
 
-@all_stores
+@on_sqlite
 def test_recording_the_same_instant_in_another_offset_reports_that_it_was_already_recorded(
     open_store: StoreFactory,
 ) -> None:
@@ -87,7 +87,7 @@ def test_recording_the_same_instant_in_another_offset_reports_that_it_was_alread
         assert recorded is False
 
 
-@all_stores
+@on_sqlite
 def test_recording_a_nudge_twice_keeps_the_first_send_time(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -101,7 +101,7 @@ def test_recording_a_nudge_twice_keeps_the_first_send_time(open_store: StoreFact
         assert last == BASE
 
 
-@all_stores
+@on_sqlite
 def test_recording_a_nudge_again_earlier_still_keeps_the_first_send_time(
     open_store: StoreFactory,
 ) -> None:
@@ -117,7 +117,7 @@ def test_recording_a_nudge_again_earlier_still_keeps_the_first_send_time(
         assert last == LATER
 
 
-@all_stores
+@on_sqlite
 def test_the_same_instant_written_in_another_offset_is_the_same_nudge(
     open_store: StoreFactory,
 ) -> None:
@@ -132,7 +132,7 @@ def test_the_same_instant_written_in_another_offset_is_the_same_nudge(
         assert sent is True
 
 
-@all_stores
+@on_sqlite
 def test_recording_the_same_instant_in_another_offset_keeps_the_first_send_time(
     open_store: StoreFactory,
 ) -> None:
@@ -148,7 +148,7 @@ def test_recording_the_same_instant_in_another_offset_keeps_the_first_send_time(
         assert last == BASE
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_of_another_kind_is_a_different_nudge(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -161,7 +161,7 @@ def test_a_nudge_of_another_kind_is_a_different_nudge(open_store: StoreFactory) 
         assert sent is False
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_for_another_subject_is_a_different_nudge(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -174,7 +174,7 @@ def test_a_nudge_for_another_subject_is_a_different_nudge(open_store: StoreFacto
         assert sent is False
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_due_at_another_instant_is_a_different_nudge(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -187,7 +187,7 @@ def test_a_nudge_due_at_another_instant_is_a_different_nudge(open_store: StoreFa
         assert sent is False
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_due_a_day_apart_in_one_zone_across_a_clock_change_is_a_different_nudge(
     open_store: StoreFactory,
 ) -> None:
@@ -202,7 +202,7 @@ def test_a_nudge_due_a_day_apart_in_one_zone_across_a_clock_change_is_a_differen
         assert sent is False
 
 
-@all_stores
+@on_sqlite
 def test_the_two_passes_over_a_repeated_local_hour_are_different_nudges(
     open_store: StoreFactory,
 ) -> None:
@@ -217,7 +217,7 @@ def test_the_two_passes_over_a_repeated_local_hour_are_different_nudges(
         assert sent is False
 
 
-@all_stores
+@on_sqlite
 def test_a_recorded_dst_nudge_was_sent(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -230,7 +230,7 @@ def test_a_recorded_dst_nudge_was_sent(open_store: StoreFactory) -> None:
         assert sent is True
 
 
-@all_stores
+@on_sqlite
 def test_last_sent_is_none_when_nothing_was_recorded(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -241,7 +241,7 @@ def test_last_sent_is_none_when_nothing_was_recorded(open_store: StoreFactory) -
         assert last is None
 
 
-@all_stores
+@on_sqlite
 def test_last_sent_ignores_nudges_of_other_kinds(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -254,7 +254,7 @@ def test_last_sent_ignores_nudges_of_other_kinds(open_store: StoreFactory) -> No
         assert last is None
 
 
-@all_stores
+@on_sqlite
 def test_last_sent_is_the_latest_send_time_of_the_kind(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -271,7 +271,7 @@ def test_last_sent_is_the_latest_send_time_of_the_kind(open_store: StoreFactory)
         assert last == LATER
 
 
-@all_stores
+@on_sqlite
 def test_last_sent_compares_send_times_as_instants_across_offsets(
     open_store: StoreFactory,
 ) -> None:
@@ -289,7 +289,7 @@ def test_last_sent_compares_send_times_as_instants_across_offsets(
         assert last == LATER
 
 
-@all_stores
+@on_sqlite
 def test_last_sent_returns_an_aware_utc_datetime(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -302,7 +302,7 @@ def test_last_sent_returns_an_aware_utc_datetime(open_store: StoreFactory) -> No
         assert last is not None and last.utcoffset() == timedelta(0)
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_recorded_with_a_naive_send_time_was_not_sent(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

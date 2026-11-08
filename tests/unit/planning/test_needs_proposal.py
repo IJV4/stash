@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from builders import stored
 from fakes.fake_step_proposals import FakeStepProposals
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from planning_builders import DATE_NIGHT_ID, DATE_NIGHT_ON, a_date_night
 from planning_rig import planning_over
 from step_builders import a_step
@@ -14,18 +14,18 @@ NOON_ON_THE_DATE = datetime(2027, 2, 12, 12, 0, tzinfo=UTC)
 UTC_TOMORROW_STILL_TODAY_IN_LOS_ANGELES = datetime(2027, 2, 13, 3, 0, tzinfo=UTC)
 
 
-def planning_for(store: MemoryStore, now: datetime = NOON_ON_THE_DATE) -> Planning:
+def planning_for(store: FreshStore, now: datetime = NOON_ON_THE_DATE) -> Planning:
     return planning_over(store, FakeStepProposals(), lambda: now)
 
 
-def with_steps(store: MemoryStore, *, confirmed: bool) -> None:
+def with_steps(store: FreshStore, *, confirmed: bool) -> None:
     store.save_steps(DATE_NIGHT_ID, [a_step(item_id=DATE_NIGHT_ID, confirmed=confirmed)])
 
 
 def needs_proposal(
     item: Item, *, confirmed_steps: bool | None = None, now: datetime = NOON_ON_THE_DATE
 ) -> bool:
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, item)
     if confirmed_steps is not None:
         with_steps(store, confirmed=confirmed_steps)

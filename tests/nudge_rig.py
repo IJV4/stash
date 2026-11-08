@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import a_nudge_schedule, a_person_dates
 
 from stash.capture import Reply
@@ -21,7 +21,7 @@ class UnbuiltDigests:
 
 @dataclass(slots=True)
 class NudgeRig:
-    store: MemoryStore
+    store: FreshStore
     schedule: Schedule
     nudger: Nudger
     send: Callable[[Reply], None]
@@ -55,9 +55,9 @@ def sending_nowhere(reply: Reply) -> None:
 
 
 def a_nudge_rig(
-    store: MemoryStore | None = None, send: Callable[[Reply], None] = sending_nowhere
+    store: FreshStore | None = None, send: Callable[[Reply], None] = sending_nowhere
 ) -> NudgeRig:
-    store = store or MemoryStore()
+    store = store or FreshStore()
     schedule = a_nudge_schedule()
     nudger = Nudger(store, schedule, a_person_dates(store, schedule))
     return NudgeRig(store, schedule, nudger, send, NudgeDelivery(nudger, UnbuiltDigests()))

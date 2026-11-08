@@ -1,4 +1,4 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import CaptureStatus
 
@@ -7,7 +7,7 @@ class StatusWriteFailed(Exception):
     pass
 
 
-class FailingStatusStore(MemoryStore):
+class FailingStatusStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.fail_next_status_write = False

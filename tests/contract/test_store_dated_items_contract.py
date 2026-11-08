@@ -11,7 +11,7 @@ from builders import (
     stored_item,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Item, Stage
 from stash.store import Store
@@ -44,7 +44,7 @@ def planned_on(store: Store, item_id: str, day: date, **overrides: Any) -> Item:
     return stored_item(store, id=item_id, title=item_id, stage=Stage.PLANNED, date=day, **overrides)
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_includes_an_item_dated_on_the_start_day(
     open_store: StoreFactory, query: DatedQuery
@@ -60,7 +60,7 @@ def test_a_dated_query_includes_an_item_dated_on_the_start_day(
         assert titles(listed) == ["on-start"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_includes_an_item_dated_on_the_end_day(
     open_store: StoreFactory, query: DatedQuery
@@ -76,7 +76,7 @@ def test_a_dated_query_includes_an_item_dated_on_the_end_day(
         assert titles(listed) == ["on-end"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_leaves_out_an_item_dated_the_day_before_the_start(
     open_store: StoreFactory, query: DatedQuery
@@ -92,7 +92,7 @@ def test_a_dated_query_leaves_out_an_item_dated_the_day_before_the_start(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_leaves_out_an_item_dated_the_day_after_the_end(
     open_store: StoreFactory, query: DatedQuery
@@ -108,7 +108,7 @@ def test_a_dated_query_leaves_out_an_item_dated_the_day_after_the_end(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_over_a_single_day_returns_the_items_of_that_day(
     open_store: StoreFactory, query: DatedQuery
@@ -125,7 +125,7 @@ def test_a_dated_query_over_a_single_day_returns_the_items_of_that_day(
         assert titles(listed) == ["the-day"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_lists_the_earlier_date_first(
     open_store: StoreFactory, query: DatedQuery
@@ -143,7 +143,7 @@ def test_a_dated_query_lists_the_earlier_date_first(
         assert titles(listed) == ["early", "middle", "late"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_lists_the_earlier_created_item_first_within_a_date(
     open_store: StoreFactory, query: DatedQuery
@@ -160,7 +160,7 @@ def test_a_dated_query_lists_the_earlier_created_item_first_within_a_date(
         assert titles(listed) == ["b-older", "a-newer"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_orders_creation_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory, query: DatedQuery
@@ -177,7 +177,7 @@ def test_a_dated_query_orders_creation_by_instant_rather_than_local_wall_clock(
         assert titles(listed) == ["plus-five", "utc-noon"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_breaks_a_tie_on_date_and_creation_by_ascending_id(
     open_store: StoreFactory, query: DatedQuery
@@ -194,7 +194,7 @@ def test_a_dated_query_breaks_a_tie_on_date_and_creation_by_ascending_id(
         assert titles(listed) == ["a", "b"]
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_on_an_empty_store_returns_nothing(
     open_store: StoreFactory, query: DatedQuery
@@ -208,7 +208,7 @@ def test_a_dated_query_on_an_empty_store_returns_nothing(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 @both_dated_queries
 def test_a_dated_query_with_a_start_after_the_end_raises_value_error(
     open_store: StoreFactory, query: DatedQuery
@@ -219,7 +219,7 @@ def test_a_dated_query_with_a_start_after_the_end_raises_value_error(
         query(store, END, START)
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize("stage", list(Stage), ids=lambda stage: stage.value)
 def test_items_dated_between_returns_an_item_of_every_stage(
     open_store: StoreFactory, stage: Stage
@@ -235,7 +235,7 @@ def test_items_dated_between_returns_an_item_of_every_stage(
         assert titles(listed) == ["any"]
 
 
-@all_stores
+@on_sqlite
 def test_items_dated_between_never_returns_an_item_without_a_date(
     open_store: StoreFactory,
 ) -> None:
@@ -250,7 +250,7 @@ def test_items_dated_between_never_returns_an_item_without_a_date(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_items_dated_between_returns_an_item_that_already_has_an_outcome(
     open_store: StoreFactory,
 ) -> None:
@@ -266,7 +266,7 @@ def test_items_dated_between_returns_an_item_that_already_has_an_outcome(
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(
     "stage", [stage for stage in Stage if stage is not Stage.PLANNED], ids=lambda stage: stage.value
 )
@@ -284,7 +284,7 @@ def test_planned_awaiting_outcome_leaves_out_a_dated_item_of_another_stage(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_planned_awaiting_outcome_leaves_out_a_planned_item_that_has_an_outcome(
     open_store: StoreFactory,
 ) -> None:
@@ -300,7 +300,7 @@ def test_planned_awaiting_outcome_leaves_out_a_planned_item_that_has_an_outcome(
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_planned_awaiting_outcome_leaves_out_a_planned_item_with_several_outcomes(
     open_store: StoreFactory,
 ) -> None:
@@ -317,7 +317,7 @@ def test_planned_awaiting_outcome_leaves_out_a_planned_item_with_several_outcome
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_planned_awaiting_outcome_keeps_a_repeat_item_whose_outcome_is_from_an_earlier_date(
     open_store: StoreFactory,
 ) -> None:
@@ -333,7 +333,7 @@ def test_planned_awaiting_outcome_keeps_a_repeat_item_whose_outcome_is_from_an_e
         assert titles(listed) == ["repeat"]
 
 
-@all_stores
+@on_sqlite
 def test_planned_awaiting_outcome_keeps_a_planned_item_whose_neighbour_has_an_outcome(
     open_store: StoreFactory,
 ) -> None:

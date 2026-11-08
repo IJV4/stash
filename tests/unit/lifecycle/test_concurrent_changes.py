@@ -12,7 +12,7 @@ from builders import (
 )
 from fakes.busy_store import BusyStore
 from fakes.changing_item_store import RETITLED_BY_ANOTHER_WRITER, ChangingItemStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
@@ -51,7 +51,7 @@ OPERATIONS = [
 ]
 
 
-def holding(store: MemoryStore, operation: Operation) -> None:
+def holding(store: FreshStore, operation: Operation) -> None:
     stored(store, a_parent_item())
     stored(store, operation.item)
 

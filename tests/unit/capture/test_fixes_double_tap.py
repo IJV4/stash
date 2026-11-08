@@ -10,7 +10,7 @@ from capture_builders import (
     text_of,
 )
 from capture_rig import a_fix_handler
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.capture import Reply, Reroute
 from stash.capture.completion_buttons import DOUBLE_TAP_WINDOW
@@ -25,20 +25,20 @@ SORTS_AFTER_THE_OLD_OUTCOME = COMPLETED_ON + ONE_DAY
 SORTS_BEFORE_IT = COMPLETED_ON - ONE_DAY
 
 
-def pressing_done(store: MemoryStore, now: datetime) -> Reply | Reroute:
+def pressing_done(store: FreshStore, now: datetime) -> Reply | Reroute:
     return a_fix_handler(store, lambda: now).apply(DONE_PRESS)
 
 
-def fetched_outcome_of(store: MemoryStore) -> Outcome:
+def fetched_outcome_of(store: FreshStore) -> Outcome:
     [outcome] = store.outcomes_for(COMPLETED_ITEM_ID)
     return outcome
 
 
-def first_tap_reply(store: MemoryStore, outcome: Outcome) -> Reply:
+def first_tap_reply(store: FreshStore, outcome: Outcome) -> Reply:
     return done_reply(Completion(fetched_item(store, COMPLETED_ITEM_ID), outcome, repeat=False))
 
 
-def stored_outcome_recorded(store: MemoryStore, outcome_id: str, **overrides: object) -> Outcome:
+def stored_outcome_recorded(store: FreshStore, outcome_id: str, **overrides: object) -> Outcome:
     outcome = an_outcome(id=outcome_id, item_id=COMPLETED_ITEM_ID, **overrides)
     store.add_outcome(outcome)
     return outcome
@@ -226,7 +226,7 @@ def test_a_press_within_the_window_leaves_the_item_as_it_was() -> None:
 
 def test_pressing_done_on_an_item_reopened_since_a_recent_outcome_records_a_new_outcome() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id=COMPLETED_ITEM_ID, stage=Stage.DOING)
     stored_outcome_recorded(store, COMPLETED_OUTCOME_ID, recorded_at=BASE)
 
@@ -239,7 +239,7 @@ def test_pressing_done_on_an_item_reopened_since_a_recent_outcome_records_a_new_
 
 def test_pressing_done_on_an_item_reopened_since_a_recent_outcome_completes_it_again() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id=COMPLETED_ITEM_ID, stage=Stage.DOING)
     stored_outcome_recorded(store, COMPLETED_OUTCOME_ID, recorded_at=BASE)
 
@@ -252,7 +252,7 @@ def test_pressing_done_on_an_item_reopened_since_a_recent_outcome_completes_it_a
 
 def test_pressing_done_on_a_done_item_without_any_outcome_records_one() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id=COMPLETED_ITEM_ID, stage=Stage.DONE)
 
     # Execute

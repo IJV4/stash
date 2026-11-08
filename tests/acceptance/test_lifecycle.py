@@ -1,7 +1,7 @@
 import pytest
 from builders import LATER, an_item, fetched_item, stored_completion, stored_item, titles
-from fakes.memory_store import MemoryStore
 from fakes.racing_item_store import RacingItemStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import ItemType, Stage
@@ -12,7 +12,7 @@ def test_finishing_a_book_with_a_rating_and_two_takeaways_moves_it_to_done_with_
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="book", title="Dune", item_type=ItemType.BOOK, stage=Stage.DOING)
     lifecycle = a_lifecycle(store)
 
@@ -31,7 +31,7 @@ def test_making_a_kept_recipe_again_records_a_second_outcome_and_keeps_the_first
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "recipe", title="Pad thai", item_type=ItemType.RECIPE, kept=True)
     first = store.outcomes_for("recipe")[0]
     lifecycle = a_lifecycle(store, clock=lambda: LATER)
@@ -50,7 +50,7 @@ def test_making_a_kept_recipe_again_records_a_second_outcome_and_keeps_the_first
 
 def test_dropping_an_item_with_a_reason_moves_it_to_dropped_and_search_still_finds_it() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(
         store, id="desk", title="Standing desk", item_type=ItemType.PURCHASE, stage=Stage.WANT_TO
     )
@@ -68,7 +68,7 @@ def test_dropping_an_item_with_a_reason_moves_it_to_dropped_and_search_still_fin
 
 def test_grouping_tokyo_ramen_under_japan_trip_lists_the_ramen_among_the_trips_children() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="trip", title="Japan trip", item_type=ItemType.PLAN)
     stored_item(store, id="ramen", title="Tokyo ramen")
     lifecycle = a_lifecycle(store)
@@ -82,7 +82,7 @@ def test_grouping_tokyo_ramen_under_japan_trip_lists_the_ramen_among_the_trips_c
 
 def test_grouping_japan_trip_under_the_ramen_it_holds_is_refused_and_nothing_changes() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="trip", title="Japan trip", item_type=ItemType.PLAN)
     stored_item(store, id="ramen", title="Tokyo ramen", parent_id="trip")
     before = store.list_items()

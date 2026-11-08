@@ -4,7 +4,7 @@ from builders import BASE, PLANNED_FOR, an_item_at, fetched_item, fetched_outcom
 from capture_builders import COMPLETED_OUTCOME_ID, a_store_with_a_completed_item
 from fakes.busy_store import BusyStore
 from fakes.changing_item_store import ChangingItemStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from log_records import recording_logs
 
@@ -18,7 +18,7 @@ STORED_RATING = 4
 PLANNED_DAY = f"{PLANNED_FOR:%Y%m%d}"
 
 
-def completion_buttons_over(store: MemoryStore) -> CompletionButtons:
+def completion_buttons_over(store: FreshStore) -> CompletionButtons:
     return CompletionButtons(
         store,
         a_lifecycle(store),
@@ -123,7 +123,7 @@ def test_a_press_while_the_store_is_busy_is_logged_at_warning() -> None:
 
 def test_a_press_without_a_readable_day_answers_gone() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.PLANNED))
 
     # Execute
@@ -135,7 +135,7 @@ def test_a_press_without_a_readable_day_answers_gone() -> None:
 
 def test_a_press_without_a_readable_day_changes_nothing() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planned = stored(store, an_item_at(Stage.PLANNED))
 
     # Execute
@@ -147,7 +147,7 @@ def test_a_press_without_a_readable_day_changes_nothing() -> None:
 
 def test_a_press_for_a_day_other_than_the_items_date_answers_changed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.PLANNED))
 
     # Execute
@@ -159,7 +159,7 @@ def test_a_press_for_a_day_other_than_the_items_date_answers_changed() -> None:
 
 def test_a_press_for_a_day_other_than_the_items_date_leaves_the_item_planned() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planned = stored(store, an_item_at(Stage.PLANNED))
 
     # Execute

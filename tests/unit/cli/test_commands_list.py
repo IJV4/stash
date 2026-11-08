@@ -2,14 +2,14 @@ import io
 
 from app_builders import stored
 from builders import BASE, an_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.cli.commands import list_items
 from stash.domain import ItemType, Stage
 from stash.store import ItemStore
 
 
-def four_items() -> MemoryStore:
+def four_items() -> FreshStore:
     return stored(
         an_item(id="a", capture_id="ca", title="Ichiran", stage=Stage.WANT_TO, created_at=BASE),
         an_item(
@@ -87,7 +87,7 @@ def test_list_caps_the_number_of_items_at_the_limit() -> None:
 
 def test_list_with_nothing_to_show_prints_no_items() -> None:
     # Execute
-    output = listed(MemoryStore())
+    output = listed(FreshStore())
 
     # Assert
     assert output == "No items.\n"
@@ -95,7 +95,7 @@ def test_list_with_nothing_to_show_prints_no_items() -> None:
 
 def test_list_exits_0() -> None:
     # Execute
-    exit_code = list_items(MemoryStore(), None, None, 20, io.StringIO())
+    exit_code = list_items(FreshStore(), None, None, 20, io.StringIO())
 
     # Assert
     assert exit_code == 0

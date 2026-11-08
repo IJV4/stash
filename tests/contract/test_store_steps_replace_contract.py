@@ -1,13 +1,13 @@
 import pytest
 from builders import BASE, PLUS_FIVE
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from step_builders import a_step
 from step_store_helpers import DUE_ON, ids_of, with_items
 
 from stash.store import DuplicateStepError, UnknownItemError
 
 
-@all_stores
+@on_sqlite
 def test_steps_saved_for_an_item_with_a_lead_time_read_back_unchanged(
     open_store: StoreFactory,
 ) -> None:
@@ -24,7 +24,7 @@ def test_steps_saved_for_an_item_with_a_lead_time_read_back_unchanged(
         assert found == [step]
 
 
-@all_stores
+@on_sqlite
 def test_steps_saved_with_an_absolute_date_read_back_unchanged(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -39,7 +39,7 @@ def test_steps_saved_with_an_absolute_date_read_back_unchanged(open_store: Store
         assert found == [step]
 
 
-@all_stores
+@on_sqlite
 def test_a_confirmed_done_step_reads_back_confirmed_and_done(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -53,7 +53,7 @@ def test_a_confirmed_done_step_reads_back_confirmed_and_done(open_store: StoreFa
         assert [(step.confirmed, step.done) for step in found] == [(True, True)]
 
 
-@all_stores
+@on_sqlite
 def test_an_unconfirmed_open_step_reads_back_unconfirmed_and_open(
     open_store: StoreFactory,
 ) -> None:
@@ -69,7 +69,7 @@ def test_an_unconfirmed_open_step_reads_back_unconfirmed_and_open(
         assert [(step.confirmed, step.done) for step in found] == [(False, False)]
 
 
-@all_stores
+@on_sqlite
 def test_a_step_created_in_another_offset_reads_back_at_the_same_instant(
     open_store: StoreFactory,
 ) -> None:
@@ -85,7 +85,7 @@ def test_a_step_created_in_another_offset_reads_back_at_the_same_instant(
         assert [step.created_at for step in found] == [BASE]
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_replaces_the_items_earlier_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -100,7 +100,7 @@ def test_saving_steps_replaces_the_items_earlier_steps(open_store: StoreFactory)
         assert ids_of(found) == ["s3"]
 
 
-@all_stores
+@on_sqlite
 def test_replaced_steps_can_no_longer_be_fetched_by_id(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -115,7 +115,7 @@ def test_replaced_steps_can_no_longer_be_fetched_by_id(open_store: StoreFactory)
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_saving_no_steps_clears_the_items_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -130,7 +130,7 @@ def test_saving_no_steps_clears_the_items_steps(open_store: StoreFactory) -> Non
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_for_an_item_leaves_other_items_steps_untouched(
     open_store: StoreFactory,
 ) -> None:
@@ -147,7 +147,7 @@ def test_saving_steps_for_an_item_leaves_other_items_steps_untouched(
         assert store.steps_for("i2") == [other]
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_with_an_id_held_by_another_item_raises_duplicate_step_error(
     open_store: StoreFactory,
 ) -> None:
@@ -161,7 +161,7 @@ def test_saving_steps_with_an_id_held_by_another_item_raises_duplicate_step_erro
             store.save_steps("i2", [a_step(id="s1", item_id="i2", text="Moved")])
 
 
-@all_stores
+@on_sqlite
 def test_refusing_a_step_id_held_by_another_item_leaves_both_items_steps_unchanged(
     open_store: StoreFactory,
 ) -> None:
@@ -184,7 +184,7 @@ def test_refusing_a_step_id_held_by_another_item_leaves_both_items_steps_unchang
         assert found == ([owned], [earlier])
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_for_an_unknown_item_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -198,7 +198,7 @@ def test_saving_steps_for_an_unknown_item_raises_unknown_item_error(
         assert refused.value.item_id == "missing"
 
 
-@all_stores
+@on_sqlite
 def test_saving_no_steps_for_an_unknown_item_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -208,7 +208,7 @@ def test_saving_no_steps_for_an_unknown_item_raises_unknown_item_error(
         store.save_steps("missing", [])
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_for_an_unknown_item_stores_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -222,7 +222,7 @@ def test_saving_steps_for_an_unknown_item_stores_nothing(open_store: StoreFactor
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_with_a_repeated_id_keeps_the_earlier_steps(
     open_store: StoreFactory,
 ) -> None:
@@ -241,7 +241,7 @@ def test_saving_steps_with_a_repeated_id_keeps_the_earlier_steps(
         assert found == [earlier]
 
 
-@all_stores
+@on_sqlite
 def test_saving_a_step_of_another_item_keeps_the_earlier_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -258,7 +258,7 @@ def test_saving_a_step_of_another_item_keeps_the_earlier_steps(open_store: Store
         assert found == [earlier]
 
 
-@all_stores
+@on_sqlite
 def test_saving_steps_of_an_unknown_item_whose_id_is_held_elsewhere_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:

@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 from builders import BASE, PLUS_FIVE
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from override_rig import an_override
 
 A_YEAR_AND_A_DAY = timedelta(days=366)
@@ -11,7 +11,7 @@ A_YEAR_AND_A_DAY = timedelta(days=366)
 
 def test_expiry_is_stored_under_the_manual_off_setting_as_utc_iso_8601() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     override = an_override(store)
 
     # Execute
@@ -23,7 +23,7 @@ def test_expiry_is_stored_under_the_manual_off_setting_as_utc_iso_8601() -> None
 
 def test_turning_on_stores_an_empty_value_under_the_manual_off_setting() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     override = an_override(store)
     override.off(BASE)
 
@@ -36,7 +36,7 @@ def test_turning_on_stores_an_empty_value_under_the_manual_off_setting() -> None
 
 def test_a_new_override_on_the_same_store_sees_the_active_expiry() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     expiry = an_override(store).off(BASE)
 
     # Execute
@@ -48,7 +48,7 @@ def test_a_new_override_on_the_same_store_sees_the_active_expiry() -> None:
 
 def test_a_new_override_on_the_same_store_sees_that_it_was_turned_on() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     first = an_override(store)
     first.off(BASE)
     first.on()
@@ -62,7 +62,7 @@ def test_a_new_override_on_the_same_store_sees_that_it_was_turned_on() -> None:
 
 def test_a_stored_value_that_is_not_a_timestamp_is_inactive() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "next tuesday")
 
     # Execute
@@ -74,7 +74,7 @@ def test_a_stored_value_that_is_not_a_timestamp_is_inactive() -> None:
 
 def test_a_stored_timestamp_without_an_offset_is_inactive() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "2026-11-02T16:00:00")
 
     # Execute
@@ -88,7 +88,7 @@ def test_a_stored_value_that_is_not_a_timestamp_is_logged_as_a_warning_naming_th
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "next tuesday")
 
     # Execute
@@ -104,7 +104,7 @@ def test_a_stored_timestamp_without_an_offset_is_logged_as_a_warning_naming_the_
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "2026-11-02T16:00:00")
 
     # Execute
@@ -120,7 +120,7 @@ def test_the_warning_for_a_corrupt_value_does_not_repeat_the_value(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "next tuesday")
 
     # Execute
@@ -144,7 +144,7 @@ def test_a_valid_stored_value_logs_nothing(caplog: pytest.LogCaptureFixture) -> 
 
 def test_a_stored_expiry_far_beyond_any_switch_off_is_inactive() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "9999-12-31T23:00:00+00:00")
 
     # Execute
@@ -156,7 +156,7 @@ def test_a_stored_expiry_far_beyond_any_switch_off_is_inactive() -> None:
 
 def test_a_stored_expiry_exactly_a_year_and_a_day_ahead_is_still_active() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     expiry = BASE + A_YEAR_AND_A_DAY
     store.put_setting("gpu.manual_off_until", expiry.isoformat())
 
@@ -169,7 +169,7 @@ def test_a_stored_expiry_exactly_a_year_and_a_day_ahead_is_still_active() -> Non
 
 def test_a_stored_expiry_one_second_beyond_a_year_and_a_day_ahead_is_inactive() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting(
         "gpu.manual_off_until", (BASE + A_YEAR_AND_A_DAY + timedelta(seconds=1)).isoformat()
     )
@@ -185,7 +185,7 @@ def test_a_stored_expiry_far_beyond_any_switch_off_is_logged_as_a_warning_naming
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "9999-12-31T23:00:00+00:00")
 
     # Execute
@@ -201,7 +201,7 @@ def test_the_warning_for_a_far_future_expiry_does_not_repeat_the_value(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "9999-12-31T23:00:00+00:00")
 
     # Execute

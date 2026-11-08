@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 from builders import BASE, stored_completion, stored_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.cli.commands import library, show
@@ -12,8 +12,8 @@ from stash.domain import ItemType
 from stash.lifecycle import LibraryQuery
 
 
-def a_library() -> MemoryStore:
-    store = MemoryStore()
+def a_library() -> FreshStore:
+    store = FreshStore()
     stored_completion(store, "dune", title="Dune", item_type=ItemType.BOOK, kept=True)
     stored_completion(
         store,
@@ -62,7 +62,7 @@ def test_library_with_nothing_kept_prints_no_items() -> None:
     out = io.StringIO()
 
     # Execute
-    library(a_lifecycle(MemoryStore()), LibraryQuery(), out)
+    library(a_lifecycle(FreshStore()), LibraryQuery(), out)
 
     # Assert
     assert out.getvalue() == "No items.\n"
@@ -70,7 +70,7 @@ def test_library_with_nothing_kept_prints_no_items() -> None:
 
 def test_library_exits_0() -> None:
     # Execute
-    exit_code = library(a_lifecycle(MemoryStore()), LibraryQuery(), io.StringIO())
+    exit_code = library(a_lifecycle(FreshStore()), LibraryQuery(), io.StringIO())
 
     # Assert
     assert exit_code == 0
@@ -78,7 +78,7 @@ def test_library_exits_0() -> None:
 
 def test_show_prints_the_items_history() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="trip", title="Japan trip", item_type=ItemType.PLAN)
     stored_item(store, id="ramen", title="Tokyo ramen", parent_id="trip")
     out = io.StringIO()
@@ -95,7 +95,7 @@ def test_show_prints_the_items_history() -> None:
 
 def test_show_exits_0() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="trip", title="Japan trip")
 
     # Execute
@@ -108,7 +108,7 @@ def test_show_exits_0() -> None:
 def test_show_of_an_unknown_id_fails_with_the_lifecycle_message() -> None:
     # Execute
     with pytest.raises(CommandFailed) as failure:
-        show(a_lifecycle(MemoryStore()), "nope", io.StringIO())
+        show(a_lifecycle(FreshStore()), "nope", io.StringIO())
 
     # Assert
     assert (str(failure.value), failure.value.exit_code) == ("no item 'nope'", FAILURE)

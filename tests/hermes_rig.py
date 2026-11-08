@@ -10,10 +10,10 @@ from capture_builders import SAMPLE_TEXT, sequential_ids
 from capture_rig import CaptureRig, build_rig
 from config_builders import a_stash_config
 from fakes.hermes_ctx import FakeHermesContext
-from fakes.memory_store import MemoryStore
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.recording_assistant import RecordingAssistant
 from fakes.recording_outbox import RecordingOutbox
+from fakes.store_factories import FreshStore
 from hermes_ctx_builders import a_hermes_context
 from hermes_events import OWNER_ID, FakeEvent, an_event
 
@@ -145,7 +145,7 @@ class ButtonRig:
         return self.outbox.edited[-1].reply.text
 
 
-def build_button_rig(store: MemoryStore) -> ButtonRig:
+def build_button_rig(store: FreshStore) -> ButtonRig:
     outbox = RecordingOutbox()
     callbacks = build_callbacks(
         an_app(store=store), Owners.parse(OWNER_ID), outbox, RecordingAssistant()

@@ -4,8 +4,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from builders import BASE
-from fakes.memory_store import MemoryStore
 from fakes.recording_unloader import RecordingUnloader
+from fakes.store_factories import FreshStore
 from gate_rig import CONFIG, a_gate, a_sample
 from log_records import recording_logs
 
@@ -19,7 +19,7 @@ UNREACHABLE = "cannot reach Ollama at http://localhost:11434"
 
 def a_switch(unloader: RecordingUnloader | None = None) -> tuple[GpuSwitch, RecordingUnloader]:
     unloader = unloader or RecordingUnloader()
-    return GpuSwitch(a_gate(a_sample(), store=MemoryStore()), unloader), unloader
+    return GpuSwitch(a_gate(a_sample(), store=FreshStore()), unloader), unloader
 
 
 def test_turning_off_reports_when_the_switch_expires() -> None:

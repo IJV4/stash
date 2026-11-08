@@ -10,10 +10,10 @@ from cli_session import Session
 from eval_builders import an_eval_targets
 from eval_files import write_cases
 from fakes.backup_source import FakeBackupSource
-from fakes.memory_store import MemoryStore
 from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
 from fakes.provider_probe import FakeProviderProbe
+from fakes.store_factories import FreshStore
 
 from stash.config import Thinking
 from stash.doctor import Doctor, DoctorCheck
@@ -229,8 +229,8 @@ def test_the_gpu_commands_read_the_clock_once(tmp_path: Path, argv: tuple[str, .
     assert len(reads) == 1
 
 
-def a_library_of_three_kept_items() -> MemoryStore:
-    store = MemoryStore()
+def a_library_of_three_kept_items() -> FreshStore:
+    store = FreshStore()
     for number, (item_id, item_type) in enumerate(
         [("dune", ItemType.BOOK), ("emma", ItemType.BOOK), ("pad-thai", ItemType.RECIPE)]
     ):
@@ -269,7 +269,7 @@ def test_library_without_flags_lists_every_type(tmp_path: Path) -> None:
 
 def test_show_reads_the_history_of_the_given_item(tmp_path: Path) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="trip", title="Japan trip", item_type=ItemType.PLAN)
     session = Session(tmp_path, an_app(store=store))
 

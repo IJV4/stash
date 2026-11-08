@@ -9,7 +9,7 @@ from capture_builders import (
     text_of,
 )
 from capture_rig import a_fix_handler
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.capture import gone
 from stash.capture.completion_replies import done_reply
@@ -66,7 +66,7 @@ def test_pressing_done_for_an_unknown_item_answers_gone() -> None:
 
 def test_pressing_done_on_an_item_dated_before_today_completes_it_on_its_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item(stage=Stage.PLANNED, date=YESTERDAY))
 
     # Execute
@@ -79,7 +79,7 @@ def test_pressing_done_on_an_item_dated_before_today_completes_it_on_its_date() 
 
 def test_pressing_done_on_an_item_dated_after_today_completes_it_today() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item(stage=Stage.PLANNED, date=PLANNED_FOR))
 
     # Execute

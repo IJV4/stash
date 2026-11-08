@@ -1,6 +1,6 @@
 import pytest
 from builders import BASE, LATER, NAIVE, PLUS_FIVE
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from step_builders import a_nudge
 
 from stash.domain import Nudge, NudgeKind
@@ -13,7 +13,7 @@ def two_new_nudges() -> list[Nudge]:
     ]
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_that_were_all_new_reports_that_all_were_recorded(
     open_store: StoreFactory,
 ) -> None:
@@ -26,7 +26,7 @@ def test_recording_nudges_that_were_all_new_reports_that_all_were_recorded(
         assert recorded_all is True
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_that_were_all_new_marks_every_one_as_sent(
     open_store: StoreFactory,
 ) -> None:
@@ -41,7 +41,7 @@ def test_recording_nudges_that_were_all_new_marks_every_one_as_sent(
         assert [store.was_sent(nudge.key) for nudge in nudges] == [True, True]
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_when_one_was_already_recorded_reports_false(
     open_store: StoreFactory,
 ) -> None:
@@ -57,7 +57,7 @@ def test_recording_nudges_when_one_was_already_recorded_reports_false(
         assert recorded_all is False
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_when_one_was_already_recorded_still_records_the_others(
     open_store: StoreFactory,
 ) -> None:
@@ -73,7 +73,7 @@ def test_recording_nudges_when_one_was_already_recorded_still_records_the_others
         assert store.was_sent(nudges[1].key) is True
 
 
-@all_stores
+@on_sqlite
 def test_a_nudge_that_was_already_recorded_keeps_its_original_send_time(
     open_store: StoreFactory,
 ) -> None:
@@ -90,7 +90,7 @@ def test_a_nudge_that_was_already_recorded_keeps_its_original_send_time(
         assert last == BASE
 
 
-@all_stores
+@on_sqlite
 def test_recording_the_same_nudge_twice_in_one_call_reports_false(
     open_store: StoreFactory,
 ) -> None:
@@ -103,7 +103,7 @@ def test_recording_the_same_nudge_twice_in_one_call_reports_false(
         assert recorded_all is False
 
 
-@all_stores
+@on_sqlite
 def test_recording_no_nudges_reports_that_all_were_recorded(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -114,7 +114,7 @@ def test_recording_no_nudges_reports_that_all_were_recorded(open_store: StoreFac
         assert recorded_all is True
 
 
-@all_stores
+@on_sqlite
 def test_recording_no_nudges_records_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -127,7 +127,7 @@ def test_recording_no_nudges_records_nothing(open_store: StoreFactory) -> None:
         assert last is None
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_with_a_naive_send_time_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store, pytest.raises(ValueError, match="sent_at"):
@@ -135,7 +135,7 @@ def test_recording_nudges_with_a_naive_send_time_is_refused(open_store: StoreFac
         store.record_all_sent(two_new_nudges(), NAIVE)
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_with_a_naive_send_time_records_none_of_them(
     open_store: StoreFactory,
 ) -> None:
@@ -152,7 +152,7 @@ def test_recording_nudges_with_a_naive_send_time_records_none_of_them(
         assert sent == [False, False]
 
 
-@all_stores
+@on_sqlite
 def test_recording_nudges_with_a_naive_send_time_is_refused_even_when_there_are_none(
     open_store: StoreFactory,
 ) -> None:
@@ -162,7 +162,7 @@ def test_recording_nudges_with_a_naive_send_time_is_refused_even_when_there_are_
         store.record_all_sent([], NAIVE)
 
 
-@all_stores
+@on_sqlite
 def test_the_send_time_of_recorded_nudges_is_the_latest_send_time_of_their_kind(
     open_store: StoreFactory,
 ) -> None:

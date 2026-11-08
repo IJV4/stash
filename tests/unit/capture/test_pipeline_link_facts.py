@@ -2,7 +2,7 @@ from builders import a_filing
 from capture_builders import a_message, a_pipeline
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from link_builders import KNIFE_SKILLS_FACTS, VIDEO_URL, a_knife_skills_link
 
 from stash.capture import CapturePipeline, Filed
@@ -20,7 +20,7 @@ def filed_details(pipeline: CapturePipeline, text: str = f"{VIDEO_URL} try this"
 def test_the_item_gets_the_link_title_uploader_and_duration_the_model_left_out() -> None:
     # Setup
     pipeline = a_pipeline(
-        MemoryStore(),
+        FreshStore(),
         FakeLinkInspector({VIDEO_URL: KNIFE_SKILLS}),
         FakeCaptureFiler(filing=a_filing(details={})),
     )
@@ -36,7 +36,7 @@ def test_the_link_facts_override_what_the_model_wrote_under_the_same_keys() -> N
     # Setup
     written = {"uploader": "someone else", "duration": "9:99", "link_title": "made up"}
     pipeline = a_pipeline(
-        MemoryStore(),
+        FreshStore(),
         FakeLinkInspector({VIDEO_URL: KNIFE_SKILLS}),
         FakeCaptureFiler(filing=a_filing(details=written)),
     )
@@ -51,7 +51,7 @@ def test_the_link_facts_override_what_the_model_wrote_under_the_same_keys() -> N
 def test_the_link_facts_sit_beside_the_other_details_the_model_wrote() -> None:
     # Setup
     pipeline = a_pipeline(
-        MemoryStore(),
+        FreshStore(),
         FakeLinkInspector({VIDEO_URL: KNIFE_SKILLS}),
         FakeCaptureFiler(filing=a_filing(details={"cuisine": "Japanese"})),
     )
@@ -66,7 +66,7 @@ def test_the_link_facts_sit_beside_the_other_details_the_model_wrote() -> None:
 def test_the_model_title_is_not_replaced_by_the_link_title() -> None:
     # Setup
     pipeline = a_pipeline(
-        MemoryStore(),
+        FreshStore(),
         FakeLinkInspector({VIDEO_URL: KNIFE_SKILLS}),
         FakeCaptureFiler(filing=a_filing(title="Learn knife skills")),
     )
@@ -81,7 +81,7 @@ def test_the_model_title_is_not_replaced_by_the_link_title() -> None:
 def test_a_link_nothing_is_known_about_leaves_the_details_as_the_model_wrote_them() -> None:
     # Setup
     pipeline = a_pipeline(
-        MemoryStore(),
+        FreshStore(),
         FakeLinkInspector({VIDEO_URL: LinkInfo.unknown(VIDEO_URL)}),
         FakeCaptureFiler(filing=a_filing(details={"uploader": "Test Kitchen"})),
     )
@@ -96,7 +96,7 @@ def test_a_link_nothing_is_known_about_leaves_the_details_as_the_model_wrote_the
 def test_a_message_without_a_link_leaves_the_details_as_the_model_wrote_them() -> None:
     # Setup
     pipeline = a_pipeline(
-        MemoryStore(),
+        FreshStore(),
         FakeLinkInspector({VIDEO_URL: KNIFE_SKILLS}),
         FakeCaptureFiler(filing=a_filing(details={"city": "Tokyo"})),
     )
@@ -110,7 +110,7 @@ def test_a_message_without_a_link_leaves_the_details_as_the_model_wrote_them() -
 
 def test_the_item_saved_in_the_store_carries_the_link_facts() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector({VIDEO_URL: KNIFE_SKILLS}), FakeCaptureFiler())
 
     # Execute

@@ -13,7 +13,7 @@ from digest_builders import (
 from digest_rig import a_digest_rig
 from fakes.failing_nudge_sender import FailingNudgeSender
 from fakes.ledger_recording_store import LedgerRecordingStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from nudge_builders import (
     LONG_AGO,
     SATURDAY,
@@ -64,7 +64,7 @@ WEEKLY_DIGEST_TEXT = "\n".join(
 
 def test_a_digest_with_every_section_lists_new_forgotten_coming_up_stuck_and_suggestions() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_every_section(store)
     rig = a_digest_rig(store, [picks_reply(a_raw_pick(SAIL_ID, SAIL_REASON))])
 
@@ -80,7 +80,7 @@ def test_with_the_model_unavailable_the_digest_goes_out_at_once_without_its_sugg
     outage: LlmUnavailable,
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_every_section(store)
     rig = a_digest_rig(store, [outage])
 
@@ -95,7 +95,7 @@ def test_a_forgotten_item_is_absent_from_the_next_four_digests_and_may_return_in
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_forgotten_sail())
     rig = a_digest_rig(store, [NO_SUGGESTIONS] * 6)
     six_digests = rig.schedule.digest_instants_between(DIGEST_AT, DIGEST_AT + SIX_DIGESTS_SPAN)
@@ -117,7 +117,7 @@ def test_a_forgotten_item_is_absent_from_the_next_four_digests_and_may_return_in
 
 def test_the_forgotten_section_shows_the_three_oldest_items_oldest_first() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     for age, title in enumerate(["Fifth", "Fourth", "Third", "Second", "First"]):
         updated = LONG_AGO + timedelta(days=age)
         stored(store, a_forgotten_want_to(title.lower(), title=title, updated_at=updated))
@@ -134,7 +134,7 @@ def test_the_forgotten_section_shows_the_three_oldest_items_oldest_first() -> No
 
 def test_a_failed_send_records_nothing_so_the_retry_sends_the_whole_digest() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_forgotten_sail())
     stored(store, a_stuck_book())
     rig = a_digest_rig(store, [NO_SUGGESTIONS] * 2, send=FailingNudgeSender(failures=1))

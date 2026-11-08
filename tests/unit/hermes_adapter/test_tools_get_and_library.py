@@ -1,5 +1,5 @@
 from builders import an_outcome, days_after, stored_completion, stored_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from tool_rig import (
     DONE_ITEM,
     DONE_ITEM_OUTCOME,
@@ -12,8 +12,8 @@ from tool_rig import (
 from stash.domain import ItemType, Stage
 
 
-def a_kept_library() -> MemoryStore:
-    store = MemoryStore()
+def a_kept_library() -> FreshStore:
+    store = FreshStore()
     stored_completion(store, "dune", kept=True, item_type=ItemType.BOOK, title="Dune")
     stored_completion(store, "ramen", kept=True, item_type=ItemType.RECIPE, title="Ramen")
     stored_completion(store, "skipped", item_type=ItemType.BOOK, title="Not kept")
@@ -61,7 +61,7 @@ def test_library_honours_the_limit() -> None:
 
 def test_library_leaves_the_rating_empty_for_an_item_whose_outcome_has_none() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(store, id="k1", stage=Stage.DONE, kept=True)
     store.add_outcome(an_outcome(id="o1", item_id="k1", rating=None))
 
@@ -82,7 +82,7 @@ def test_library_with_a_limit_over_the_maximum_answers_an_error() -> None:
 
 def test_get_answers_the_item_its_outcomes_and_its_children() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_item(
         store,
         id="m1",

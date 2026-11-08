@@ -4,7 +4,7 @@ from typing import Any, TypeVar
 
 from builders import LOS_ANGELES, an_item, in_los_angeles, stored
 from config_builders import a_nudge_config
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from planning_builders import DATE_NIGHT_ID, a_date_night
 from step_builders import a_nudge, a_step
 
@@ -127,8 +127,8 @@ def a_nudge_message(*due: DueNudge, catch_up: bool = False) -> NudgeMessage:
     return NudgeMessage(due, catch_up=catch_up)
 
 
-def a_store_with_a_pending_follow_up() -> MemoryStore:
-    store = MemoryStore()
+def a_store_with_a_pending_follow_up() -> FreshStore:
+    store = FreshStore()
     stored(store, a_planned_date_night())
     return store
 

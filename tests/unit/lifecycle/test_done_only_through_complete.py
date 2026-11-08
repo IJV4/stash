@@ -3,7 +3,7 @@ from contextlib import suppress
 
 import pytest
 from builders import NON_DONE_STAGES, an_item, an_item_at, fetched_item, stored
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
@@ -27,7 +27,7 @@ def test_no_operation_other_than_complete_moves_an_item_into_done(
     operation: Callable[[Lifecycle], object], stage: Stage
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(stage))
     stored(store, an_item(id="p1", title="Japan trip"))
     lifecycle = a_lifecycle(store)

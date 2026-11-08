@@ -5,7 +5,7 @@ from fakes.capture_filer import FakeCaptureFiler
 from fakes.failing_save_store import FailingSaveStore, SaveFailed
 from fakes.failing_status_store import FailingStatusStore, StatusWriteFailed
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.capture import Deferred, Filed
 from stash.capture.results import DeferralReason
@@ -29,7 +29,7 @@ def test_an_llm_failure_defers_the_capture_with_the_matching_reason(
     error: LlmError, reason: DeferralReason
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler(error=error))
 
     # Execute
@@ -51,7 +51,7 @@ def test_an_llm_failure_defers_the_capture_with_the_matching_reason(
 )
 def test_a_capture_deferred_by_any_llm_failure_stays_pending(error: LlmError) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler(error=error))
 
     # Execute
@@ -63,7 +63,7 @@ def test_a_capture_deferred_by_any_llm_failure_stays_pending(error: LlmError) ->
 
 def test_a_deferred_capture_stays_pending() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     filer = FakeCaptureFiler(error=LlmUnavailable("down"))
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
 
@@ -76,7 +76,7 @@ def test_a_deferred_capture_stays_pending() -> None:
 
 def test_a_deferred_capture_writes_no_item() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     filer = FakeCaptureFiler(error=LlmDeferred("GPU busy"))
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
 
@@ -90,7 +90,7 @@ def test_a_deferred_capture_writes_no_item() -> None:
 def test_a_retry_after_the_filer_recovers_files_the_deferred_capture() -> None:
     # Setup
     filer = FakeCaptureFiler(error=LlmDeferred("GPU busy"))
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
     pipeline.handle(a_message())
     filer.error = None
 
@@ -135,7 +135,7 @@ def test_a_retry_after_such_a_crash_marks_the_capture_filed() -> None:
 
 def test_retry_processes_every_pending_capture_oldest_first_even_when_each_is_deferred() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     filer = FakeCaptureFiler(error=LlmUnavailable("down"))
     pipeline = a_pipeline(store, FakeLinkInspector(), filer)
     for minute, name in [(2, "newest"), (0, "oldest"), (1, "middle")]:
@@ -154,7 +154,7 @@ def test_retry_processes_every_pending_capture_oldest_first_even_when_each_is_de
 
 def test_retry_files_the_pending_captures_and_returns_one_result_for_each() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler(filing=a_filing()))
     pipeline.receive(a_message(message_id="m1"))
     pipeline.receive(a_message(message_id="m2", received_at=minutes_after(1)))
@@ -168,7 +168,7 @@ def test_retry_files_the_pending_captures_and_returns_one_result_for_each() -> N
 
 def test_retry_with_nothing_pending_returns_an_empty_list() -> None:
     # Setup
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute / Assert
     assert pipeline.retry_pending() == []
@@ -177,7 +177,7 @@ def test_retry_with_nothing_pending_returns_an_empty_list() -> None:
 def test_retry_does_not_touch_captures_that_are_already_filed() -> None:
     # Setup
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
     pipeline.handle(a_message())
 
     # Execute

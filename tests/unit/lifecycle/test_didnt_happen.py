@@ -11,7 +11,7 @@ from builders import (
     stored,
 )
 from fakes.failing_save_store import FailingSaveStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
@@ -20,7 +20,7 @@ from stash.lifecycle import ItemChanged, UnknownItem
 
 def test_a_planned_item_that_did_not_happen_goes_back_to_want_to_with_no_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item(stage=Stage.PLANNED, date=PLANNED_FOR))
 
     # Execute
@@ -32,7 +32,7 @@ def test_a_planned_item_that_did_not_happen_goes_back_to_want_to_with_no_date() 
 
 def test_a_planned_item_that_did_not_happen_is_stored_back_in_want_to() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.PLANNED))
 
     # Execute
@@ -45,7 +45,7 @@ def test_a_planned_item_that_did_not_happen_is_stored_back_in_want_to() -> None:
 @pytest.mark.parametrize("stage", NOT_PLANNED_STAGES)
 def test_an_item_that_is_not_planned_is_returned_unchanged(stage: Stage) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored(store, an_item_at(stage))
 
     # Execute
@@ -72,7 +72,7 @@ def test_an_item_that_is_not_planned_is_not_written(stage: Stage) -> None:
 def test_an_unknown_item_that_did_not_happen_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).didnt_happen("nope", PLANNED_FOR)
+        a_lifecycle(FreshStore()).didnt_happen("nope", PLANNED_FOR)
 
     # Assert
     assert raised.value.item_id == "nope"
@@ -80,7 +80,7 @@ def test_an_unknown_item_that_did_not_happen_raises_unknown_item_naming_it() -> 
 
 def test_a_planned_item_asked_about_for_another_date_raises_item_changed() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.PLANNED))
 
     # Execute / Assert
@@ -90,7 +90,7 @@ def test_a_planned_item_asked_about_for_another_date_raises_item_changed() -> No
 
 def test_a_planned_item_asked_about_for_another_date_stays_as_it_was() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     planned = stored(store, an_item_at(Stage.PLANNED))
 
     # Execute

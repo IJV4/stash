@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from people_builders import a_key_date, stored_person
 
 from stash.domain import KeyDate
@@ -18,7 +18,7 @@ def occurrence_ids(store_result: list[tuple[KeyDate, date]]) -> list[tuple[str, 
     return [(key_date.id, occurrence) for key_date, occurrence in store_result]
 
 
-@all_stores
+@on_sqlite
 def test_a_saved_key_date_reads_back_whole(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -33,7 +33,7 @@ def test_a_saved_key_date_reads_back_whole(open_store: StoreFactory) -> None:
         assert found == [key_date]
 
 
-@all_stores
+@on_sqlite
 def test_a_persons_key_dates_are_listed_by_month_then_day_then_id(
     open_store: StoreFactory,
 ) -> None:
@@ -51,7 +51,7 @@ def test_a_persons_key_dates_are_listed_by_month_then_day_then_id(
         assert key_date_ids(found) == ["k3", "k2", "k1"]
 
 
-@all_stores
+@on_sqlite
 def test_key_dates_are_listed_only_for_their_own_person(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -67,7 +67,7 @@ def test_key_dates_are_listed_only_for_their_own_person(open_store: StoreFactory
         assert key_date_ids(found) == ["k2"]
 
 
-@all_stores
+@on_sqlite
 def test_saving_a_key_date_for_an_unknown_person_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store, pytest.raises(UnknownPersonError):
@@ -75,7 +75,7 @@ def test_saving_a_key_date_for_an_unknown_person_is_refused(open_store: StoreFac
         store.save_key_date(a_key_date(person_id="missing"))
 
 
-@all_stores
+@on_sqlite
 def test_a_deleted_key_date_is_gone(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -90,7 +90,7 @@ def test_a_deleted_key_date_is_gone(open_store: StoreFactory) -> None:
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_person_removes_their_key_dates(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -105,7 +105,7 @@ def test_deleting_a_person_removes_their_key_dates(open_store: StoreFactory) -> 
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_deleting_a_person_leaves_other_peoples_key_dates(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -122,7 +122,7 @@ def test_deleting_a_person_leaves_other_peoples_key_dates(open_store: StoreFacto
         assert key_date_ids(found) == ["k2"]
 
 
-@all_stores
+@on_sqlite
 def test_a_window_across_a_year_end_returns_dates_on_both_sides(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -138,7 +138,7 @@ def test_a_window_across_a_year_end_returns_dates_on_both_sides(open_store: Stor
         assert occurrence_ids(found) == [("k1", date(2026, 12, 30)), ("k2", date(2027, 1, 3))]
 
 
-@all_stores
+@on_sqlite
 def test_a_window_includes_dates_on_its_first_and_last_day(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -153,7 +153,7 @@ def test_a_window_includes_dates_on_its_first_and_last_day(open_store: StoreFact
         assert key_date_ids([key_date for key_date, _ in found]) == ["k1", "k2"]
 
 
-@all_stores
+@on_sqlite
 def test_occurrences_are_ordered_by_day_then_key_date_id(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -169,7 +169,7 @@ def test_occurrences_are_ordered_by_day_then_key_date_id(open_store: StoreFactor
         assert key_date_ids([key_date for key_date, _ in found]) == ["kc", "ka", "kb"]
 
 
-@all_stores
+@on_sqlite
 def test_a_february_29_date_occurs_on_february_28_in_a_common_year(
     open_store: StoreFactory,
 ) -> None:
@@ -185,7 +185,7 @@ def test_a_february_29_date_occurs_on_february_28_in_a_common_year(
         assert occurrence_ids(found) == [("k1", date(2027, 2, 28))]
 
 
-@all_stores
+@on_sqlite
 def test_a_window_longer_than_a_year_lists_each_key_date_once(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -199,7 +199,7 @@ def test_a_window_longer_than_a_year_lists_each_key_date_once(open_store: StoreF
         assert occurrence_ids(found) == [("k1", date(2026, 3, 14))]
 
 
-@all_stores
+@on_sqlite
 def test_a_window_that_ends_before_it_starts_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store, pytest.raises(ValueError, match="start must not be after end"):

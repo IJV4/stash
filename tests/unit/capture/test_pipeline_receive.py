@@ -2,7 +2,7 @@ from builders import BASE, a_source
 from capture_builders import INDENTED_FORCED_QUESTION, a_message, a_pipeline, received
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.capture import Duplicate, Filed
 from stash.domain import CaptureStatus, RawCapture
@@ -10,7 +10,7 @@ from stash.domain import CaptureStatus, RawCapture
 
 def test_receive_stores_a_pending_capture_built_from_the_message() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     message = a_message("Ramen", media_paths=("media/a.jpg",))
 
@@ -32,7 +32,7 @@ def test_receive_stores_a_pending_capture_built_from_the_message() -> None:
 
 def test_receive_returns_the_capture_it_stored() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
@@ -44,7 +44,7 @@ def test_receive_returns_the_capture_it_stored() -> None:
 
 def test_receive_returns_none_for_a_message_already_received() -> None:
     # Setup
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler())
     pipeline.receive(a_message(message_id="m1"))
 
     # Execute
@@ -56,7 +56,7 @@ def test_receive_returns_none_for_a_message_already_received() -> None:
 
 def test_receive_of_a_duplicate_leaves_the_stored_capture_unchanged() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     first = pipeline.receive(a_message(message_id="m1", text="first"))
 
@@ -69,7 +69,7 @@ def test_receive_of_a_duplicate_leaves_the_stored_capture_unchanged() -> None:
 
 def test_receive_gives_different_messages_different_capture_ids() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
@@ -82,7 +82,7 @@ def test_receive_gives_different_messages_different_capture_ids() -> None:
 
 def test_handle_receives_then_processes_the_message() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
@@ -94,7 +94,7 @@ def test_handle_receives_then_processes_the_message() -> None:
 
 def test_handle_of_a_duplicate_message_returns_duplicate() -> None:
     # Setup
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler())
     pipeline.handle(a_message())
 
     # Execute
@@ -107,7 +107,7 @@ def test_handle_of_a_duplicate_message_returns_duplicate() -> None:
 def test_handle_of_a_duplicate_message_does_not_ask_the_filer_again() -> None:
     # Setup
     filer = FakeCaptureFiler()
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), filer)
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
     pipeline.handle(a_message())
 
     # Execute
@@ -119,7 +119,7 @@ def test_handle_of_a_duplicate_message_does_not_ask_the_filer_again() -> None:
 
 def test_receive_keeps_the_message_text_unchanged_including_a_leading_question_mark() -> None:
     # Setup
-    pipeline = a_pipeline(MemoryStore(), FakeLinkInspector(), FakeCaptureFiler())
+    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), FakeCaptureFiler())
 
     # Execute
     capture = received(pipeline, INDENTED_FORCED_QUESTION)

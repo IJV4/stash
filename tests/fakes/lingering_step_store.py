@@ -1,12 +1,12 @@
 import threading
 from collections.abc import Sequence
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Step
 
 
-class LingeringStepStore(MemoryStore):
+class LingeringStepStore(FreshStore):
     def __init__(self, grace_seconds: float) -> None:
         super().__init__()
         self.lingering = threading.Event()

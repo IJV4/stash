@@ -1,7 +1,7 @@
 from typing import Any
 
 from clocks import EVENING_IN_LOS_ANGELES
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from tool_rig import (
     DONE_ITEM,
     WANT_TO_ITEM,
@@ -13,7 +13,7 @@ from tool_rig import (
 FIRST_OUTCOME_ID = f"{1:032x}"
 
 
-def completed(arguments: dict[str, Any], store: MemoryStore | None = None) -> dict[str, Any]:
+def completed(arguments: dict[str, Any], store: FreshStore | None = None) -> dict[str, Any]:
     tools = lifecycle_tools_over(store or a_tool_store())
     return answer_of(tools.complete({"item_id": WANT_TO_ITEM, **arguments}))
 
@@ -143,7 +143,7 @@ def test_completing_with_a_takeaway_that_is_too_long_answers_the_domains_refusal
     assert answer == {"error": "takeaway must be at most 500 characters"}
 
 
-def completed_in_the_evening(completed_on: str, store: MemoryStore) -> dict[str, Any]:
+def completed_in_the_evening(completed_on: str, store: FreshStore) -> dict[str, Any]:
     tools = lifecycle_tools_over(store, clock=lambda: EVENING_IN_LOS_ANGELES)
     return answer_of(tools.complete({"item_id": WANT_TO_ITEM, "completed_on": completed_on}))
 

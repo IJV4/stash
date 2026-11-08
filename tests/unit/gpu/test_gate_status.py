@@ -1,7 +1,7 @@
 import pytest
 from builders import BASE, NAIVE
 from fakes.gpu import FakeGpuProbe, FakeOwnVram
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from gate_rig import CONFIG, a_gate, a_sample
 
 from stash.gpu.gate import GpuGate, GpuStatus
@@ -71,7 +71,7 @@ def test_turning_off_with_a_naive_now_raises_value_error() -> None:
 def test_own_vram_is_asked_once_when_there_is_a_sample() -> None:
     # Setup
     own = FakeOwnVram()
-    gate = GpuGate(FakeGpuProbe(a_sample()), own, MemoryStore(), CONFIG)
+    gate = GpuGate(FakeGpuProbe(a_sample()), own, FreshStore(), CONFIG)
 
     # Execute
     gate.status(BASE)
@@ -83,7 +83,7 @@ def test_own_vram_is_asked_once_when_there_is_a_sample() -> None:
 def test_own_vram_is_not_asked_when_there_is_no_sample() -> None:
     # Setup
     own = FakeOwnVram()
-    gate = GpuGate(FakeGpuProbe(None), own, MemoryStore(), CONFIG)
+    gate = GpuGate(FakeGpuProbe(None), own, FreshStore(), CONFIG)
 
     # Execute
     gate.status(BASE)
@@ -95,7 +95,7 @@ def test_own_vram_is_not_asked_when_there_is_no_sample() -> None:
 def test_own_vram_is_not_asked_while_switched_off() -> None:
     # Setup
     own = FakeOwnVram()
-    gate = GpuGate(FakeGpuProbe(a_sample()), own, MemoryStore(), CONFIG)
+    gate = GpuGate(FakeGpuProbe(a_sample()), own, FreshStore(), CONFIG)
     gate.turn_off(BASE)
 
     # Execute

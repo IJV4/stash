@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 from builders import LATER, an_item, fetched_item, stored, stored_item, stored_parent
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import Item
 from stash.store import (
@@ -23,7 +23,7 @@ def stored_grouped_parent(store: Store) -> Item:
     return stored(store, an_item(id="p1", title="Japan trip", parent_id="g1"))
 
 
-@all_stores
+@on_sqlite
 def test_group_item_puts_the_child_under_a_top_level_parent(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -37,7 +37,7 @@ def test_group_item_puts_the_child_under_a_top_level_parent(open_store: StoreFac
         assert fetched_item(store, "i1") == grouped(read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_child_that_is_not_stored_raises_unknown_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -51,7 +51,7 @@ def test_group_item_of_a_child_that_is_not_stored_raises_unknown_item_error(
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_child_deleted_after_it_was_read_does_not_bring_it_back(
     open_store: StoreFactory,
 ) -> None:
@@ -69,7 +69,7 @@ def test_group_item_of_a_child_deleted_after_it_was_read_does_not_bring_it_back(
         assert store.get_item("i1") is None
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_child_changed_after_it_was_read_raises_stale_item_error(
     open_store: StoreFactory,
 ) -> None:
@@ -84,7 +84,7 @@ def test_group_item_of_a_child_changed_after_it_was_read_raises_stale_item_error
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_changed_child_keeps_the_other_writers_version(
     open_store: StoreFactory,
 ) -> None:
@@ -103,7 +103,7 @@ def test_group_item_of_a_changed_child_keeps_the_other_writers_version(
         assert store.get_item("i1") == other
 
 
-@all_stores
+@on_sqlite
 def test_group_item_under_a_parent_that_is_not_stored_raises_unknown_item_error_naming_it(
     open_store: StoreFactory,
 ) -> None:
@@ -116,7 +116,7 @@ def test_group_item_under_a_parent_that_is_not_stored_raises_unknown_item_error_
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_under_a_parent_that_is_not_stored_writes_nothing(
     open_store: StoreFactory,
 ) -> None:
@@ -132,7 +132,7 @@ def test_group_item_under_a_parent_that_is_not_stored_writes_nothing(
         assert store.get_item("i1") == read
 
 
-@all_stores
+@on_sqlite
 def test_group_item_under_a_parent_grouped_after_it_was_read_raises_parent_is_grouped_error(
     open_store: StoreFactory,
 ) -> None:
@@ -147,7 +147,7 @@ def test_group_item_under_a_parent_grouped_after_it_was_read_raises_parent_is_gr
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_under_a_grouped_parent_writes_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -162,7 +162,7 @@ def test_group_item_under_a_grouped_parent_writes_nothing(open_store: StoreFacto
         assert store.get_item("i1") == read
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_child_that_gained_a_child_after_it_was_read_raises_child_holds_items(
     open_store: StoreFactory,
 ) -> None:
@@ -177,7 +177,7 @@ def test_group_item_of_a_child_that_gained_a_child_after_it_was_read_raises_chil
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_child_that_holds_items_writes_nothing(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -193,7 +193,7 @@ def test_group_item_of_a_child_that_holds_items_writes_nothing(open_store: Store
         assert store.get_item("i1") == read
 
 
-@all_stores
+@on_sqlite
 def test_group_item_of_a_changed_child_raises_stale_item_error_before_checking_the_parent(
     open_store: StoreFactory,
 ) -> None:
@@ -208,7 +208,7 @@ def test_group_item_of_a_changed_child_raises_stale_item_error_before_checking_t
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_under_a_grouped_parent_raises_parent_is_grouped_before_child_holds_items(
     open_store: StoreFactory,
 ) -> None:
@@ -223,7 +223,7 @@ def test_group_item_under_a_grouped_parent_raises_parent_is_grouped_before_child
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_under_a_missing_parent_raises_unknown_item_error_before_child_holds_items(
     open_store: StoreFactory,
 ) -> None:
@@ -237,7 +237,7 @@ def test_group_item_under_a_missing_parent_raises_unknown_item_error_before_chil
             store.group_item(grouped(read), replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_with_a_child_that_has_no_parent_raises_value_error(
     open_store: StoreFactory,
 ) -> None:
@@ -250,7 +250,7 @@ def test_group_item_with_a_child_that_has_no_parent_raises_value_error(
             store.group_item(read, replacing=read)
 
 
-@all_stores
+@on_sqlite
 def test_group_item_replacing_an_item_of_another_id_raises_value_error(
     open_store: StoreFactory,
 ) -> None:

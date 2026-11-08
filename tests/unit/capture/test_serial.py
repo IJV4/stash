@@ -7,8 +7,8 @@ from capture_builders import FORCED_QUESTION, a_message, a_pipeline, an_agent_ca
 from fakes.blocking_intake import BlockingIntake
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
-from fakes.memory_store import MemoryStore
 from fakes.recording_intake import RecordingIntake
+from fakes.store_factories import FreshStore
 from threads import (
     OVERLAP_GRACE_SECONDS,
     WAIT_LIMIT_SECONDS,
@@ -104,7 +104,7 @@ def test_receive_does_not_wait_for_a_call_that_is_holding_the_turn() -> None:
 
 def test_handle_over_a_pipeline_whose_handle_calls_its_own_process_does_not_deadlock() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     inner = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler())
     pipeline = SerializedPipeline(inner)
 
@@ -119,7 +119,7 @@ def test_retry_pending_over_a_pipeline_whose_retry_calls_its_own_process_does_no
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.add_capture(a_capture())
     pipeline = SerializedPipeline(a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler()))
 

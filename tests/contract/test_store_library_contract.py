@@ -9,13 +9,13 @@ from builders import (
     stored_item,
     titles,
 )
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 
 from stash.domain import ItemType, Stage
 from stash.store.port import DEFAULT_PAGE_SIZE
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_a_kept_completed_item(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -28,7 +28,7 @@ def test_library_lists_a_kept_completed_item(open_store: StoreFactory) -> None:
         assert listed == [item]
 
 
-@all_stores
+@on_sqlite
 def test_library_leaves_out_an_item_that_was_not_kept(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -41,7 +41,7 @@ def test_library_leaves_out_an_item_that_was_not_kept(open_store: StoreFactory) 
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_library_leaves_out_a_dropped_item_even_when_it_is_kept(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -54,7 +54,7 @@ def test_library_leaves_out_a_dropped_item_even_when_it_is_kept(open_store: Stor
         assert listed == []
 
 
-@all_stores
+@on_sqlite
 def test_library_keeps_listing_a_kept_item_that_was_reopened(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -67,7 +67,7 @@ def test_library_keeps_listing_a_kept_item_that_was_reopened(open_store: StoreFa
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 def test_library_by_type_lists_only_kept_items_of_that_type(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -82,7 +82,7 @@ def test_library_by_type_lists_only_kept_items_of_that_type(open_store: StoreFac
         assert titles(listed) == ["recipe-kept"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_the_later_completion_day_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -96,7 +96,7 @@ def test_library_lists_the_later_completion_day_first(open_store: StoreFactory) 
         assert titles(listed) == ["newer", "older"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_the_later_recording_first_on_the_same_day(
     open_store: StoreFactory,
 ) -> None:
@@ -112,7 +112,7 @@ def test_library_lists_the_later_recording_first_on_the_same_day(
         assert titles(listed) == ["a-later", "b-earlier"]
 
 
-@all_stores
+@on_sqlite
 def test_library_orders_recordings_by_instant_rather_than_local_wall_clock(
     open_store: StoreFactory,
 ) -> None:
@@ -130,7 +130,7 @@ def test_library_orders_recordings_by_instant_rather_than_local_wall_clock(
         assert titles(listed) == ["instant-later", "wall-clock-later"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_the_higher_outcome_id_first_when_day_and_recording_instant_match(
     open_store: StoreFactory,
 ) -> None:
@@ -146,7 +146,7 @@ def test_library_lists_the_higher_outcome_id_first_when_day_and_recording_instan
         assert titles(listed) == ["b", "a"]
 
 
-@all_stores
+@on_sqlite
 def test_library_ranks_an_item_by_its_latest_completion(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -161,7 +161,7 @@ def test_library_ranks_an_item_by_its_latest_completion(open_store: StoreFactory
         assert titles(listed) == ["redone", "once"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_an_item_with_several_outcomes_once(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -175,7 +175,7 @@ def test_library_lists_an_item_with_several_outcomes_once(open_store: StoreFacto
         assert titles(listed) == ["redone"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_kept_items_never_completed_after_completed_ones(
     open_store: StoreFactory,
 ) -> None:
@@ -191,7 +191,7 @@ def test_library_lists_kept_items_never_completed_after_completed_ones(
         assert titles(listed) == ["done", "never"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_kept_items_never_completed_newest_created_first(
     open_store: StoreFactory,
 ) -> None:
@@ -207,7 +207,7 @@ def test_library_lists_kept_items_never_completed_newest_created_first(
         assert titles(listed) == ["third", "second", "first"]
 
 
-@all_stores
+@on_sqlite
 def test_library_lists_the_higher_item_id_first_among_never_completed_items_created_together(
     open_store: StoreFactory,
 ) -> None:
@@ -223,7 +223,7 @@ def test_library_lists_the_higher_item_id_first_among_never_completed_items_crea
         assert titles(listed) == ["b", "a"]
 
 
-@all_stores
+@on_sqlite
 def test_library_limit_caps_the_number_returned(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -237,7 +237,7 @@ def test_library_limit_caps_the_number_returned(open_store: StoreFactory) -> Non
         assert titles(listed) == ["i2", "i1"]
 
 
-@all_stores
+@on_sqlite
 def test_library_offset_skips_the_most_recent(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -251,7 +251,7 @@ def test_library_offset_skips_the_most_recent(open_store: StoreFactory) -> None:
         assert titles(listed) == ["i1"]
 
 
-@all_stores
+@on_sqlite
 def test_library_returns_twenty_by_default(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -265,7 +265,7 @@ def test_library_returns_twenty_by_default(open_store: StoreFactory) -> None:
         assert len(listed) == DEFAULT_PAGE_SIZE
 
 
-@all_stores
+@on_sqlite
 @pytest.mark.parametrize(("limit", "offset"), [(-1, 0), (20, -1)], ids=["limit", "offset"])
 def test_library_with_a_negative_limit_or_offset_raises_value_error(
     open_store: StoreFactory, limit: int, offset: int

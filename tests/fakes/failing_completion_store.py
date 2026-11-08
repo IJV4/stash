@@ -1,4 +1,4 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item, Outcome
 
@@ -7,7 +7,7 @@ class CompletionFailed(Exception):
     pass
 
 
-class FailingCompletionStore(MemoryStore):
+class FailingCompletionStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.fail_next_completion = False

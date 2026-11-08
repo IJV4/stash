@@ -5,17 +5,35 @@ from importlib.resources.abc import Traversable
 from pathlib import Path
 
 import pytest
-from fakes.memory_store import MemoryStore
 
+from stash.domain import RawCapture
 from stash.store import Store
 from stash.store.sqlite import SqliteStore
 
 StoreFactory = Callable[[], AbstractContextManager[Store]]
 
 
+IN_MEMORY_DATABASE = Path(":memory:")
+
+
+class FreshStore(SqliteStore):
+    def __init__(self, migrations: Traversable | None = None) -> None:
+        super().__init__(IN_MEMORY_DATABASE, migrations)
+
+    def stored_captures(self) -> list[RawCapture]:
+        ids = [
+            row["id"] for row in self._connection.execute("SELECT id FROM captures ORDER BY rowid")
+        ]
+        return [capture for capture in map(self.get_capture, ids) if capture is not None]
+
+
 @contextmanager
-def memory_store() -> Iterator[Store]:
-    yield MemoryStore()
+def fresh_store() -> Iterator[Store]:
+    store = FreshStore()
+    try:
+        yield store
+    finally:
+        store.close()
 
 
 @contextmanager
@@ -39,6 +57,4 @@ def sqlite_store() -> Iterator[Store]:
         yield store
 
 
-all_stores = pytest.mark.parametrize(
-    "open_store", [memory_store, sqlite_store], ids=["memory", "sqlite"]
-)
+on_sqlite = pytest.mark.parametrize("open_store", [sqlite_store], ids=["sqlite"])

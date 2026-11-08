@@ -1,7 +1,7 @@
 import pytest
 from builders import BASE, LATER, an_item_at, fetched_item, stored, stored_completion
 from fakes.failing_completion_store import CompletionFailed, FailingCompletionStore
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
@@ -16,7 +16,7 @@ def test_completing_a_done_item_is_a_repeat_whose_kept_follows_the_keep_argument
     stored_kept: bool, keep: bool | None, expected_kept: bool
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "i1", kept=stored_kept)
 
     # Execute
@@ -28,7 +28,7 @@ def test_completing_a_done_item_is_a_repeat_whose_kept_follows_the_keep_argument
 
 def test_a_repeat_without_keep_leaves_the_stored_item_exactly_as_it_was() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     original = stored_completion(store, "i1", kept=True)
 
     # Execute
@@ -40,7 +40,7 @@ def test_a_repeat_without_keep_leaves_the_stored_item_exactly_as_it_was() -> Non
 
 def test_a_repeat_adds_an_outcome_and_keeps_the_first_one_unchanged() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "i1", kept=True)
     first = store.outcomes_for("i1")[0]
 
@@ -53,7 +53,7 @@ def test_a_repeat_adds_an_outcome_and_keeps_the_first_one_unchanged() -> None:
 
 def test_a_first_completion_is_not_a_repeat_even_when_other_items_are_done() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "other")
     stored(store, an_item_at(Stage.DOING, id="i1"))
 

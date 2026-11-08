@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from app_builders import an_app, stored
 from fakes.hermes_ctx import RegisteredTool
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from hermes_registration_rig import register_stash
 from planning_builders import DATE_NIGHT_ID, a_date_night
 from step_builders import a_step
@@ -17,7 +17,7 @@ FIXED_TEXT = "Book the table for two"
 SECOND_TEXT = "Buy tickets"
 
 
-def an_app_with_a_date_night() -> tuple[MemoryStore, Mapping[str, RegisteredTool]]:
+def an_app_with_a_date_night() -> tuple[FreshStore, Mapping[str, RegisteredTool]]:
     store = stored(a_date_night())
     return store, register_stash(an_app(store=store)).ctx.tools
 

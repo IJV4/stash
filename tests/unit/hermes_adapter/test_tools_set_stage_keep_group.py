@@ -1,7 +1,7 @@
 from typing import Any
 
 from builders import BASE, an_item, stored_completion
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from tool_rig import (
     DONE_ITEM,
     PARENT_ITEM,
@@ -15,7 +15,7 @@ from tool_rig import (
 from stash.domain import ItemType, Stage
 
 
-def staged(arguments: dict[str, Any], store: MemoryStore | None = None) -> dict[str, Any]:
+def staged(arguments: dict[str, Any], store: FreshStore | None = None) -> dict[str, Any]:
     tools = lifecycle_tools_over(store or a_tool_store())
     return answer_of(tools.set_stage({"item_id": WANT_TO_ITEM, **arguments}))
 
@@ -118,7 +118,7 @@ def test_keep_true_puts_a_done_item_in_the_library() -> None:
 
 def test_keep_false_takes_a_kept_item_out_of_the_library() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_completion(store, "k1", kept=True)
 
     # Execute
@@ -136,7 +136,7 @@ def test_keeping_an_item_that_is_not_done_answers_the_domains_refusal() -> None:
     assert answer == {"error": "only done items can be kept"}
 
 
-def grouped(arguments: dict[str, Any], store: MemoryStore | None = None) -> dict[str, Any]:
+def grouped(arguments: dict[str, Any], store: FreshStore | None = None) -> dict[str, Any]:
     tools = lifecycle_tools_over(store or a_tool_store())
     return answer_of(tools.group({"child_id": WANT_TO_ITEM, **arguments}))
 

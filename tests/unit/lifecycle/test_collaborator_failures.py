@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 from builders import stored_completion, stored_item
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
 from stash.lifecycle import Lifecycle
@@ -23,8 +23,8 @@ OPERATIONS: dict[str, Callable[[Lifecycle], object]] = {
 }
 
 
-def a_store_with_a_completed_item_and_a_parent() -> MemoryStore:
-    store = MemoryStore()
+def a_store_with_a_completed_item_and_a_parent() -> FreshStore:
+    store = FreshStore()
     stored_completion(store, "i1")
     stored_item(store, id="p1")
     return store

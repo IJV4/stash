@@ -1,12 +1,12 @@
 from builders import an_item_at, stored, stored_item
-from fakes.store_factories import StoreFactory, all_stores
+from fakes.store_factories import StoreFactory, on_sqlite
 from step_builders import a_step
 from step_store_helpers import ids_of, with_items
 
 from stash.domain import Stage
 
 
-@all_stores
+@on_sqlite
 def test_steps_read_back_in_position_order(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -23,7 +23,7 @@ def test_steps_read_back_in_position_order(open_store: StoreFactory) -> None:
         assert ids_of(found) == ["s2", "s3", "s1"]
 
 
-@all_stores
+@on_sqlite
 def test_steps_at_the_same_position_read_back_in_id_order(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -37,7 +37,7 @@ def test_steps_at_the_same_position_read_back_in_id_order(open_store: StoreFacto
         assert ids_of(found) == ["sa", "sb"]
 
 
-@all_stores
+@on_sqlite
 def test_steps_for_an_item_without_steps_is_empty(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -50,7 +50,7 @@ def test_steps_for_an_item_without_steps_is_empty(open_store: StoreFactory) -> N
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_steps_for_an_unknown_item_is_empty(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -61,7 +61,7 @@ def test_steps_for_an_unknown_item_is_empty(open_store: StoreFactory) -> None:
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_returns_confirmed_steps_that_are_not_done(
     open_store: StoreFactory,
 ) -> None:
@@ -77,7 +77,7 @@ def test_open_confirmed_steps_returns_confirmed_steps_that_are_not_done(
         assert ids_of(found) == ["s1"]
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_leaves_out_unconfirmed_proposals(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -91,7 +91,7 @@ def test_open_confirmed_steps_leaves_out_unconfirmed_proposals(open_store: Store
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_leaves_out_done_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -105,7 +105,7 @@ def test_open_confirmed_steps_leaves_out_done_steps(open_store: StoreFactory) ->
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_leaves_out_unconfirmed_done_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -119,7 +119,7 @@ def test_open_confirmed_steps_leaves_out_unconfirmed_done_steps(open_store: Stor
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_includes_steps_of_items_in_any_stage(
     open_store: StoreFactory,
 ) -> None:
@@ -136,7 +136,7 @@ def test_open_confirmed_steps_includes_steps_of_items_in_any_stage(
         assert ids_of(found) == [f"s{position}" for position in range(len(Stage))]
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_are_ordered_by_item_id_first(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -151,7 +151,7 @@ def test_open_confirmed_steps_are_ordered_by_item_id_first(open_store: StoreFact
         assert ids_of(found) == ["s2", "s1"]
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_of_one_item_are_ordered_by_position(
     open_store: StoreFactory,
 ) -> None:
@@ -168,7 +168,7 @@ def test_open_confirmed_steps_of_one_item_are_ordered_by_position(
         assert ids_of(found) == ["s2", "s1"]
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_at_the_same_position_are_ordered_by_id(
     open_store: StoreFactory,
 ) -> None:
@@ -185,7 +185,7 @@ def test_open_confirmed_steps_at_the_same_position_are_ordered_by_id(
         assert ids_of(found) == ["sa", "sb"]
 
 
-@all_stores
+@on_sqlite
 def test_open_confirmed_steps_is_empty_when_there_are_no_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -196,7 +196,7 @@ def test_open_confirmed_steps_is_empty_when_there_are_no_steps(open_store: Store
         assert found == []
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_untouched_item_still_succeeds_when_it_has_steps(
     open_store: StoreFactory,
 ) -> None:
@@ -212,7 +212,7 @@ def test_deleting_an_untouched_item_still_succeeds_when_it_has_steps(
         assert deleted is True
 
 
-@all_stores
+@on_sqlite
 def test_an_item_with_a_confirmed_step_is_refused_and_keeps_the_step(
     open_store: StoreFactory,
 ) -> None:
@@ -233,7 +233,7 @@ def test_an_item_with_a_confirmed_step_is_refused_and_keeps_the_step(
         )
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_untouched_item_deletes_its_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -248,7 +248,7 @@ def test_deleting_an_untouched_item_deletes_its_steps(open_store: StoreFactory) 
         assert found is None
 
 
-@all_stores
+@on_sqlite
 def test_deleting_an_untouched_item_leaves_other_items_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:
@@ -265,7 +265,7 @@ def test_deleting_an_untouched_item_leaves_other_items_steps(open_store: StoreFa
         assert found == [kept]
 
 
-@all_stores
+@on_sqlite
 def test_a_refused_delete_keeps_the_items_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

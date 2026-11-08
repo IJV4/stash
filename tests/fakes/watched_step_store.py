@@ -1,11 +1,11 @@
 from collections.abc import Sequence
 
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Step
 
 
-class WatchedStepStore(MemoryStore):
+class WatchedStepStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self.step_writes = 0

@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from builders import FALL_BACK_DAY, SPRING_FORWARD_DAY, fetched_item, in_los_angeles, stored
 from capture_rig import a_fix_handler
 from fakes.failing_nudge_sender import FailingNudgeSender
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 from nudge_builders import (
     BOOK_THE_TABLE_LINE,
@@ -48,7 +48,7 @@ def test_ticking_through_the_week_sends_the_reminders_the_follow_up_and_the_dige
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_week(store)
     rig = a_nudge_rig(store)
     week = hourly_ticks_with_minutes_around(
@@ -73,7 +73,7 @@ def test_with_the_pc_off_from_friday_evening_to_sunday_noon_one_catch_up_message
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_week(store)
     rig = a_nudge_rig(store)
     friday_evening = in_los_angeles(FRIDAY, 18)
@@ -89,7 +89,7 @@ def test_with_the_pc_off_from_friday_evening_to_sunday_noon_one_catch_up_message
 
 def test_the_reminder_on_the_day_the_clocks_go_forward_fires_once_at_sixteen_hundred_utc() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_step_due_on(store, SPRING_FORWARD_DAY)
     rig = a_nudge_rig(store)
     fires_at = datetime(2027, 3, 14, 16, 0, tzinfo=UTC)
@@ -105,7 +105,7 @@ def test_the_reminder_on_the_day_the_clocks_go_forward_fires_once_at_sixteen_hun
 
 def test_the_reminder_on_the_day_the_clocks_go_back_fires_once_at_seventeen_hundred_utc() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_step_due_on(store, FALL_BACK_DAY)
     rig = a_nudge_rig(store)
     fires_at = datetime(2027, 11, 7, 17, 0, tzinfo=UTC)
@@ -121,7 +121,7 @@ def test_the_reminder_on_the_day_the_clocks_go_back_fires_once_at_seventeen_hund
 
 def test_dropping_the_item_before_saturday_morning_sends_no_step_or_date_reminder() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store)
     friday_evening = in_los_angeles(FRIDAY, 20)
@@ -143,7 +143,7 @@ def test_a_date_moved_in_the_store_before_saturday_morning_moves_the_step_remind
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     date_night = stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store)
     friday_evening = in_los_angeles(FRIDAY, 20)
@@ -168,7 +168,7 @@ def test_a_date_moved_in_the_store_before_saturday_morning_moves_the_step_remind
 
 def test_rescheduling_moves_the_reminders_and_the_follow_up_to_the_new_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store)
     friday_evening = in_los_angeles(FRIDAY, 20)
@@ -199,7 +199,7 @@ def test_rescheduling_moves_the_reminders_and_the_follow_up_to_the_new_date() ->
 
 def test_a_failed_send_leaves_the_message_unmarked_and_the_next_tick_sends_it_once() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store, send=FailingNudgeSender(failures=1))
     rig.digests_before_were_sent(SATURDAY_MORNING)
@@ -215,7 +215,7 @@ def test_a_failed_send_leaves_the_message_unmarked_and_the_next_tick_sends_it_on
 
 def test_pressing_didnt_happen_moves_the_date_night_back_to_want_to_with_no_date() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store)
     rig.digests_before_were_sent(SATURDAY_MORNING)
@@ -232,7 +232,7 @@ def test_pressing_didnt_happen_moves_the_date_night_back_to_want_to_with_no_date
 
 def test_pressing_didnt_happen_after_the_item_was_rescheduled_leaves_it_as_it_is() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored_date_night_with_its_step(store)
     rig = a_nudge_rig(store)
     rig.digests_before_were_sent(SATURDAY_MORNING)
@@ -251,7 +251,7 @@ def test_a_step_due_tomorrow_sends_no_reminder_once_didnt_happen_moved_the_item_
     None
 ):
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, a_planned_date_night())
     stored_step(store, a_step_due_on(SUNDAY))
     rig = a_nudge_rig(store)

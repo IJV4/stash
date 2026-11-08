@@ -1,7 +1,7 @@
 from zoneinfo import ZoneInfo
 
 from builders import BASE, PLUS_FIVE
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from gate_rig import a_gate, a_sample
 
 from stash.gpu.gate import GpuStatus
@@ -47,7 +47,7 @@ def test_the_expiry_is_shown_in_the_timezone_of_the_asking_now_not_the_turning_o
 
 def test_a_far_future_stored_expiry_is_ignored_for_a_caller_in_a_positive_offset_zone() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     store.put_setting("gpu.manual_off_until", "9999-12-31T23:00:00+00:00")
     gate = a_gate(a_sample(), store=store)
     berlin_now = BASE.astimezone(ZoneInfo("Europe/Berlin"))

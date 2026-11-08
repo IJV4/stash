@@ -9,7 +9,7 @@ from builders import (
     fetched_item,
     stored,
 )
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
@@ -30,7 +30,7 @@ def test_completing_with_details_the_domain_refuses_raises_lifecycle_refused(
     complete: Callable[[Lifecycle], Completion],
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -43,7 +43,7 @@ def test_a_refused_completion_leaves_the_stage_and_outcomes_unchanged(
     complete: Callable[[Lifecycle], Completion],
 ) -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -56,7 +56,7 @@ def test_a_refused_completion_leaves_the_stage_and_outcomes_unchanged(
 
 def test_a_refusal_carries_the_domain_message_for_the_owner() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -66,7 +66,7 @@ def test_a_refusal_carries_the_domain_message_for_the_owner() -> None:
 
 def test_completing_with_bare_string_takeaways_tells_the_owner_to_give_separate_items() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -76,7 +76,7 @@ def test_completing_with_bare_string_takeaways_tells_the_owner_to_give_separate_
 
 def test_a_wiring_bug_in_takeaways_is_not_dressed_up_as_a_refusal() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
 
     # Execute
@@ -87,7 +87,7 @@ def test_a_wiring_bug_in_takeaways_is_not_dressed_up_as_a_refusal() -> None:
 def test_completing_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).complete("nope")
+        a_lifecycle(FreshStore()).complete("nope")
 
     # Assert
     assert raised.value.item_id == "nope"
@@ -95,7 +95,7 @@ def test_completing_an_unknown_item_raises_unknown_item_naming_it() -> None:
 
 def test_a_repeated_outcome_id_raises_the_stores_duplicate_error_not_a_refusal() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
     lifecycle = a_lifecycle(store, new_id=lambda: "same-id")
     lifecycle.complete("i1")

@@ -1,9 +1,9 @@
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 
 from stash.domain import Item, Outcome, Step
 
 
-class VanishingItemStore(MemoryStore):
+class VanishingItemStore(FreshStore):
     def __init__(self) -> None:
         super().__init__()
         self._vanishing_items: set[str] = set()

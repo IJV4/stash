@@ -1,7 +1,7 @@
 import pytest
 from builders import NAIVE, stored_completion
-from fakes.memory_store import MemoryStore
 from fakes.outcome_querying_store import OutcomeQueryingStore
+from fakes.store_factories import FreshStore
 from library_html_rig import LOCAL_NOW
 
 from stash.domain import Stage
@@ -10,7 +10,7 @@ from stash.library_html import build_snapshot
 
 def test_a_snapshot_cannot_be_built_at_a_moment_without_a_timezone() -> None:
     # Setup
-    store = MemoryStore()
+    store = FreshStore()
 
     # Execute / Assert
     with pytest.raises(ValueError, match="now must be timezone-aware"):

@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 import pytest
 from builders import LATER, an_item, store_holding, stored
-from fakes.memory_store import MemoryStore
+from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
@@ -34,7 +34,7 @@ def grandchild_item() -> Item:
     return an_item(id="grandchild", title="Ramen menu", parent_id="child")
 
 
-REFUSED_ROWS: dict[str, tuple[Callable[[], MemoryStore], str, str]] = {
+REFUSED_ROWS: dict[str, tuple[Callable[[], FreshStore], str, str]] = {
     "item-is-its-own-parent": (
         lambda: store_holding(child_item()),
         "child",
@@ -193,7 +193,7 @@ def test_ungrouping_an_item_clears_its_parent_and_stores_it() -> None:
 def test_ungrouping_an_unknown_item_raises_unknown_item_naming_it() -> None:
     # Execute
     with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(MemoryStore()).ungroup("nope")
+        a_lifecycle(FreshStore()).ungroup("nope")
 
     # Assert
     assert raised.value.item_id == "nope"
