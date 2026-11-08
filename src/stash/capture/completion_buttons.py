@@ -86,11 +86,7 @@ class CompletionButtons:
 
     def _rated(self, outcome_id: str, rating: int) -> Reply:
         outcome = self._lifecycle.rate(outcome_id, rating)
-        item = self._store.get_item(outcome.item_id)
-        if item is None:
-            self._log.unknown(Subject.ITEM, outcome.item_id)
-            return gone()
-        return rated_reply(item, rating)
+        return rated_reply(self._lifecycle.history(outcome.item_id).item, rating)
 
     def _kept(self, item_id: str, choice: KeepChoice) -> Reply:
         self._lifecycle.keep(item_id, choice.kept)
