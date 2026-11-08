@@ -6,4 +6,4 @@ RequiresMountsFor=/mnt/nas/stash-backups
 [Service]
 Type=oneshot
 Environment=STASH_CONFIG=%h/.config/stash/stash.toml
-ExecStart=%h/code/stash/.venv/bin/stash backup --to /mnt/nas/stash-backups
+ExecStart=%h/projects/stash/.venv/bin/stash backup --to /mnt/nas/stash-backups

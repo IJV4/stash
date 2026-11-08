@@ -58,9 +58,12 @@ model (`docs/adr/0003-ocr-optional.md`); install the Python side with `uv sync -
 
 ## 5. Get the code and install stash
 
-Copy the repo to `~/code/stash` (inside WSL, not under `/mnt/c` — much faster).
+Copy the repo to `~/projects/stash` (inside WSL, not under `/mnt/c` — much faster).
+Keep this exact path: the systemd units in `deploy/systemd/` and the gateway hardening drop-in
+(`hermes-gateway-stash.hardening.conf`, `BindReadOnlyPaths=`) all name it. If you check out
+somewhere else, change every one of them to match.
 ```bash
-cd ~/code/stash
+cd ~/projects/stash
 python3 -m venv .venv && .venv/bin/pip install uv
 make install
 mkdir -p ~/.config/stash
@@ -103,7 +106,7 @@ Merge `deploy/hermes/config.yaml.example` into `~/.hermes/config.yaml`.
 ## 7. Install the stash plugin
 
 ```bash
-ln -s ~/code/stash/deploy/hermes-plugin/stash ~/.hermes/plugins/stash
+ln -s ~/projects/stash/deploy/hermes-plugin/stash ~/.hermes/plugins/stash
 hermes plugins validate ~/.hermes/plugins/stash
 hermes plugins enable stash      # consents to stash's Python deps (pyproject.toml)
 hermes gateway restart
@@ -127,7 +130,7 @@ in its "Cronjob Response" header and footer.
 ```bash
 cat > ~/.hermes/scripts/stash_tick.sh <<'EOF'
 #!/bin/sh
-exec ~/code/stash/.venv/bin/stash tick --config ~/.config/stash/stash.toml
+exec ~/projects/stash/.venv/bin/stash tick --config ~/.config/stash/stash.toml
 EOF
 chmod +x ~/.hermes/scripts/stash_tick.sh
 hermes cron create "every 1m" --no-agent --script stash_tick.sh --deliver telegram:<owner id>
@@ -211,7 +214,7 @@ and open the port to the Private network profile only.
    cp deploy/systemd/stash-serve.service ~/.config/systemd/user/
    systemctl --user daemon-reload && systemctl --user enable --now stash-serve.service
    ```
-   The unit assumes the checkout is at `~/code/stash` and the config at
+   The unit assumes the checkout is at `~/projects/stash` and the config at
    `~/.config/stash/stash.toml`, like `stash-backup.service`; edit it if yours differ.
 5. **Bookmark**: on the phone, on the home Wi-Fi, open
    `http://<pc-ip>:8765/?k=<token>` once and add it to the bookmarks or the home screen.
