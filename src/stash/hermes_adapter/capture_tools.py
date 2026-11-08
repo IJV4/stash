@@ -1,8 +1,8 @@
 import logging
 from typing import Any
 
+from stash.capture.agent import AgentCapture
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
-from stash.hermes_adapter.ports import AgentCapturer
 from stash.hermes_adapter.tool_arguments import ToolArguments
 from stash.hermes_adapter.tool_json import UNWRITABLE, answering, capture_answer
 from stash.hermes_adapter.tool_schema import tool_schema
@@ -31,7 +31,7 @@ CAPTURE_SCHEMA: dict[str, Any] = tool_schema(
 
 
 class CaptureTools:
-    def __init__(self, capturer: AgentCapturer) -> None:
+    def __init__(self, capturer: AgentCapture) -> None:
         self._capturer = capturer
 
     def specs(self) -> tuple[ToolSpec, ...]:

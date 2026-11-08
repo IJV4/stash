@@ -8,8 +8,6 @@ from stash.planning.errors import (
 )
 from stash.planning.parse import MAX_PROPOSED_STEPS, parse_steps
 from stash.planning.ports import (
-    PlanningModelSource,
-    PlanningStore,
     ProposalDeclines,
     StepProposals,
 )
@@ -26,9 +24,7 @@ __all__ = [
     "Planning",
     "PlanningBusy",
     "PlanningError",
-    "PlanningModelSource",
     "PlanningRefused",
-    "PlanningStore",
     "Proposal",
     "ProposalDeclines",
     "ProposedStep",

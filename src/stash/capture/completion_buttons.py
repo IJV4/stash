@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import KeepChoice, date_for, rating_for
 from stash.capture.completion_replies import didnt_happen_reply, done_reply, kept_reply, rated_reply
-from stash.capture.ports import FixStore, LifecycleActions
+from stash.capture.ports import LifecycleActions
 from stash.capture.replies import Reply, busy, changed, gone, refused
 from stash.domain import Item, enum_member
 from stash.lifecycle.errors import (
@@ -17,6 +17,7 @@ from stash.lifecycle.errors import (
     UnknownOutcome,
 )
 from stash.lifecycle.results import Completion, ItemHistory
+from stash.store.port import Store
 
 RATING_KIND = "rating"
 DAY_KIND = "day"
@@ -26,7 +27,7 @@ DOUBLE_TAP_WINDOW = timedelta(seconds=60)
 class CompletionButtons:
     def __init__(
         self,
-        store: FixStore,
+        store: Store,
         lifecycle: LifecycleActions,
         callback_log: CallbackLog,
         clock: Callable[[], datetime],

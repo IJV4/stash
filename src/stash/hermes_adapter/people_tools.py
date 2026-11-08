@@ -17,10 +17,10 @@ from stash.hermes_adapter.people_schemas import (
     PEOPLE_SCHEMA,
     REMOVE_PERSON_SCHEMA,
 )
-from stash.hermes_adapter.ports import PeopleDesk
 from stash.hermes_adapter.tool_arguments import ToolArguments
 from stash.hermes_adapter.tool_json import UNREADABLE, UNWRITABLE, answering
 from stash.hermes_adapter.tool_spec import ToolSpec
+from stash.people import PeopleDirectory
 from stash.store.port import UnknownItemError, UnknownPersonError
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ def _refusing_unknown_ids() -> Iterator[None]:
 
 
 class PeopleTools:
-    def __init__(self, desk: PeopleDesk, today: Callable[[], date]) -> None:
+    def __init__(self, desk: PeopleDirectory, today: Callable[[], date]) -> None:
         self._desk = desk
         self._today = today
 

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from stash.config import LlmTask
 from stash.llm.messages import ChatMessage
 
 
@@ -40,3 +41,7 @@ class ModelUnloader(Protocol):
 class NoModelToUnload:
     def unload(self) -> None:
         return None
+
+
+class ModelSource(Protocol):
+    def model_for(self, task: LlmTask, now: datetime) -> ChatModel: ...

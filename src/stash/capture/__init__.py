@@ -10,8 +10,6 @@ from stash.capture.ports import (
     AgentIntake,
     CaptureFiler,
     CaptureIntake,
-    FixStore,
-    IntakeStore,
     ItemLinker,
     PlanningActions,
 )
@@ -51,9 +49,7 @@ __all__ = [
     "Duplicate",
     "Filed",
     "FixHandler",
-    "FixStore",
     "IncomingMessage",
-    "IntakeStore",
     "IsRequest",
     "ItemLinker",
     "PlanningActions",

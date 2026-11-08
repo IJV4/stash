@@ -15,8 +15,8 @@ from stash.nudges.due import (
 )
 from stash.nudges.messages import NudgeMessage
 from stash.nudges.person_dates import PersonDates
-from stash.nudges.ports import NudgeStore
 from stash.nudges.schedule import Schedule
+from stash.store.port import Store
 
 LOOKBACK = dt.timedelta(days=14)
 STUCK_LIMIT = 10
@@ -45,7 +45,7 @@ def _dated(items: Iterable[Item]) -> Iterator[tuple[Item, dt.date]]:
 
 
 class Nudger:
-    def __init__(self, store: NudgeStore, schedule: Schedule, person_dates: PersonDates) -> None:
+    def __init__(self, store: Store, schedule: Schedule, person_dates: PersonDates) -> None:
         self._store = store
         self._schedule = schedule
         self._person_dates = person_dates

@@ -11,13 +11,13 @@ from stash.capture import (
     CaptureFiler,
     CapturePipeline,
     IncomingMessage,
-    IntakeStore,
     ItemLinker,
     Reply,
     Reroute,
 )
 from stash.domain import CaptureStatus, Item, ItemType, RawCapture, SourceRef, Stage
 from stash.enrich.links import LinkInspector
+from stash.store import Store
 
 RAMEN_URL = "https://example.com/ramen-tokyo"
 SAMPLE_TEXT = "Ramen in Shibuya"
@@ -108,7 +108,7 @@ def sequential_ids() -> Callable[[], str]:
 
 
 def a_pipeline(
-    store: IntakeStore,
+    store: Store,
     inspector: LinkInspector,
     filer: CaptureFiler,
     clock: Callable[[], datetime] = lambda: BASE,

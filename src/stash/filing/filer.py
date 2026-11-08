@@ -1,7 +1,6 @@
 import datetime as dt
 import logging
 from collections.abc import Callable, Sequence
-from typing import Protocol
 from zoneinfo import ZoneInfo
 
 from stash.config import LlmTask
@@ -10,19 +9,15 @@ from stash.enrich.links import LinkInfo
 from stash.filing.parse import inbox_filing, parse_filing
 from stash.filing.prompt import build_messages
 from stash.filing.schema import FILING_SCHEMA, SCHEMA_NAME
-from stash.llm import ChatModel, ImagePart, LlmBadOutput
+from stash.llm import ChatModel, ImagePart, LlmBadOutput, ModelSource
 
 logger = logging.getLogger(__name__)
-
-
-class FilingModelSource(Protocol):
-    def model_for(self, task: LlmTask, now: dt.datetime) -> ChatModel: ...
 
 
 class Filer:
     def __init__(
         self,
-        router: FilingModelSource,
+        router: ModelSource,
         clock: Callable[[], dt.datetime],
         timezone: ZoneInfo,
     ) -> None:

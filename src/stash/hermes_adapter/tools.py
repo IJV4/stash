@@ -2,12 +2,12 @@ import logging
 from typing import Any
 
 from stash.domain import Stage
-from stash.hermes_adapter.ports import ItemReader
 from stash.hermes_adapter.queries import MAX_LIMIT, MIN_LIMIT, ItemQuery, checked_limit
 from stash.hermes_adapter.tool_arguments import ToolArguments
 from stash.hermes_adapter.tool_json import UNREADABLE, answering, items_answer
 from stash.hermes_adapter.tool_schema import ITEM_TYPE, limit_property, owners_data
 from stash.hermes_adapter.tool_spec import ToolSpec
+from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def _query_text(arguments: ToolArguments) -> str:
 
 
 class StashTools:
-    def __init__(self, reader: ItemReader) -> None:
+    def __init__(self, reader: Store) -> None:
         self._reader = reader
 
     def specs(self) -> tuple[ToolSpec, ...]:

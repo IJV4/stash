@@ -15,8 +15,6 @@ PACKAGES_THAT_DO_NOT_IMPORT_DELIVERY = [
     "nudges",
     "people",
     "suggestions",
-    "hermes_adapter",
-    "cli",
 ]
 
 
@@ -30,7 +28,7 @@ def test_the_delivery_loops_import_no_network_process_database_event_loop_or_ada
     assert offenders == []
 
 
-def test_only_the_app_imports_the_delivery_package() -> None:
+def test_only_the_app_and_the_entry_points_import_the_delivery_package() -> None:
     # Execute
     offenders = [
         offender

@@ -1,11 +1,10 @@
 import datetime as dt
 import logging
 from collections.abc import Callable
-from typing import Protocol
 
 from stash.capture import Reply
 from stash.capture.nudge_replies import nudge_reply
-from stash.nudges import DueNudge, NudgeMessage, Nudger, WeeklyDigest, batch_messages
+from stash.nudges import DigestBuilder, DueNudge, NudgeMessage, Nudger, WeeklyDigest, batch_messages
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +13,8 @@ MARK_SENT_FAILED_LOG = "nudge was sent but not recorded (%s); it may be sent aga
 ALREADY_RECORDED_LOG = "nudge message was already recorded by another sender; not sending it again"
 
 
-class DigestSource(Protocol):
-    def build(self, due: WeeklyDigest, now: dt.datetime) -> WeeklyDigest: ...
-
-
 class NudgeDelivery:
-    def __init__(self, nudger: Nudger, digests: DigestSource) -> None:
+    def __init__(self, nudger: Nudger, digests: DigestBuilder) -> None:
         self._nudger = nudger
         self._digests = digests
 

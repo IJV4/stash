@@ -2,17 +2,19 @@ import logging
 from collections.abc import Callable, Iterable
 from datetime import date, datetime, tzinfo
 from pathlib import Path
-from typing import Protocol, TextIO
+from typing import TextIO
 
 from stash.app import LibraryTokenMissing, ServingLibrary
 from stash.capture import CaptureIntake, Reply
 from stash.cli.failure import FAILURE, USAGE_ERROR, CommandFailed
 from stash.config import LibraryConfig
+from stash.delivery import NudgeDelivery
 from stash.doctor import Doctor
-from stash.domain import ItemType, PersonSummary, Stage
+from stash.domain import ItemType, Stage
 from stash.gpu_switch import GpuSwitch
 from stash.library_html import RenderedLibrary
 from stash.lifecycle import LibraryQuery, Lifecycle, UnknownItem
+from stash.people import PeopleDirectory
 from stash.rendering import (
     NO_ITEMS,
     NO_PEOPLE,
@@ -32,16 +34,6 @@ from stash.store import BackupError, BackupWriter, ItemStore
 MESSAGE_SEPARATOR = "\n\n"
 TOKEN_PLACEHOLDER = "<STASH_LIBRARY_TOKEN>"
 SERVE_LOG_FORMAT = "%(levelname)s %(message)s"
-
-
-class TickDelivery(Protocol):
-    def deliver(self, now: datetime, send: Callable[[Reply], None]) -> None: ...
-
-    def preview(self, now: datetime) -> tuple[Reply, ...]: ...
-
-
-class PeopleRoster(Protocol):
-    def roster(self, today: date, within_days: int | None = None) -> tuple[PersonSummary, ...]: ...
 
 
 def _emit(lines: Iterable[str], out: TextIO) -> None:
@@ -125,13 +117,13 @@ def show(lifecycle: Lifecycle, item_id: str, out: TextIO) -> int:
     return 0
 
 
-def people(roster: PeopleRoster, today: date, upcoming: int | None, out: TextIO) -> int:
+def people(roster: PeopleDirectory, today: date, upcoming: int | None, out: TextIO) -> int:
     lines = [person_line(summary) for summary in roster.roster(today, upcoming)]
     _emit(lines or [NO_PEOPLE if upcoming is None else NO_UPCOMING_PEOPLE], out)
     return 0
 
 
-def tick(delivery: TickDelivery, now: datetime, dry_run: bool, out: TextIO) -> int:
+def tick(delivery: NudgeDelivery, now: datetime, dry_run: bool, out: TextIO) -> int:
     if dry_run:
         replies = delivery.preview(now)
     else:

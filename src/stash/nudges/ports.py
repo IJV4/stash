@@ -1,42 +1,6 @@
-import datetime as dt
-from collections.abc import Sequence
 from typing import Protocol
 
-from stash.domain import Item, ItemType, KeyDate, Nudge, NudgeKey, NudgeKind, Person, Pick, Step
-
-
-class NudgeStore(Protocol):
-    def open_confirmed_steps(self) -> list[Step]: ...
-
-    def get_item(self, item_id: str) -> Item | None: ...
-
-    def items_dated_between(self, start: dt.date, end: dt.date) -> list[Item]: ...
-
-    def planned_awaiting_outcome_dated_between(
-        self, start: dt.date, end: dt.date
-    ) -> list[Item]: ...
-
-    def doing_older_than(self, cutoff: dt.datetime, limit: int) -> list[Item]: ...
-
-    def was_sent(self, key: NudgeKey) -> bool: ...
-
-    def record_all_sent(self, nudges: Sequence[Nudge], sent_at: dt.datetime) -> bool: ...
-
-    def last_sent(self, kind: NudgeKind) -> dt.datetime | None: ...
-
-
-class DigestStore(NudgeStore, Protocol):
-    def created_between(self, start: dt.datetime, end: dt.datetime) -> list[Item]: ...
-
-    def want_to_older_than(self, cutoff: dt.datetime, limit: int) -> list[Item]: ...
-
-
-class PeopleReads(Protocol):
-    def key_dates_between(self, start: dt.date, end: dt.date) -> list[tuple[KeyDate, dt.date]]: ...
-
-    def get_person(self, person_id: str) -> Person | None: ...
-
-    def items_for(self, person_id: str, item_type: ItemType | None = None) -> list[Item]: ...
+from stash.domain import Pick
 
 
 class PickSource(Protocol):

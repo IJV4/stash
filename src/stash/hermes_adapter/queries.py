@@ -2,9 +2,8 @@ from dataclasses import dataclass
 from typing import Self
 
 from stash.domain import Item, ItemType, Stage
-from stash.hermes_adapter.ports import ItemReader
 from stash.hermes_adapter.tool_arguments import ToolArguments, echoed, parse_member
-from stash.store.port import DEFAULT_PAGE_SIZE
+from stash.store.port import DEFAULT_PAGE_SIZE, Store
 
 DEFAULT_LIMIT = DEFAULT_PAGE_SIZE
 MIN_LIMIT = 1
@@ -52,5 +51,5 @@ class ItemQuery:
     def from_arguments(cls, arguments: ToolArguments) -> Self:
         return cls(arguments.optional_stage(), arguments.optional_item_type(), arguments.limit())
 
-    def fetch(self, reader: ItemReader) -> list[Item]:
+    def fetch(self, reader: Store) -> list[Item]:
         return reader.list_items(stage=self.stage, item_type=self.item_type, limit=self.limit)

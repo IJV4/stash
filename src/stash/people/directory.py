@@ -12,16 +12,15 @@ from stash.domain import (
     PersonSummary,
     matching_key,
 )
-from stash.people.ports import PeopleBook
 from stash.people.results import Resolution
-from stash.store.port import UnknownPersonError
+from stash.store.port import Store, UnknownPersonError
 
 logger = logging.getLogger(__name__)
 
 
 class PeopleDirectory:
     def __init__(
-        self, store: PeopleBook, new_id: Callable[[], str], clock: Callable[[], datetime]
+        self, store: Store, new_id: Callable[[], str], clock: Callable[[], datetime]
     ) -> None:
         self._store = store
         self._new_id = new_id

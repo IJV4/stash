@@ -1,38 +1,11 @@
-from contextlib import AbstractContextManager
 from datetime import date
 from typing import Protocol
 
 from stash.capture.message import IncomingMessage
 from stash.capture.results import Deferred, Filed, ProcessResult
-from stash.domain import CaptureStatus, Filing, Item, Outcome, RawCapture, Step
+from stash.domain import Filing, Item, Outcome, RawCapture, Step
 from stash.enrich.links import LinkInfo
 from stash.lifecycle.results import Completion, ItemHistory
-
-
-class IntakeStore(Protocol):
-    def add_capture(self, capture: RawCapture) -> bool: ...
-
-    def set_capture_status(self, capture_id: str, status: CaptureStatus) -> None: ...
-
-    def pending_captures(self) -> list[RawCapture]: ...
-
-    def get_item(self, item_id: str) -> Item | None: ...
-
-    def save_item(self, item: Item) -> None: ...
-
-
-class FixStore(Protocol):
-    def writing(self) -> AbstractContextManager[None]: ...
-
-    def get_item(self, item_id: str) -> Item | None: ...
-
-    def update_item(self, item: Item) -> None: ...
-
-    def delete_item_if_untouched(self, item_id: str) -> bool: ...
-
-    def get_capture(self, capture_id: str) -> RawCapture | None: ...
-
-    def set_capture_status(self, capture_id: str, status: CaptureStatus) -> None: ...
 
 
 class LifecycleActions(Protocol):
@@ -53,10 +26,6 @@ class PlanningActions(Protocol):
     def discard(self, item_id: str) -> None: ...
 
     def complete_step(self, step_id: str) -> Step: ...
-
-
-class ItemLookup(Protocol):
-    def get_item(self, item_id: str) -> Item | None: ...
 
 
 class ItemLinker(Protocol):

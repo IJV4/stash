@@ -1,10 +1,10 @@
 import asyncio
 import logging
 from collections.abc import Callable, Coroutine
-from datetime import datetime
-from typing import Any, Protocol
+from typing import Any
 
 from stash.capture import Reply
+from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.hermes_adapter.outbox import ReplySender
 from stash.hermes_adapter.scheduler import Scheduler
 
@@ -20,19 +20,11 @@ Send = Callable[[Reply], None]
 Spawn = Callable[[Coroutine[Any, Any, None]], object]
 
 
-class NudgeDeliveries(Protocol):
-    def deliver(self, now: datetime, send: Send) -> None: ...
-
-
-class ProposalDeliveries(Protocol):
-    def deliver(self, send: Send) -> None: ...
-
-
 class Ticker:
     def __init__(
         self,
-        nudges: NudgeDeliveries,
-        proposals: ProposalDeliveries,
+        nudges: NudgeDelivery,
+        proposals: ProposalDelivery,
         sender: ReplySender,
         owner_chat: str,
         scheduler: Scheduler,

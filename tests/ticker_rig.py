@@ -15,10 +15,10 @@ from nudge_rig import a_nudge_rig
 from planning_rig import planning_over
 from threads import OverlapGate, await_signal
 
-from stash.delivery import ProposalDelivery
+from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.hermes_adapter.outbox import ReplySender
 from stash.hermes_adapter.scheduler import Scheduler
-from stash.hermes_adapter.ticker import NudgeDeliveries, ProposalDeliveries, Ticker
+from stash.hermes_adapter.ticker import Ticker
 from stash.planning import ProposedStep
 
 OWNER_CHAT = OWNER_ID
@@ -27,8 +27,8 @@ PROPOSED_STEPS = (ProposedStep("Book the table", 7),)
 
 
 def a_ticker(
-    nudges: NudgeDeliveries | None = None,
-    proposals: ProposalDeliveries | None = None,
+    nudges: NudgeDelivery | None = None,
+    proposals: ProposalDelivery | None = None,
     sender: ReplySender | None = None,
     scheduler: Scheduler | None = None,
     **options: Any,

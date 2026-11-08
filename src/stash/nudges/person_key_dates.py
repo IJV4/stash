@@ -1,7 +1,7 @@
 import datetime as dt
 
 from stash.domain import KeyDate, Person
-from stash.nudges.ports import PeopleReads
+from stash.store.port import Store
 
 
 def require_key_date_of(person: Person, key_date: KeyDate) -> None:
@@ -10,7 +10,7 @@ def require_key_date_of(person: Person, key_date: KeyDate) -> None:
 
 
 class PersonKeyDates:
-    def __init__(self, people: PeopleReads) -> None:
+    def __init__(self, people: Store) -> None:
         self._people = people
 
     def between(self, first: dt.date, last: dt.date) -> list[tuple[Person, KeyDate, dt.date]]:

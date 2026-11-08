@@ -7,7 +7,7 @@ from architecture_guard import (
 )
 
 PEOPLE = "stash.people"
-PEOPLE_IMPORTERS = (PEOPLE, "stash.app.build", "stash.app.app")
+PEOPLE_IMPORTERS = (PEOPLE, "stash.app", "stash.cli", "stash.hermes_adapter")
 PEOPLE_MAY_IMPORT = ("stash.domain", "stash.store.port", PEOPLE)
 NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
 
@@ -30,7 +30,7 @@ def test_the_people_package_imports_no_network_process_database_or_adapter_modul
     assert offenders == []
 
 
-def test_nothing_outside_the_people_package_and_the_composition_root_imports_it() -> None:
+def test_only_the_people_package_the_app_and_the_entry_points_import_people() -> None:
     # Execute
     offenders = importers_outside(PEOPLE, PEOPLE_IMPORTERS, project_sources())
 

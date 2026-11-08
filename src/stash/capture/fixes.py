@@ -10,11 +10,11 @@ from stash.capture.callbacks import FixAction, FixKind
 from stash.capture.completion_buttons import CompletionButtons
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.planning_buttons import PlanningButtons
-from stash.capture.ports import FixStore, LifecycleActions, PlanningActions
+from stash.capture.ports import LifecycleActions, PlanningActions
 from stash.capture.replies import Reply, busy, confirmation, gone
 from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
-from stash.store.port import StoreBusyError, UnknownItemError
+from stash.store.port import Store, StoreBusyError, UnknownItemError
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class Reroute:
 class FixHandler:
     def __init__(
         self,
-        store: FixStore,
+        store: Store,
         lifecycle: LifecycleActions,
         planning: PlanningActions,
         clock: Callable[[], datetime],

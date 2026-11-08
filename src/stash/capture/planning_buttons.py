@@ -3,16 +3,15 @@ from functools import partial
 
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.planning_replies import step_done_reply, steps_saved_reply, steps_skipped_reply
-from stash.capture.ports import ItemLookup, PlanningActions
+from stash.capture.ports import PlanningActions
 from stash.capture.replies import Reply, busy, gone, refused
 from stash.domain import Item
 from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
+from stash.store.port import Store
 
 
 class PlanningButtons:
-    def __init__(
-        self, items: ItemLookup, planning: PlanningActions, callback_log: CallbackLog
-    ) -> None:
+    def __init__(self, items: Store, planning: PlanningActions, callback_log: CallbackLog) -> None:
         self._items = items
         self._planning = planning
         self._log = callback_log

@@ -20,6 +20,7 @@ CLI_STASH_PACKAGES = (
     "stash.capture",
     "stash.cli",
     "stash.config",
+    "stash.delivery",
     "stash.doctor",
     "stash.domain",
     "stash.evaluation",
@@ -27,6 +28,7 @@ CLI_STASH_PACKAGES = (
     "stash.gpu_switch",
     "stash.library_html",
     "stash.lifecycle",
+    "stash.people",
     "stash.rendering",
     "stash.store",
 )

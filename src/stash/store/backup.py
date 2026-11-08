@@ -6,9 +6,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Protocol, Self
+from typing import Self
 
-from stash.store.port import BACKUP_LAST_SUCCESS_KEY, BackupError, BackupSource
+from stash.store.port import BACKUP_LAST_SUCCESS_KEY, BackupError, BackupSource, SettingsStore
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +41,11 @@ class BackupName:
         return f"stash-{self.day.year:04d}{self.day.month:02d}{self.day.day:02d}.db"
 
 
-class BackupSettings(Protocol):
-    def put_setting(self, key: str, value: str) -> None: ...
-
-
 class Backups:
     def __init__(
         self,
         source: BackupSource,
-        settings: BackupSettings,
+        settings: SettingsStore,
         clock: Callable[[], datetime],
         keep: int = DEFAULT_KEEP,
         remove: Callable[[Path], None] = Path.unlink,

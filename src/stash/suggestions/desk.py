@@ -4,7 +4,8 @@ from typing import assert_never
 
 from stash.domain import Item, Pick, Stage
 from stash.llm import LlmUnavailable
-from stash.suggestions.ports import CandidateStore, PickDesk, SuggestionPicker
+from stash.store.port import Store
+from stash.suggestions.ports import PickDesk, SuggestionPicker
 from stash.suggestions.results import (
     CONTEXT_LIMIT,
     ContextTooLong,
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SuggestionDesk:
-    def __init__(self, store: CandidateStore, engine: SuggestionPicker) -> None:
+    def __init__(self, store: Store, engine: SuggestionPicker) -> None:
         self._store = store
         self._engine = engine
 

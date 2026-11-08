@@ -5,9 +5,9 @@ from zoneinfo import ZoneInfo
 
 from stash.domain import Item, Stage, Step
 from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
-from stash.planning.ports import PlanningStore, ProposalDeclines, StepProposals
+from stash.planning.ports import ProposalDeclines, StepProposals
 from stash.planning.results import Proposal, ProposedStep
-from stash.store.port import StoreBusyError, UnknownItemError
+from stash.store.port import Store, StoreBusyError, UnknownItemError
 
 NOT_PROPOSABLE = "only a planned item with a date and no steps can get proposed steps"
 
@@ -37,7 +37,7 @@ def _any_unconfirmed(steps: Sequence[Step]) -> bool:
 class Planning:
     def __init__(
         self,
-        store: PlanningStore,
+        store: Store,
         proposer: StepProposals,
         declines: ProposalDeclines,
         new_id: Callable[[], str],

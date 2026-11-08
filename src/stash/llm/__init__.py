@@ -3,6 +3,7 @@ from stash.llm.messages import ChatMessage, ImagePart, Part, Role, TextPart
 from stash.llm.port import (
     BusyCheck,
     ChatModel,
+    ModelSource,
     ModelUnloader,
     NoModelToUnload,
     ProbeResult,
@@ -22,6 +23,7 @@ __all__ = [
     "LlmError",
     "LlmUnavailable",
     "ModelRouter",
+    "ModelSource",
     "ModelUnloader",
     "NoModelToUnload",
     "Part",

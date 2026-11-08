@@ -5,9 +5,8 @@ from zoneinfo import ZoneInfo
 
 from stash.config import LlmTask
 from stash.domain import Item, require_aware
-from stash.llm import LlmBadOutput
+from stash.llm import LlmBadOutput, ModelSource
 from stash.suggestions.parse import parse_suggestions
-from stash.suggestions.ports import SuggestionModelSource
 from stash.suggestions.prompt import build_suggestion_messages
 from stash.suggestions.results import SUGGESTION_LIMIT, Suggestion
 from stash.suggestions.schema import SCHEMA_NAME, SUGGESTIONS_SCHEMA
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 class SuggestionEngine:
     def __init__(
         self,
-        models: SuggestionModelSource,
+        models: ModelSource,
         clock: Callable[[], datetime],
         timezone: ZoneInfo,
     ) -> None:

@@ -2,20 +2,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Protocol
 
 from stash.config import StashConfig
 from stash.gpu import GpuProbe
 from stash.llm import ProbeResult
 from stash.store import BACKUP_LAST_SUCCESS_KEY, ItemStore
+from stash.store.port import SettingsStore
 
 STALE_BACKUP_AFTER = timedelta(hours=48)
 NO_BACKUP_RECORDED = "no backup recorded yet"
 SECONDS_PER_HOUR = 3600
-
-
-class SettingsReader(Protocol):
-    def get_setting(self, key: str) -> str | None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +74,7 @@ class ExecutableProbe:
 
 @dataclass(frozen=True, slots=True)
 class BackupProbe:
-    settings: SettingsReader
+    settings: SettingsStore
     clock: Callable[[], datetime]
 
     def check(self) -> ProbeResult:

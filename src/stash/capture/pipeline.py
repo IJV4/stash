@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from stash.capture.message import IncomingMessage
-from stash.capture.ports import CaptureFiler, IntakeStore, ItemLinker
+from stash.capture.ports import CaptureFiler, ItemLinker
 from stash.capture.results import (
     Deferred,
     Duplicate,
@@ -17,6 +17,7 @@ from stash.domain import CaptureStatus, Filing, Item, RawCapture, Route
 from stash.enrich.links import LinkInspector
 from stash.enrich.urls import extract_urls
 from stash.llm.errors import LlmDeferred, LlmError
+from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class _Classified:
 class CapturePipeline:
     def __init__(
         self,
-        store: IntakeStore,
+        store: Store,
         inspector: LinkInspector,
         filer: CaptureFiler,
         new_id: Callable[[], str],

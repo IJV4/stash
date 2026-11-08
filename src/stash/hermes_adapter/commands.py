@@ -6,6 +6,7 @@ from typing import assert_never
 
 from stash.capture import (
     QUESTION_PREFIX,
+    CaptureIntake,
     Deferred,
     Duplicate,
     Filed,
@@ -13,15 +14,10 @@ from stash.capture import (
     ProcessResult,
 )
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
-from stash.hermes_adapter.ports import (
-    GpuControl,
-    ItemReader,
-    LibraryReader,
-    PeopleRoster,
-    Retrier,
-)
+from stash.gpu_switch import GpuSwitch
 from stash.hermes_adapter.queries import MAX_LIMIT, ItemQuery, item_type_from_text
-from stash.lifecycle import MAX_LIBRARY_LIMIT, LibraryQuery
+from stash.lifecycle import MAX_LIBRARY_LIMIT, LibraryQuery, Lifecycle
+from stash.people import PeopleDirectory
 from stash.rendering import (
     NO_ITEMS,
     NO_PEOPLE,
@@ -34,6 +30,7 @@ from stash.rendering import (
     result_line,
     switched_off_lines,
 )
+from stash.store.port import Store
 
 GPU_USAGE = "Usage: /gpu on|off|status"
 HTML_ARGUMENT = "html"
@@ -79,7 +76,7 @@ def _retry_line(result: ProcessResult) -> str:
 
 
 class ListCommand:
-    def __init__(self, reader: ItemReader) -> None:
+    def __init__(self, reader: Store) -> None:
         self._reader = reader
 
     async def run(self, raw_args: str) -> str:
@@ -93,7 +90,7 @@ class ListCommand:
 
 
 class LibraryCommand:
-    def __init__(self, reader: LibraryReader, send_html: Callable[[], Awaitable[str]]) -> None:
+    def __init__(self, reader: Lifecycle, send_html: Callable[[], Awaitable[str]]) -> None:
         self._reader = reader
         self._send_html = send_html
 
@@ -111,7 +108,7 @@ class LibraryCommand:
 
 
 class PeopleCommand:
-    def __init__(self, roster: PeopleRoster, today: Callable[[], date]) -> None:
+    def __init__(self, roster: PeopleDirectory, today: Callable[[], date]) -> None:
         self._roster = roster
         self._today = today
 
@@ -122,7 +119,7 @@ class PeopleCommand:
 
 
 class GpuCommand:
-    def __init__(self, switch: GpuControl, local_now: Callable[[], datetime]) -> None:
+    def __init__(self, switch: GpuSwitch, local_now: Callable[[], datetime]) -> None:
         self._switch = switch
         self._local_now = local_now
 
@@ -151,7 +148,7 @@ class GpuCommand:
 
 
 class RetryCommand:
-    def __init__(self, steps: Retrier) -> None:
+    def __init__(self, steps: CaptureIntake) -> None:
         self._steps = steps
 
     async def run(self, raw_args: str) -> str:

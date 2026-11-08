@@ -9,9 +9,9 @@ from stash.lifecycle._guards import (
     translating_store_errors,
 )
 from stash.lifecycle.errors import ItemChanged, LifecycleRefused, UnknownItem, UnknownOutcome
-from stash.lifecycle.ports import LifecycleStore
 from stash.lifecycle.query import DEFAULT_LIBRARY_QUERY, LibraryQuery
 from stash.lifecycle.results import Completion, ItemHistory, LibraryEntry
+from stash.store.port import Store
 
 REASON_ONLY_FOR_DROPPING = "a reason is only for dropping an item"
 TAKEAWAYS_NOT_A_LIST = "takeaways must be a list of separate items, not one piece of text"
@@ -24,7 +24,7 @@ COMPLETION_DATE_SLACK = timedelta(days=1)
 class Lifecycle:
     def __init__(
         self,
-        store: LifecycleStore,
+        store: Store,
         new_id: Callable[[], str],
         clock: Callable[[], datetime],
         timezone: ZoneInfo,

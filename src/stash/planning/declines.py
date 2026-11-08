@@ -1,11 +1,11 @@
 from stash.domain import Item
-from stash.planning.ports import DeclineSettings
+from stash.store.port import SettingsStore
 
 _KEY_TEMPLATE = "planning.declined:{item_id}"
 
 
 class Declines:
-    def __init__(self, settings: DeclineSettings) -> None:
+    def __init__(self, settings: SettingsStore) -> None:
         self._settings = settings
 
     def is_declined(self, item: Item) -> bool:

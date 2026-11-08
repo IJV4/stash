@@ -16,8 +16,9 @@ from stash.nudges.digest import (
 )
 from stash.nudges.due import WeeklyDigest
 from stash.nudges.person_key_dates import PersonKeyDates
-from stash.nudges.ports import DigestStore, PeopleReads, PickSource
+from stash.nudges.ports import PickSource
 from stash.nudges.schedule import Schedule
+from stash.store.port import Store
 
 DIGEST_CONTEXT = "Pick things worth doing in the coming week."
 PREVIOUS_DIGESTS = 4
@@ -27,9 +28,7 @@ PREVIOUS_DIGESTS_WINDOW = dt.timedelta(weeks=PREVIOUS_DIGESTS, days=1)
 
 
 class DigestBuilder:
-    def __init__(
-        self, store: DigestStore, picks: PickSource, schedule: Schedule, people: PeopleReads
-    ) -> None:
+    def __init__(self, store: Store, picks: PickSource, schedule: Schedule, people: Store) -> None:
         self._store = store
         self._picks = picks
         self._forgotten = _Forgotten(store, schedule)
@@ -51,7 +50,7 @@ class DigestBuilder:
 
 
 class _Forgotten:
-    def __init__(self, store: DigestStore, schedule: Schedule) -> None:
+    def __init__(self, store: Store, schedule: Schedule) -> None:
         self._store = store
         self._schedule = schedule
 
@@ -75,7 +74,7 @@ class _Forgotten:
 
 
 class _Upcoming:
-    def __init__(self, store: DigestStore, schedule: Schedule, people: PeopleReads) -> None:
+    def __init__(self, store: Store, schedule: Schedule, people: Store) -> None:
         self._store = store
         self._schedule = schedule
         self._key_dates = PersonKeyDates(people)

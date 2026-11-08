@@ -3,12 +3,12 @@ import datetime as dt
 from stash.domain import ItemType, KeyDate, Person
 from stash.nudges.due import PersonDateReminder
 from stash.nudges.person_key_dates import PersonKeyDates
-from stash.nudges.ports import PeopleReads
 from stash.nudges.schedule import Schedule
+from stash.store.port import Store
 
 
 class PersonDates:
-    def __init__(self, people: PeopleReads, schedule: Schedule, lead_days: tuple[int, ...]) -> None:
+    def __init__(self, people: Store, schedule: Schedule, lead_days: tuple[int, ...]) -> None:
         self._people = people
         self._key_dates = PersonKeyDates(people)
         self._schedule = schedule

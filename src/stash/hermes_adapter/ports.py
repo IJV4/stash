@@ -1,24 +1,12 @@
-from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date
 from typing import Protocol
 
-from stash.capture import Deferred, Filed, IncomingMessage, ProcessResult, Reply, Reroute
+from stash.capture import IncomingMessage, ProcessResult, Reply, Reroute
 from stash.domain import (
-    Item,
-    ItemType,
-    KeyDate,
-    KeyDateKind,
-    Outcome,
-    Person,
-    PersonSummary,
     RawCapture,
-    Stage,
     Step,
 )
-from stash.gpu import GpuStatus
-from stash.gpu_switch import GpuSwitchResult
 from stash.library_html import RenderedLibrary
-from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LibraryQuery
 from stash.suggestions.results import Picked, Unavailable
 
 
@@ -28,80 +16,14 @@ class IntakeSteps(Protocol):
     def process(self, capture: RawCapture) -> ProcessResult: ...
 
 
-class AgentCapturer(Protocol):
-    def file(self, text: str, note: str | None = None) -> Filed | Deferred: ...
-
-
-class Retrier(Protocol):
-    def retry_pending(self) -> list[ProcessResult]: ...
-
-
 class FixApplier(Protocol):
     def apply(self, data: str) -> Reply | Reroute: ...
-
-
-class GpuControl(Protocol):
-    def status(self, now: datetime) -> GpuStatus: ...
-
-    def turn_off(self, now: datetime) -> GpuSwitchResult: ...
-
-    def turn_on(self) -> None: ...
-
-
-class ItemReader(Protocol):
-    def list_items(
-        self,
-        stage: Stage | None = None,
-        item_type: ItemType | None = None,
-        limit: int = ...,
-        offset: int = 0,
-    ) -> list[Item]: ...
-
-    def search_items(self, query: str, limit: int = ...) -> list[Item]: ...
-
-
-class LibraryReader(Protocol):
-    def library(self, query: LibraryQuery = ...) -> tuple[LibraryEntry, ...]: ...
 
 
 class LibraryDocuments(Protocol):
     def rendered_library(self) -> RenderedLibrary: ...
 
     def keep_library_copy(self, data: bytes) -> None: ...
-
-
-class ItemLifecycle(LibraryReader, Protocol):
-    def complete(
-        self,
-        item_id: str,
-        *,
-        rating: int | None = None,
-        notes: str = "",
-        takeaways: Sequence[str] = (),
-        keep: bool | None = None,
-        on: date | None = None,
-    ) -> Completion: ...
-
-    def annotate(
-        self,
-        outcome_id: str,
-        *,
-        notes: str | None = None,
-        takeaways: Sequence[str] | None = None,
-        rating: int | None = None,
-    ) -> Outcome: ...
-
-    def keep(self, item_id: str, kept: bool) -> Item: ...
-
-    def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item: ...
-
-    def reschedule(self, item_id: str, on: date | None) -> Item: ...
-
-    def group(self, child_id: str, parent_id: str) -> Item: ...
-
-    def ungroup(self, child_id: str) -> Item: ...
-
-    def history(self, item_id: str) -> ItemHistory: ...
 
 
 class StepPlanner(Protocol):
@@ -128,25 +50,3 @@ class StepPlanner(Protocol):
 
 class Suggester(Protocol):
     def suggest(self, context: str, limit: int) -> Picked | Unavailable: ...
-
-
-class PeopleRoster(Protocol):
-    def roster(self, today: date, within_days: int | None = None) -> tuple[PersonSummary, ...]: ...
-
-
-class PeopleDesk(PeopleRoster, Protocol):
-    def add(self, name: str, relation: str = "", aliases: Sequence[str] = ()) -> Person: ...
-
-    def add_key_date(
-        self,
-        person_id: str,
-        kind: KeyDateKind,
-        month: int,
-        day: int,
-        year: int | None = None,
-        label: str = "",
-    ) -> KeyDate: ...
-
-    def link(self, item_id: str, person_id: str) -> None: ...
-
-    def remove(self, person_id: str) -> None: ...

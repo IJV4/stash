@@ -1,11 +1,11 @@
 import datetime as dt
 import logging
 from collections.abc import Callable
-from typing import Protocol
 
 from stash.capture import Reply, proposal_reply
 from stash.domain import Item, Stage
-from stash.planning import PlanningRefused, Proposal
+from stash.planning import Planning, PlanningRefused
+from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
 
@@ -16,20 +16,8 @@ PROPOSAL_SEND_FAILED_LOG = "proposal send failed (%s); proposed steps withdrawn"
 PROPOSAL_WITHDRAW_FAILED_LOG = "withdrawing unsent proposed steps failed (%s); steps left in place"
 
 
-class ProposalPlanning(Protocol):
-    def needs_proposal(self, item: Item) -> bool: ...
-
-    def propose_for(self, item_id: str) -> Proposal: ...
-
-    def withdraw(self, item_id: str) -> None: ...
-
-
-class PlannedItems(Protocol):
-    def list_items(self, *, stage: Stage, limit: int) -> list[Item]: ...
-
-
 class ProposalDelivery:
-    def __init__(self, planning: ProposalPlanning, items: PlannedItems) -> None:
+    def __init__(self, planning: Planning, items: Store) -> None:
         self._planning = planning
         self._items = items
 

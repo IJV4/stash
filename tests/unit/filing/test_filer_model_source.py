@@ -3,11 +3,11 @@ from fakes.chat_model import FakeChatModel
 from fakes.model_source import FakeModelSource
 from filing_rig import LOS_ANGELES, NOON_UTC
 
-from stash.filing import Filer, FilingModelSource
-from stash.llm import LlmDeferred
+from stash.filing import Filer
+from stash.llm import LlmDeferred, ModelSource
 
 
-def a_filer(source: FilingModelSource) -> Filer:
+def a_filer(source: ModelSource) -> Filer:
     return Filer(source, lambda: NOON_UTC, LOS_ANGELES)
 
 

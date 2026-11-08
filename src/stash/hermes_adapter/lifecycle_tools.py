@@ -11,7 +11,6 @@ from stash.hermes_adapter.lifecycle_schemas import (
     SET_DATE_SCHEMA,
     SET_STAGE_SCHEMA,
 )
-from stash.hermes_adapter.ports import ItemLifecycle
 from stash.hermes_adapter.tool_arguments import ToolArguments
 from stash.hermes_adapter.tool_json import (
     UNREADABLE,
@@ -24,7 +23,7 @@ from stash.hermes_adapter.tool_json import (
     outcome_answer,
 )
 from stash.hermes_adapter.tool_spec import ToolSpec
-from stash.lifecycle import LibraryQuery
+from stash.lifecycle import LibraryQuery, Lifecycle
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ USE_STASH_COMPLETE = "use stash_complete to finish an item"
 
 
 class LifecycleTools:
-    def __init__(self, lifecycle: ItemLifecycle) -> None:
+    def __init__(self, lifecycle: Lifecycle) -> None:
         self._lifecycle = lifecycle
 
     def specs(self) -> tuple[ToolSpec, ...]:
