@@ -9,7 +9,7 @@ from architecture_guard import (
 
 LIBRARY_HTML = "stash.library_html"
 LIBRARY_HTML_MAY_IMPORT = ("stash.domain", LIBRARY_HTML)
-NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3")
+NETWORK_PROCESS_AND_DATABASE = ("httpx", "subprocess", "sqlite3", "http", "socket", "socketserver")
 IMAGING_AND_EXTRACTION = ("yt_dlp", "PIL", "pytesseract")
 
 

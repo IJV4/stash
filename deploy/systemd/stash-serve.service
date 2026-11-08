@@ -1,0 +1,16 @@
+# ~/.config/systemd/user/stash-serve.service
+# The token lives in ~/.config/stash/serve.env (chmod 600): STASH_LIBRARY_TOKEN=<24+ characters>
+[Unit]
+Description=stash HTML library on the home network
+
+[Service]
+Type=simple
+Environment=STASH_CONFIG=%h/.config/stash/stash.toml
+EnvironmentFile=%h/.config/stash/serve.env
+ExecStart=%h/code/stash/.venv/bin/stash serve
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=2
+
+[Install]
+WantedBy=default.target

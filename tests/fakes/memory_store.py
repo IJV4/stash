@@ -1,5 +1,6 @@
 import threading
 from collections.abc import Sequence
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import replace
 from datetime import date, datetime
 
@@ -313,6 +314,9 @@ class MemoryStore:
     def put_setting(self, key: str, value: str) -> None:
         with self._lock:
             self._settings[key] = value
+
+    def read_snapshot(self) -> AbstractContextManager[None]:
+        return nullcontext()
 
     def _known_capture(self, capture_id: str) -> RawCapture:
         capture = self._captures.get(capture_id)

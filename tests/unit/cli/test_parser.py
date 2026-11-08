@@ -79,6 +79,7 @@ def test_list_refuses_values_outside_its_choices(argv: list[str]) -> None:
         ["show", "x"],
         ["tick"],
         ["people"],
+        ["serve"],
     ],
     ids=lambda argv: argv[0],
 )
@@ -416,3 +417,11 @@ def test_people_accepts_an_upcoming_window_of_a_whole_year() -> None:
 
     # Assert
     assert arguments.upcoming == 366
+
+
+def test_serve_is_the_serve_command_and_needs_no_config_path() -> None:
+    # Execute
+    arguments = parse("serve")
+
+    # Assert
+    assert (arguments.command, arguments.config) == (Command.SERVE, None)

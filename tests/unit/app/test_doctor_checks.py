@@ -62,6 +62,7 @@ def test_the_checks_run_in_the_documented_order_for_both_providers() -> None:
         "deno",
         "tesseract",
         "backup",
+        "library server",
     ]
 
 
@@ -82,6 +83,7 @@ def test_only_the_configured_providers_get_a_check() -> None:
         "deno",
         "tesseract",
         "backup",
+        "library server",
     ]
 
 
@@ -149,6 +151,7 @@ def test_the_gpu_tool_checks_are_optional() -> None:
         "deno",
         "tesseract",
         "backup",
+        "library server",
     ]
 
 

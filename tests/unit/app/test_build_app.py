@@ -17,6 +17,7 @@ from stash.config.loader import load_config
 from stash.domain import ItemType, Stage
 from stash.evaluation import NoOcr
 from stash.evaluation.tesseract import TesseractOcr
+from stash.library_server import LibraryServer
 
 FIVE_SECOND_WINDOW = "burst_window_seconds = 5\n"
 OPENROUTER_ONLY = (
@@ -308,6 +309,18 @@ def test_with_tesseract_on_the_path_the_ocr_is_tesseract(tmp_path: Path) -> None
 
     # Assert
     assert isinstance(ocr, TesseractOcr)
+    app.close()
+
+
+def test_the_built_app_creates_the_real_library_server(tmp_path: Path) -> None:
+    # Setup
+    app = built(build_cli_rig(tmp_path))
+
+    # Execute
+    servers = app.library_servers
+
+    # Assert
+    assert servers is LibraryServer
     app.close()
 
 

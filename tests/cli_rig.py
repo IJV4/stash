@@ -10,6 +10,7 @@ from fakes.fake_providers import FakeProviders
 from fakes.installed_modules import InstalledModules
 from fakes.nvidia_smi import SwitchableSmi
 from fakes.ocr import FakeOcr
+from fakes.recording_library_servers import RecordingLibraryServers
 from fakes.search_path import FakeSearchPath
 from llm_rig import llm_toml
 
@@ -25,6 +26,7 @@ from stash.people import PeopleDirectory
 
 NOON = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 LATE_EVENING_IN_LOS_ANGELES = datetime(2026, 11, 3, 3, 0, tzinfo=UTC)
+LIBRARY_TOKEN = "SECRETtokenSECRETtokenSECRET1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +51,7 @@ class CliRig:
         self.modules = InstalledModules("yt_dlp")
         self.now = NOON
         self.ocr: Ocr = FakeOcr("")
+        self.library_servers = RecordingLibraryServers()
         self.env = {"HOME": str(directory), "OPENROUTER_API_KEY": API_KEY}
 
     def build(self, config: StashConfig) -> StashApp:
@@ -60,7 +63,11 @@ class CliRig:
             clock=lambda: self.now,
             find_spec=self.modules,
         )
-        return replace(app, ocr=self.ocr)
+        return replace(app, ocr=self.ocr, library_servers=self.library_servers)
+
+    def listening_on(self, bind: str, port: int) -> None:
+        with self.config_file.open("a", encoding="utf-8") as config:
+            config.write(f'\n[library]\nbind = "{bind}"\nport = {port}\n')
 
     def run(self, *argv: str) -> CliResult:
         return self.run_without_config(*argv, "--config", str(self.config_file))

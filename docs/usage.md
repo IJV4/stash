@@ -1116,6 +1116,62 @@ is left out when the latest outcome has none).
 Untrusted text (titles, notes, takeaways, details, URLs) is printed through the
 same non-printable filter as `/list`.
 
+## The HTML library  [Plan 6 Tasks 2-3]
+
+The whole library (kept items, finished items by year, want-to lists, dropped items)
+as one self-contained HTML page with no network requests, so it opens offline on the
+phone. Three ways to get it:
+
+1. `/library html` in the owner DM sends it as a document named
+   `stash-library-YYYY-MM-DD.html` with the caption `📚 Your stash library`, and keeps a
+   copy at `<data_dir>/library/latest.html`. A page over 45 MB is not sent; the bot
+   answers `Library too big to send — open it on the home network.`
+2. `stash library --html PATH` writes the same page to `PATH` (it must end in `.html`),
+   replacing a file already there only once the new one is complete, and prints
+   `Library written: PATH`.
+3. `stash serve` serves the page read-only on the home network, rendered fresh on every
+   request.
+
+### stash serve
+
+    export STASH_LIBRARY_TOKEN=<24 or more of A-Z a-z 0-9 - . _ ~>
+    stash serve            # Serving the library on http://0.0.0.0:8765/?k=<STASH_LIBRARY_TOKEN>
+
+It runs as its own process, separate from the Hermes gateway, and reads the same
+database. The address is `[library] bind` (default `0.0.0.0`) and `port` (default
+`8765`) in the config file; the token comes from the environment only.
+
+1. `stash serve` without `STASH_LIBRARY_TOKEN` (or with an empty one) prints a message
+   saying how to set it on standard error and exits 2. A token shorter than 24
+   characters, or one using other characters, is a `ConfigError` that names the
+   variable and never shows its value.
+2. `GET /?k=<token>` answers 200 with the page and sets the cookie
+   `stash_k=<token>; HttpOnly; SameSite=Strict; Path=/`, so later visits need no
+   query string.
+3. `GET /` with that cookie and no query answers 200 with the page.
+4. A wrong or missing token answers 404 with the same fixed body as any unknown path:
+   nothing says a token is needed. Tokens are compared in constant time.
+5. `GET /healthz` answers 200 `ok` with no token, for `stash doctor` and for checking
+   the service from the phone.
+6. Every other path (`/../etc/passwd`, `/index.html`, `/healthz/x`) answers 404 and
+   nothing is read from disk.
+7. Every method except GET answers 405 with `Allow: GET`; a request line over 64 KiB
+   answers 414.
+8. Every answer carries `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
+   `Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`.
+9. Each page is rendered from one consistent snapshot of the database, so a write by
+   the gateway in the middle of a request never shows half of a change. If the
+   database stays locked, the answer is 503 with a fixed body; any other failure is
+   500 with a fixed body.
+10. The access log records the method, the path without its query string, and the
+    status. The token is never logged.
+11. `stash doctor` gains the optional line `library server`: ✔ when `GET /healthz` on
+    the configured port answers `ok`, `!` (not blocking) when nothing is listening.
+
+`stash serve` stops on Ctrl-C. Run it for good as the systemd user service
+`deploy/systemd/stash-serve.service`; the network side (mirrored networking, the
+Windows Firewall rule, bookmarking the URL) is in `docs/deploy/wsl-setup.md`.
+
 ## Steps and the sent-nudge ledger  [Plan 3 Task 1]
 
 No Telegram surface yet; the planner and nudger will build on these calls.

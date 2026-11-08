@@ -35,6 +35,7 @@ from stash.gpu import GpuGate
 from stash.gpu.probe import CommandRunner, NvidiaSmiProbe, run_command
 from stash.gpu_switch import GpuSwitch
 from stash.http_client import make_http_client
+from stash.library_server import LibraryServer
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
 from stash.nudges import DigestBuilder, Nudger, PersonDates, Schedule
@@ -118,6 +119,7 @@ def build_app(
             ),
             ocr=make_ocr(which),
             backups=Backups(sqlite, sqlite, clock),
+            library_servers=LibraryServer,
             resources=resources,
         )
     except BaseException:

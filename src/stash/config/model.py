@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from stash.config.errors import ConfigError
+from stash.config.library import LibraryConfig
 from stash.config.nudges import NudgeConfig
 from stash.config.people import PeopleConfig
 
@@ -182,6 +183,7 @@ class StashConfig:
     nudges: NudgeConfig
     burst_window_seconds: float = DEFAULT_BURST_WINDOW_SECONDS
     people: PeopleConfig = field(default_factory=PeopleConfig)
+    library: LibraryConfig = field(default_factory=LibraryConfig)
 
     def __post_init__(self) -> None:
         if not self.data_dir.is_absolute():

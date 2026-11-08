@@ -28,6 +28,12 @@ def opened(path: Path, migrations: Traversable | None = None) -> Iterator[Sqlite
 
 
 @contextmanager
+def two_connections(directory: Path) -> Iterator[tuple[SqliteStore, SqliteStore]]:
+    with opened(directory / "stash.db") as first, opened(directory / "stash.db") as second:
+        yield first, second
+
+
+@contextmanager
 def sqlite_store() -> Iterator[Store]:
     with tempfile.TemporaryDirectory() as directory, opened(Path(directory) / "stash.db") as store:
         yield store

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from contextlib import AbstractContextManager
 from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol
@@ -247,6 +248,10 @@ class SettingsStore(Protocol):
     def put_setting(self, key: str, value: str) -> None: ...
 
 
+class ReadSnapshotStore(Protocol):
+    def read_snapshot(self) -> AbstractContextManager[None]: ...
+
+
 class Store(
     CaptureStore,
     ItemStore,
@@ -255,6 +260,7 @@ class Store(
     PeopleStore,
     NudgeLedger,
     SettingsStore,
+    ReadSnapshotStore,
     Protocol,
 ): ...
 

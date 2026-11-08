@@ -3,7 +3,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from stash.app.atomic_write import write_atomically
-from stash.app.library import library_copy_path
+from stash.app.library import (
+    LibraryServerFactory,
+    LibraryTokenMissing,
+    ServingLibrary,
+    library_copy_path,
+)
 from stash.capture import AgentCapture, BurstCoalescer, CaptureIntake, FixHandler
 from stash.config import StashConfig
 from stash.delivery import NudgeDelivery, ProposalDelivery
@@ -42,6 +47,7 @@ class StashApp:
     eval_targets: EvalTargets
     ocr: Ocr
     backups: BackupWriter
+    library_servers: LibraryServerFactory
     resources: Closeable
 
     def local_now(self) -> datetime:
@@ -52,6 +58,16 @@ class StashApp:
 
     def rendered_library(self) -> RenderedLibrary:
         return render_document(self.store, self.local_now())
+
+    def library_page(self) -> str:
+        with self.store.read_snapshot():
+            return self.rendered_library().html
+
+    def library_server(self) -> ServingLibrary:
+        library = self.config.library
+        if library.token is None:
+            raise LibraryTokenMissing
+        return self.library_servers(self.library_page, library.token, library.bind, library.port)
 
     def keep_library_copy(self, data: bytes) -> None:
         write_atomically(library_copy_path(self.config.data_dir), data)

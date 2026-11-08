@@ -6,6 +6,7 @@ import httpx
 
 OLLAMA_HOST = "localhost"
 OPENROUTER_HOST = "openrouter.ai"
+LIBRARY_HOST = "127.0.0.1"
 OLLAMA_CHAT_PATH = "/v1/chat/completions"
 UNKNOWN = httpx.Response(404, json={"error": "unknown endpoint"})
 HTML = {"content-type": "text/html; charset=utf-8"}
@@ -40,6 +41,7 @@ class FakeProviders:
         self.openrouter_models: list[str] = ["cloud/model"]
         self.answer: Mapping[str, object] = FILING_ANSWER
         self.pages: dict[str, str] = {}
+        self.library_listening = True
 
     def client(self) -> httpx.Client:
         return httpx.Client(transport=httpx.MockTransport(self._handle))
@@ -58,6 +60,8 @@ class FakeProviders:
             return self._ollama(request)
         if request.url.host == OPENROUTER_HOST:
             return self._openrouter(request)
+        if request.url.host == LIBRARY_HOST:
+            return self._library(request)
         return UNKNOWN
 
     def _ollama(self, request: httpx.Request) -> httpx.Response:
@@ -75,6 +79,11 @@ class FakeProviders:
             case "/v1/chat/completions":
                 return _chat_reply(self.answer)
         return UNKNOWN
+
+    def _library(self, request: httpx.Request) -> httpx.Response:
+        if not self.library_listening:
+            raise httpx.ConnectError("connection refused", request=request)
+        return httpx.Response(200, text="ok") if request.url.path == "/healthz" else UNKNOWN
 
     def _openrouter(self, request: httpx.Request) -> httpx.Response:
         if not self.openrouter_key_valid:
