@@ -59,7 +59,7 @@ class StashApp:
     def rendered_library(self) -> RenderedLibrary:
         return render_document(self.store, self.local_now())
 
-    def library_page(self) -> str:
+    def serve_only_library_page(self) -> str:
         with self.store.read_snapshot():
             return self.rendered_library().html
 
@@ -67,7 +67,9 @@ class StashApp:
         library = self.config.library
         if library.token is None:
             raise LibraryTokenMissing
-        return self.library_servers(self.library_page, library.token, library.bind, library.port)
+        return self.library_servers(
+            self.serve_only_library_page, library.token, library.bind, library.port
+        )
 
     def keep_library_copy(self, data: bytes) -> None:
         write_atomically(library_copy_path(self.config.data_dir), data)

@@ -1,5 +1,7 @@
+import contextlib
 import io
-from collections.abc import Callable
+import logging
+from collections.abc import Callable, Iterator
 
 import pytest
 from fakes.recording_library_servers import (
@@ -57,3 +59,31 @@ def test_the_server_is_shut_down_when_serving_fails_with_an_unexpected_error() -
 
     # Assert
     assert servers.events[-1] == SHUT_DOWN
+
+
+@contextlib.contextmanager
+def unconfigured_root_logger() -> Iterator[None]:
+    root = logging.getLogger()
+    handlers, level = root.handlers[:], root.level
+    root.handlers = []
+    root.setLevel(logging.WARNING)
+    try:
+        yield
+    finally:
+        root.handlers = handlers
+        root.setLevel(level)
+
+
+def test_serving_makes_the_library_server_access_lines_reach_the_journal() -> None:
+    # Setup
+    journal = io.StringIO()
+    servers = RecordingLibraryServers(
+        while_serving=lambda: logging.getLogger("stash.library_server").info("GET / 200")
+    )
+
+    # Execute
+    with unconfigured_root_logger(), contextlib.redirect_stderr(journal):
+        commands.serve(maker_of(servers), LibraryConfig(), io.StringIO())
+
+    # Assert
+    assert journal.getvalue() == "INFO GET / 200\n"

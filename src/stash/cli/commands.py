@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable, Iterable
 from datetime import date, datetime, tzinfo
 from pathlib import Path
@@ -30,6 +31,7 @@ from stash.store import BackupError, BackupWriter, ItemStore
 
 MESSAGE_SEPARATOR = "\n\n"
 TOKEN_PLACEHOLDER = "<STASH_LIBRARY_TOKEN>"
+SERVE_LOG_FORMAT = "%(levelname)s %(message)s"
 
 
 class TickDelivery(Protocol):
@@ -142,6 +144,7 @@ def tick(delivery: TickDelivery, now: datetime, dry_run: bool, out: TextIO) -> i
 
 
 def serve(make_server: Callable[[], ServingLibrary], library: LibraryConfig, out: TextIO) -> int:
+    logging.basicConfig(level=logging.INFO, format=SERVE_LOG_FORMAT)
     try:
         server = make_server()
     except LibraryTokenMissing as error:

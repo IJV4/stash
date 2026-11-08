@@ -31,7 +31,7 @@ def test_the_read_snapshot_is_released_when_rendering_fails() -> None:
 
     # Execute
     with pytest.raises(ReadFailed):
-        app.library_page()
+        app.serve_only_library_page()
 
     # Assert
     assert runs_of(store) == [OPENED, READ, RELEASED]
@@ -44,7 +44,7 @@ def test_a_busy_store_passes_through_the_library_page_unchanged() -> None:
 
     # Execute / Assert
     with pytest.raises(StoreBusyError) as raised:
-        app.library_page()
+        app.serve_only_library_page()
     assert raised.value is busy
 
 
