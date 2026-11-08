@@ -1,5 +1,6 @@
 import datetime as dt
 from collections.abc import Sequence
+from contextlib import AbstractContextManager
 from typing import Protocol
 
 from stash.config import LlmTask
@@ -21,6 +22,8 @@ class ProposalDeclines(Protocol):
 
 
 class PlanningStore(Protocol):
+    def writing(self) -> AbstractContextManager[None]: ...
+
     def get_item(self, item_id: str) -> Item | None: ...
 
     def steps_for(self, item_id: str) -> list[Step]: ...

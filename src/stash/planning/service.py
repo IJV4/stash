@@ -1,4 +1,3 @@
-import threading
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -51,7 +50,6 @@ class Planning:
         self._new_id = new_id
         self._clock = clock
         self._timezone = timezone
-        self._lock = threading.Lock()
 
     def needs_proposal(self, item: Item) -> bool:
         return (
@@ -67,7 +65,7 @@ class Planning:
         if not self.needs_proposal(item):
             raise PlanningRefused(NOT_PROPOSABLE)
         proposals = self._proposer.propose(item)
-        with self._lock, _translating_store_errors():
+        with self._store.writing(), _translating_store_errors():
             current = self._item(item_id)
             if current.date != item.date or not self.needs_proposal(current):
                 raise PlanningRefused(NOT_PROPOSABLE)
@@ -128,7 +126,7 @@ class Planning:
         lead_days: int | None = None,
         due_on: date | None = None,
     ) -> Step:
-        with self._lock, _translating_store_errors():
+        with self._store.writing(), _translating_store_errors():
             current = self._step(step_id)
             with _refusing_what_the_domain_refuses():
                 edited = current.edited(text=text, lead_days=lead_days, due_on=due_on)
@@ -136,7 +134,7 @@ class Planning:
         return edited
 
     def complete_step(self, step_id: str) -> Step:
-        with self._lock, _translating_store_errors():
+        with self._store.writing(), _translating_store_errors():
             done = self._step(step_id).confirmed_now().marked_done()
             self._store.save_step(done)
         return done
@@ -144,7 +142,7 @@ class Planning:
     @contextmanager
     def _locked_item(self, item_id: str) -> Iterator[None]:
         self._item(item_id)
-        with self._lock, _translating_store_errors():
+        with self._store.writing(), _translating_store_errors():
             yield
 
     def _drop_unconfirmed_steps(self, item_id: str) -> None:

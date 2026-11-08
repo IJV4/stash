@@ -2,7 +2,6 @@ import logging
 
 from builders import stored_item
 from fakes.busy_store import BusyStore
-from fakes.changing_item_store import ChangingItemStore
 from fakes.failing_completion_store import FailingCompletionStore
 from fakes.failing_read_store import FailingReadStore
 from fakes.failing_save_store import FailingSaveStore
@@ -104,19 +103,6 @@ def test_a_failed_write_leaves_the_store_as_it_was() -> None:
 
     # Assert
     assert store_snapshot(store) == before
-
-
-def test_a_tool_on_an_item_changed_meanwhile_answers_the_item_changed_text() -> None:
-    # Setup
-    store = ChangingItemStore()
-    stored_item(store, id="w1", stage=Stage.WANT_TO)
-    store.change_after_reading_item("w1")
-
-    # Execute
-    answer = answer_of(lifecycle_tools_over(store).set_stage({"item_id": "w1", "stage": "doing"}))
-
-    # Assert
-    assert answer == {"error": "item 'w1' changed meanwhile; read it again and try again"}
 
 
 def test_a_tool_while_the_store_is_busy_answers_the_stash_busy_text() -> None:

@@ -75,6 +75,7 @@ def build_rig(
     outcomes: Sequence[Mapping[str, object] | LlmError] | None = None,
     clock: Callable[[], datetime] = lambda: BASE,
     store: FreshStore | None = None,
+    model: RecordingChatModel | None = None,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
@@ -82,11 +83,12 @@ def build_rig(
     ids = sequential_ids()
     people = PeopleDirectory(store, ids, clock)
     inspector = FakeLinkInspector(links)
-    model: RecordingChatModel = (
-        FakeChatModel(reply=answer, error=error)
-        if outcomes is None
-        else ScriptedChatModel(outcomes)
-    )
+    if model is None:
+        model = (
+            FakeChatModel(reply=answer, error=error)
+            if outcomes is None
+            else ScriptedChatModel(outcomes)
+        )
     busy = FakeBusy()
     return CaptureRig(
         store=store,

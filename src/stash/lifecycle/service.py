@@ -6,7 +6,7 @@ from stash.domain import Item, Outcome, Stage, frozen_strings
 from stash.lifecycle._guards import (
     refusing_what_the_domain_refuses,
     refusing_what_the_store_refuses_for_a_group,
-    reporting_concurrent_changes,
+    translating_store_errors,
 )
 from stash.lifecycle.errors import ItemChanged, LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.ports import LifecycleStore
@@ -44,87 +44,68 @@ class Lifecycle:
         keep: bool | None = None,
         on: date | None = None,
     ) -> Completion:
-        item = self._item(item_id)
-        outcome_id = self._new_id()
-        now = self._clock()
-        self._refuse_a_date_after_tomorrow(on, now)
-        repeat = item.is_done
-        with refusing_what_the_domain_refuses():
-            outcome = Outcome(
-                id=outcome_id,
-                item_id=item.id,
-                completed_on=on or self._today(now),
-                rating=rating,
-                notes=notes,
-                takeaways=_takeaway_list(takeaways),
-                recorded_at=now,
-            )
-            completed = _completed(item, repeat, keep, now)
-        with reporting_concurrent_changes():
-            self._store.record_completion(completed, outcome, replacing=item)
+        with self._store.writing():
+            item = self._item(item_id)
+            outcome_id = self._new_id()
+            now = self._clock()
+            self._refuse_a_date_after_tomorrow(on, now)
+            repeat = item.is_done
+            with refusing_what_the_domain_refuses():
+                outcome = Outcome(
+                    id=outcome_id,
+                    item_id=item.id,
+                    completed_on=on or self._today(now),
+                    rating=rating,
+                    notes=notes,
+                    takeaways=_takeaway_list(takeaways),
+                    recorded_at=now,
+                )
+                completed = _completed(item, repeat, keep, now)
+            with translating_store_errors():
+                self._store.record_completion(completed, outcome)
         return Completion(completed, outcome, repeat=repeat)
 
     def keep(self, item_id: str, kept: bool) -> Item:
-        item = self._item(item_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = item.kept_as(kept, now)
-        return self._saved(item, changed)
+        return self._changed(item_id, lambda item, now: item.kept_as(kept, now))
 
     def reopen(self, item_id: str) -> Item:
-        item = self._item(item_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = item.reopened(now)
-        return self._saved(item, changed)
+        return self._changed(item_id, lambda item, now: item.reopened(now))
 
     def drop(self, item_id: str, reason: str | None) -> Item:
-        item = self._item(item_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = item.dropped(_unless_blank(reason), now)
-        return self._saved(item, changed)
+        return self._changed(item_id, lambda item, now: item.dropped(_unless_blank(reason), now))
 
     def didnt_happen(self, item_id: str, on: date) -> Item:
-        item = self._item(item_id)
-        if not item.is_planned:
-            return item
-        if item.date != on:
-            raise ItemChanged(item_id)
-        return self._saved(item, item.unplanned(self._clock()))
+        with self._store.writing():
+            item = self._item(item_id)
+            if not item.is_planned:
+                return item
+            if item.date != on:
+                raise ItemChanged(item_id)
+            return self._saved(item.unplanned(self._clock()))
 
     def reschedule(self, item_id: str, on: date | None) -> Item:
-        item = self._item(item_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = item.rescheduled(on, now)
-        return self._saved(item, changed)
+        return self._changed(item_id, lambda item, now: item.rescheduled(on, now))
 
     def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item:
         if stage is Stage.DROPPED:
             return self.drop(item_id, reason)
         if _unless_blank(reason) is not None:
             raise LifecycleRefused(REASON_ONLY_FOR_DROPPING)
-        item = self._item(item_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = item.relocated_to(stage, now)
-        return self._saved(item, changed)
+        return self._changed(item_id, lambda item, now: item.relocated_to(stage, now))
 
     def group(self, child_id: str, parent_id: str) -> Item:
-        child = self._item(child_id)
-        parent = self._item(parent_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = child.grouped_under(parent, now)
-        with reporting_concurrent_changes(), refusing_what_the_store_refuses_for_a_group(child):
-            self._store.group_item(changed, replacing=child)
+        with self._store.writing():
+            child = self._item(child_id)
+            parent = self._item(parent_id)
+            now = self._clock()
+            with refusing_what_the_domain_refuses():
+                changed = child.grouped_under(parent, now)
+            with translating_store_errors(), refusing_what_the_store_refuses_for_a_group(child):
+                self._store.group_item(changed)
         return changed
 
     def ungroup(self, child_id: str) -> Item:
-        child = self._item(child_id)
-        now = self._clock()
-        return self._saved(child, child.ungrouped(now))
+        return self._changed(child_id, lambda child, now: child.ungrouped(now))
 
     def annotate(
         self,
@@ -136,21 +117,18 @@ class Lifecycle:
     ) -> Outcome:
         if notes is None and takeaways is None and rating is None:
             raise LifecycleRefused(NOTHING_TO_ANNOTATE)
-        outcome = self._outcome(outcome_id)
-        now = self._clock()
         kept_or_replaced = None if takeaways is None else _takeaway_list(takeaways)
-        with refusing_what_the_domain_refuses():
+
+        def annotated(outcome: Outcome, now: datetime) -> Outcome:
             changed = outcome.with_notes(notes, kept_or_replaced, now)
-            if rating is not None:
-                changed = changed.with_rating(rating, now)
-        return self._saved_outcome(changed)
+            return changed if rating is None else changed.with_rating(rating, now)
+
+        return self._changed_outcome(outcome_id, annotated)
 
     def rate(self, outcome_id: str, rating: int) -> Outcome:
-        outcome = self._outcome(outcome_id)
-        now = self._clock()
-        with refusing_what_the_domain_refuses():
-            changed = outcome.with_rating(rating, now)
-        return self._saved_outcome(changed)
+        return self._changed_outcome(
+            outcome_id, lambda outcome, now: outcome.with_rating(rating, now)
+        )
 
     def history(self, item_id: str) -> ItemHistory:
         item = self._item(item_id)
@@ -165,14 +143,29 @@ class Lifecycle:
         outcomes = self._store.outcomes_for(item.id)
         return outcomes[-1] if outcomes else None
 
-    def _saved_outcome(self, outcome: Outcome) -> Outcome:
-        with reporting_concurrent_changes():
-            self._store.save_outcome(outcome)
-        return outcome
+    def _changed(self, item_id: str, change: Callable[[Item, datetime], Item]) -> Item:
+        with self._store.writing():
+            item = self._item(item_id)
+            now = self._clock()
+            with refusing_what_the_domain_refuses():
+                changed = change(item, now)
+            return self._saved(changed)
 
-    def _saved(self, read: Item, changed: Item) -> Item:
-        with reporting_concurrent_changes():
-            self._store.update_item(changed, replacing=read)
+    def _changed_outcome(
+        self, outcome_id: str, change: Callable[[Outcome, datetime], Outcome]
+    ) -> Outcome:
+        with self._store.writing():
+            outcome = self._outcome(outcome_id)
+            now = self._clock()
+            with refusing_what_the_domain_refuses():
+                changed = change(outcome, now)
+            with translating_store_errors():
+                self._store.save_outcome(changed)
+        return changed
+
+    def _saved(self, changed: Item) -> Item:
+        with translating_store_errors():
+            self._store.update_item(changed)
         return changed
 
     def _item(self, item_id: str) -> Item:

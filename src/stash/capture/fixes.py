@@ -1,5 +1,4 @@
 import logging
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,10 +11,10 @@ from stash.capture.completion_buttons import CompletionButtons
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.planning_buttons import PlanningButtons
 from stash.capture.ports import FixStore, LifecycleActions, PlanningActions
-from stash.capture.replies import Reply, busy, changed, confirmation, gone
+from stash.capture.replies import Reply, busy, confirmation, gone
 from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
-from stash.store.port import StaleItemError, StoreBusyError, UnknownItemError
+from stash.store.port import StoreBusyError, UnknownItemError
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +43,9 @@ class FixHandler:
         self._completion = CompletionButtons(store, lifecycle, self._log, clock, timezone)
         self._planning = PlanningButtons(store, planning, self._log)
         self._clock = clock
-        self._lock = threading.Lock()
 
     def apply(self, data: str) -> Reply | Reroute:
-        with self._lock:
+        with self._store.writing():
             return self._apply(data)
 
     def _apply(self, data: str) -> Reply | Reroute:
@@ -112,13 +110,10 @@ class FixHandler:
 
     def _replaced(self, read: Item, updated: Item) -> Reply:
         try:
-            self._store.update_item(updated, replacing=read)
+            self._store.update_item(updated)
         except UnknownItemError:
             self._log.unknown(Subject.ITEM, read.id)
             return gone()
-        except StaleItemError:
-            self._log.changed(Subject.ITEM, read.id)
-            return changed()
         except StoreBusyError:
             self._log.busy()
             return busy()

@@ -2,11 +2,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item
-from stash.lifecycle.errors import ItemChanged, LifecycleRefused, StashBusy, UnknownItem
+from stash.lifecycle.errors import LifecycleRefused, StashBusy, UnknownItem
 from stash.store.port import (
     ChildHoldsItemsError,
     ParentIsGroupedError,
-    StaleItemError,
     StoreBusyError,
     UnknownItemError,
 )
@@ -23,13 +22,11 @@ def refusing_what_the_domain_refuses() -> Iterator[None]:
 
 
 @contextmanager
-def reporting_concurrent_changes() -> Iterator[None]:
+def translating_store_errors() -> Iterator[None]:
     try:
         yield
     except UnknownItemError as error:
         raise UnknownItem(error.item_id) from error
-    except StaleItemError as error:
-        raise ItemChanged(error.item_id) from error
     except StoreBusyError as error:
         raise StashBusy from error
 

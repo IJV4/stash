@@ -35,12 +35,6 @@ class UnknownItemError(Exception):
         self.item_id = item_id
 
 
-class StaleItemError(Exception):
-    def __init__(self, item_id: str) -> None:
-        super().__init__(f"item {item_id!r} changed after it was read")
-        self.item_id = item_id
-
-
 class ParentIsGroupedError(Exception):
     def __init__(self, parent_id: str) -> None:
         super().__init__(f"item {parent_id!r} is in a group, so nothing can be grouped under it")
@@ -91,11 +85,6 @@ def require_instant_range(start: datetime, end: datetime) -> None:
         raise ValueError(RANGE_ORDER_MESSAGE)
 
 
-def require_same_item(item: Item, replacing: Item) -> None:
-    if item.id != replacing.id:
-        raise ValueError(f"item {item.id!r} cannot replace item {replacing.id!r}")
-
-
 def require_parent(child: Item) -> str:
     if child.parent_id is None:
         raise ValueError(f"item {child.id!r} has no parent to be grouped under")
@@ -138,11 +127,13 @@ class CaptureStore(Protocol):
 
 
 class ItemStore(Protocol):
+    def writing(self) -> AbstractContextManager[None]: ...
+
     def save_item(self, item: Item) -> None: ...
 
-    def update_item(self, item: Item, *, replacing: Item) -> None: ...
+    def update_item(self, item: Item) -> None: ...
 
-    def group_item(self, child: Item, *, replacing: Item) -> None: ...
+    def group_item(self, child: Item) -> None: ...
 
     def get_item(self, item_id: str) -> Item | None: ...
 
@@ -185,7 +176,7 @@ class OutcomeStore(Protocol):
 
     def save_outcome(self, outcome: Outcome) -> None: ...
 
-    def record_completion(self, item: Item, outcome: Outcome, *, replacing: Item) -> None: ...
+    def record_completion(self, item: Item, outcome: Outcome) -> None: ...
 
     def outcomes_for(self, item_id: str) -> list[Outcome]: ...
 

@@ -203,7 +203,7 @@ def test_an_item_update_gives_up_with_store_busy_when_another_connection_holds_t
 
     # Execute / Assert
     with pytest.raises(StoreBusyError):
-        impatient_store.update_item(read.retyped(ItemType.BOOK, LATER), replacing=read)
+        impatient_store.update_item(read.retyped(ItemType.BOOK, LATER))
 
 
 @pytest.mark.integration
@@ -215,7 +215,7 @@ def test_a_completion_gives_up_with_store_busy_when_another_connection_holds_the
 
     # Execute / Assert
     with pytest.raises(StoreBusyError):
-        impatient_store.record_completion(read.completed(LATER), an_outcome(), replacing=read)
+        impatient_store.record_completion(read.completed(LATER), an_outcome())
 
 
 @pytest.mark.integration
@@ -227,4 +227,4 @@ def test_a_grouping_gives_up_with_store_busy_before_it_checks_anything_when_the_
 
     # Execute / Assert
     with pytest.raises(StoreBusyError):
-        impatient_store.group_item(replace(read, parent_id="p1", updated_at=LATER), replacing=read)
+        impatient_store.group_item(replace(read, parent_id="p1", updated_at=LATER))

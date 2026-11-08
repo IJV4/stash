@@ -10,12 +10,10 @@ from stash.store.port import (
     ChildHoldsItemsError,
     DuplicateOutcomeError,
     ParentIsGroupedError,
-    StaleItemError,
     UnknownCaptureError,
     UnknownItemError,
     require_outcome_for_item,
     require_parent,
-    require_same_item,
 )
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
@@ -31,25 +29,22 @@ class SqliteItemWrites:
         with self._lock:
             self._execute_item(sql.UPSERT_ITEM, item)
 
-    def update_item(self, item: Item, *, replacing: Item) -> None:
-        require_same_item(item, replacing)
+    def update_item(self, item: Item) -> None:
         with self._lock, immediate_transaction(self._connection):
-            self._replace(item, replacing)
+            self._replace(item)
 
-    def group_item(self, child: Item, *, replacing: Item) -> None:
+    def group_item(self, child: Item) -> None:
         parent_id = require_parent(child)
-        require_same_item(child, replacing)
         with self._lock, immediate_transaction(self._connection):
-            self._require_replaceable(child, replacing)
+            self._require_stored(child.id)
             self._require_groupable_parent(parent_id)
             self._require_no_children(child.id)
             self._execute_item(sql.UPDATE_ITEM, child)
 
-    def record_completion(self, item: Item, outcome: Outcome, *, replacing: Item) -> None:
+    def record_completion(self, item: Item, outcome: Outcome) -> None:
         require_outcome_for_item(item, outcome)
-        require_same_item(item, replacing)
         with self._lock, immediate_transaction(self._connection):
-            self._replace(item, replacing)
+            self._replace(item)
             self._insert_outcome(outcome)
 
     def add_outcome(self, outcome: Outcome) -> None:
@@ -63,16 +58,13 @@ class SqliteItemWrites:
             except sqlite3.IntegrityError as error:
                 self._refuse_outcome(outcome, error)
 
-    def _replace(self, item: Item, replacing: Item) -> None:
-        self._require_replaceable(item, replacing)
+    def _replace(self, item: Item) -> None:
+        self._require_stored(item.id)
         self._execute_item(sql.UPDATE_ITEM, item)
 
-    def _require_replaceable(self, item: Item, replacing: Item) -> None:
-        stored = self._stored(item.id)
-        if stored is None:
-            raise UnknownItemError(item.id)
-        if stored != replacing:
-            raise StaleItemError(item.id)
+    def _require_stored(self, item_id: str) -> None:
+        if self._stored(item_id) is None:
+            raise UnknownItemError(item_id)
 
     def _require_groupable_parent(self, parent_id: str) -> None:
         parent = self._stored(parent_id)

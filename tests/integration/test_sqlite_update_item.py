@@ -28,7 +28,7 @@ def test_an_item_stored_with_an_equivalent_but_differently_written_instant_is_no
         read = fetched_item(store, "i1")
 
         # Execute
-        store.update_item(read.retyped(ItemType.BOOK, LATER), replacing=read)
+        store.update_item(read.retyped(ItemType.BOOK, LATER))
 
         # Assert
         assert store.get_item("i1") == read.retyped(ItemType.BOOK, LATER)

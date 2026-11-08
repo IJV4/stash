@@ -1,7 +1,7 @@
 import sqlite3
 import threading
-from collections.abc import Mapping, Sequence
-from contextlib import AbstractContextManager, closing
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager, closing, contextmanager
 from datetime import date, datetime, timedelta
 from enum import StrEnum
 from importlib.resources.abc import Traversable
@@ -112,11 +112,16 @@ class SqliteStore:
     def save_item(self, item: Item) -> None:
         self._item_writes.save_item(item)
 
-    def update_item(self, item: Item, *, replacing: Item) -> None:
-        self._item_writes.update_item(item, replacing=replacing)
+    @contextmanager
+    def writing(self) -> Iterator[None]:
+        with self._lock:
+            yield
 
-    def group_item(self, child: Item, *, replacing: Item) -> None:
-        self._item_writes.group_item(child, replacing=replacing)
+    def update_item(self, item: Item) -> None:
+        self._item_writes.update_item(item)
+
+    def group_item(self, child: Item) -> None:
+        self._item_writes.group_item(child)
 
     def get_item(self, item_id: str) -> Item | None:
         with self._lock:
@@ -215,8 +220,8 @@ class SqliteStore:
     def save_outcome(self, outcome: Outcome) -> None:
         self._item_writes.save_outcome(outcome)
 
-    def record_completion(self, item: Item, outcome: Outcome, *, replacing: Item) -> None:
-        self._item_writes.record_completion(item, outcome, replacing=replacing)
+    def record_completion(self, item: Item, outcome: Outcome) -> None:
+        self._item_writes.record_completion(item, outcome)
 
     def outcomes_for(self, item_id: str) -> list[Outcome]:
         with self._lock:

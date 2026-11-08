@@ -1,6 +1,5 @@
 import pytest
-from builders import LATER, an_item, fetched_item, stored_completion, stored_item, titles
-from fakes.racing_item_store import RacingItemStore
+from builders import LATER, stored_completion, stored_item, titles
 from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
@@ -94,24 +93,3 @@ def test_grouping_japan_trip_under_the_ramen_it_holds_is_refused_and_nothing_cha
 
     # Assert
     assert store.list_items() == before
-
-
-def test_grouping_the_ramen_under_a_trip_grouped_meanwhile_is_refused_and_nothing_is_grouped() -> (
-    None
-):
-    # Setup
-    store = RacingItemStore()
-    stored_item(store, id="asia", title="Asia", item_type=ItemType.PLAN)
-    stored_item(store, id="trip", title="Japan trip", item_type=ItemType.PLAN)
-    stored_item(store, id="ramen", title="Tokyo ramen")
-    store.another_writer_saves_before_grouping(
-        an_item(id="trip", title="Japan trip", parent_id="asia", item_type=ItemType.PLAN)
-    )
-    lifecycle = a_lifecycle(store)
-
-    # Execute
-    with pytest.raises(LifecycleRefused, match="groups are one level deep"):
-        lifecycle.group("ramen", "trip")
-
-    # Assert
-    assert fetched_item(store, "ramen").parent_id is None

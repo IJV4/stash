@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager
 from datetime import date
 from typing import Protocol
 
@@ -21,9 +22,11 @@ class IntakeStore(Protocol):
 
 
 class FixStore(Protocol):
+    def writing(self) -> AbstractContextManager[None]: ...
+
     def get_item(self, item_id: str) -> Item | None: ...
 
-    def update_item(self, item: Item, *, replacing: Item) -> None: ...
+    def update_item(self, item: Item) -> None: ...
 
     def delete_item_if_untouched(self, item_id: str) -> bool: ...
 

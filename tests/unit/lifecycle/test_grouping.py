@@ -2,12 +2,14 @@ from collections.abc import Callable
 
 import pytest
 from builders import LATER, an_item, store_holding, stored
+from fakes.faulty_store import FaultyStore
 from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item
 from stash.lifecycle import LifecycleRefused, UnknownItem
+from stash.store.port import ParentIsGroupedError
 
 PARENT_HAS_A_PARENT = "parent-has-a-parent"
 CHILD_HOLDS_ITEMS = "child-holds-items"
@@ -182,3 +184,14 @@ def test_ungrouping_an_unknown_item_raises_unknown_item_naming_it() -> None:
 
     # Assert
     assert raised.value.item_id == "nope"
+
+
+def test_grouping_under_a_parent_another_process_grouped_says_groups_are_one_level_deep() -> None:
+    # Setup
+    store = FaultyStore(fail_on={"group_item": ParentIsGroupedError("parent")})
+    stored(store, child_item())
+    stored(store, parent_item())
+
+    # Execute / Assert
+    with pytest.raises(LifecycleRefused, match=GROUPS_ONE_LEVEL_DEEP):
+        a_lifecycle(store).group("child", "parent")

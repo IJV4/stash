@@ -8,7 +8,6 @@ from stash.domain import Item
 from stash.store import (
     ChildHoldsItemsError,
     ParentIsGroupedError,
-    StaleItemError,
     Store,
     UnknownItemError,
 )
@@ -31,7 +30,7 @@ def test_group_item_puts_the_child_under_a_top_level_parent(open_store: StoreFac
         read = stored_item(store)
 
         # Execute
-        store.group_item(grouped(read), replacing=read)
+        store.group_item(grouped(read))
 
         # Assert
         assert fetched_item(store, "i1") == grouped(read)
@@ -48,7 +47,7 @@ def test_group_item_of_a_child_that_is_not_stored_raises_unknown_item_error(
 
         # Execute / Assert
         with pytest.raises(UnknownItemError, match="i1"):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
 
 @on_sqlite
@@ -63,44 +62,10 @@ def test_group_item_of_a_child_deleted_after_it_was_read_does_not_bring_it_back(
 
         # Execute
         with pytest.raises(UnknownItemError):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
         # Assert
         assert store.get_item("i1") is None
-
-
-@on_sqlite
-def test_group_item_of_a_child_changed_after_it_was_read_raises_stale_item_error(
-    open_store: StoreFactory,
-) -> None:
-    # Setup
-    with open_store() as store:
-        stored_parent(store)
-        read = stored_item(store)
-        store.save_item(replace(read, title="Retitled by another writer"))
-
-        # Execute / Assert
-        with pytest.raises(StaleItemError, match="i1"):
-            store.group_item(grouped(read), replacing=read)
-
-
-@on_sqlite
-def test_group_item_of_a_changed_child_keeps_the_other_writers_version(
-    open_store: StoreFactory,
-) -> None:
-    # Setup
-    with open_store() as store:
-        stored_parent(store)
-        read = stored_item(store)
-        other = replace(read, title="Retitled by another writer")
-        store.save_item(other)
-
-        # Execute
-        with pytest.raises(StaleItemError):
-            store.group_item(grouped(read), replacing=read)
-
-        # Assert
-        assert store.get_item("i1") == other
 
 
 @on_sqlite
@@ -113,7 +78,7 @@ def test_group_item_under_a_parent_that_is_not_stored_raises_unknown_item_error_
 
         # Execute / Assert
         with pytest.raises(UnknownItemError, match="p1"):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
 
 @on_sqlite
@@ -126,7 +91,7 @@ def test_group_item_under_a_parent_that_is_not_stored_writes_nothing(
 
         # Execute
         with pytest.raises(UnknownItemError):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
         # Assert
         assert store.get_item("i1") == read
@@ -144,7 +109,7 @@ def test_group_item_under_a_parent_grouped_after_it_was_read_raises_parent_is_gr
 
         # Execute / Assert
         with pytest.raises(ParentIsGroupedError, match="p1"):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
 
 @on_sqlite
@@ -156,7 +121,7 @@ def test_group_item_under_a_grouped_parent_writes_nothing(open_store: StoreFacto
 
         # Execute
         with pytest.raises(ParentIsGroupedError):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
         # Assert
         assert store.get_item("i1") == read
@@ -174,7 +139,7 @@ def test_group_item_of_a_child_that_gained_a_child_after_it_was_read_raises_chil
 
         # Execute / Assert
         with pytest.raises(ChildHoldsItemsError, match="i1"):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
 
 @on_sqlite
@@ -187,25 +152,10 @@ def test_group_item_of_a_child_that_holds_items_writes_nothing(open_store: Store
 
         # Execute
         with pytest.raises(ChildHoldsItemsError):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
         # Assert
         assert store.get_item("i1") == read
-
-
-@on_sqlite
-def test_group_item_of_a_changed_child_raises_stale_item_error_before_checking_the_parent(
-    open_store: StoreFactory,
-) -> None:
-    # Setup
-    with open_store() as store:
-        read = stored_item(store)
-        stored_grouped_parent(store)
-        store.save_item(replace(read, title="Retitled by another writer"))
-
-        # Execute / Assert
-        with pytest.raises(StaleItemError):
-            store.group_item(grouped(read), replacing=read)
 
 
 @on_sqlite
@@ -220,7 +170,7 @@ def test_group_item_under_a_grouped_parent_raises_parent_is_grouped_before_child
 
         # Execute / Assert
         with pytest.raises(ParentIsGroupedError):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
 
 @on_sqlite
@@ -234,7 +184,7 @@ def test_group_item_under_a_missing_parent_raises_unknown_item_error_before_chil
 
         # Execute / Assert
         with pytest.raises(UnknownItemError, match="p1"):
-            store.group_item(grouped(read), replacing=read)
+            store.group_item(grouped(read))
 
 
 @on_sqlite
@@ -247,18 +197,4 @@ def test_group_item_with_a_child_that_has_no_parent_raises_value_error(
 
         # Execute / Assert
         with pytest.raises(ValueError, match="i1"):
-            store.group_item(read, replacing=read)
-
-
-@on_sqlite
-def test_group_item_replacing_an_item_of_another_id_raises_value_error(
-    open_store: StoreFactory,
-) -> None:
-    # Setup
-    with open_store() as store:
-        stored_parent(store)
-        read = stored_item(store)
-
-        # Execute / Assert
-        with pytest.raises(ValueError, match="i2"):
-            store.group_item(grouped(read), replacing=replace(read, id="i2"))
+            store.group_item(read)

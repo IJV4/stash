@@ -1,5 +1,4 @@
 import asyncio
-from dataclasses import replace
 
 from builders import PLANNED_FOR, an_item_at, stored
 from capture_builders import (
@@ -8,10 +7,8 @@ from capture_builders import (
     a_request_answer,
     an_unsure_answer,
     button_data,
-    store_with_filed_item,
 )
 from fakes.busy_store import BusyStore
-from fakes.changing_item_store import RETITLED_BY_ANOTHER_WRITER, ChangingItemStore
 from fakes.recording_assistant import RecordingAssistant
 from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
@@ -155,25 +152,6 @@ def test_pressing_didnt_happen_on_an_item_deleted_meanwhile_says_it_no_longer_ex
 
     # Assert
     assert (shown, store.get_item("i1")) == (GONE, None)
-
-
-def test_a_stage_press_on_an_item_changed_meanwhile_asks_to_try_again_and_keeps_the_change() -> (
-    None
-):
-    # Setup
-    store = ChangingItemStore()
-    _, item = store_with_filed_item(store, stage=Stage.INBOX)
-    store.change_after_reading_item("c1")
-    rig = build_button_rig(store)
-
-    # Execute
-    shown = rig.pressed(FixAction(FixKind.SET_STAGE, "c1", Stage.DOING.value).encode())
-
-    # Assert
-    assert (shown, store.get_item("c1")) == (
-        CHANGED,
-        replace(item, title=RETITLED_BY_ANOTHER_WRITER),
-    )
 
 
 def test_pressing_done_while_the_store_is_busy_asks_to_try_again_in_a_moment() -> None:
