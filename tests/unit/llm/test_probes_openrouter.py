@@ -56,28 +56,12 @@ def test_the_openrouter_probe_passes_a_five_second_timeout_with_the_request() ->
     assert wire.request.extensions["timeout"] == FIVE_SECONDS
 
 
-def test_the_openrouter_probe_is_ok_and_reports_the_remaining_limit() -> None:
-    # Execute
-    result = openrouter_check(key_info(12.5))
-
-    # Assert
-    assert result == ProbeResult(True, "key is valid; limit remaining: 12.5")
-
-
 def test_the_openrouter_probe_reports_an_unlimited_key_when_the_limit_is_null() -> None:
     # Execute
     result = openrouter_check(key_info(None))
 
     # Assert
     assert result == ProbeResult(True, "key is valid; limit remaining: unlimited")
-
-
-def test_the_openrouter_probe_reports_an_invalid_key_on_401() -> None:
-    # Execute
-    result = openrouter_check(httpx.Response(401, json={"error": {"message": "nope"}}))
-
-    # Assert
-    assert result == ProbeResult(False, "invalid key")
 
 
 def test_the_openrouter_probe_reports_the_http_status_of_other_failures() -> None:

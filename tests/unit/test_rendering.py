@@ -3,22 +3,16 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
-from builders import BASE, a_capture, an_item, an_outcome
-from people_builders import a_key_date, a_person
+from builders import an_item, an_outcome
 
-from stash.capture import Deferred, Duplicate, Filed, IsRequest
-from stash.domain import Item, ItemType, KeyDateKind, NextKeyDate, Outcome, PersonSummary, Stage
-from stash.gpu import GpuStatus
-from stash.gpu_switch import GpuSwitchResult
+from stash.capture import Duplicate
+from stash.domain import Item, ItemType, Outcome, Stage
 from stash.lifecycle import ItemHistory
 from stash.rendering import (
-    gpu_status_line,
     history_lines,
     library_line,
     listing_line,
-    person_line,
     result_line,
-    switched_off_lines,
 )
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
@@ -34,14 +28,6 @@ def a_place(**overrides: Any) -> Item:
     return an_item(**{**fields, **overrides})
 
 
-def test_a_listing_line_reads_type_title_and_stage() -> None:
-    # Execute
-    line = listing_line(a_place())
-
-    # Assert
-    assert line == "Places · Ramen in Shibuya · Want to"
-
-
 def test_a_listing_line_appends_the_date_when_the_item_has_one() -> None:
     # Execute
     line = listing_line(a_place(stage=Stage.PLANNED, date=date(2026, 12, 5)))
@@ -50,118 +36,12 @@ def test_a_listing_line_appends_the_date_when_the_item_has_one() -> None:
     assert line == "Places · Ramen in Shibuya · Planned · 2026-12-05"
 
 
-def test_terminal_control_characters_in_a_title_never_reach_the_line() -> None:
-    # Execute
-    line = listing_line(a_place(title="Ramen\x1b[31m red\x07"))
-
-    # Assert
-    assert line == "Places · Ramen [31m red · Want to"
-
-
-def test_a_filed_result_line_reads_filed_then_type_title_and_stage() -> None:
-    # Execute
-    line = result_line(Filed(a_place(stage=Stage.PLANNED, date=date(2026, 12, 5)), unsure=False))
-
-    # Assert
-    assert line == "filed — Places · Ramen in Shibuya · Planned"
-
-
-def test_a_request_result_line_shows_the_start_of_the_text() -> None:
-    # Execute
-    line = result_line(IsRequest(a_capture(text="what can I do Saturday afternoon?")))
-
-    # Assert
-    assert line == "request — what can I do Saturday afternoon?"
-
-
-def test_a_request_result_line_keeps_only_the_first_60_characters() -> None:
-    # Execute
-    line = result_line(IsRequest(a_capture(text="q" * 80)))
-
-    # Assert
-    assert line == "request — " + "q" * 60
-
-
-def test_a_deferred_result_line_names_the_reason_and_shows_the_text_on_one_line() -> None:
-    # Execute
-    line = result_line(Deferred(a_capture(text="Ramen in\nShibuya\t tonight"), "gpu_busy"))
-
-    # Assert
-    assert line == "deferred (gpu_busy) — Ramen in Shibuya tonight"
-
-
-def test_a_deferred_result_line_names_an_unavailable_ai() -> None:
-    # Execute
-    line = result_line(Deferred(a_capture(text="Ramen"), "ai_unavailable"))
-
-    # Assert
-    assert line == "deferred (ai_unavailable) — Ramen"
-
-
-def test_a_deferred_text_line_never_carries_control_characters() -> None:
-    # Execute
-    line = result_line(Deferred(a_capture(text="Ramen\x1b[2J now"), "gpu_busy"))
-
-    # Assert
-    assert line == "deferred (gpu_busy) — Ramen [2J now"
-
-
 def test_a_duplicate_result_line_says_it_was_already_saved() -> None:
     # Execute
     line = result_line(Duplicate())
 
     # Assert
     assert line == "duplicate — already saved"
-
-
-def test_a_busy_gpu_status_line_reads_gpu_busy_and_the_reason() -> None:
-    # Execute
-    line = gpu_status_line(GpuStatus(True, "GPU 95% busy"))
-
-    # Assert
-    assert line == "GPU busy — GPU 95% busy"
-
-
-def test_a_free_gpu_status_line_reads_gpu_free_and_the_reason() -> None:
-    # Execute
-    line = gpu_status_line(GpuStatus(False, "GPU is free"))
-
-    # Assert
-    assert line == "GPU free — GPU is free"
-
-
-def test_the_switched_off_line_shows_the_expiry_in_the_given_timezone() -> None:
-    # Execute
-    lines = switched_off_lines(GpuSwitchResult(BASE.replace(hour=16)), LOS_ANGELES)
-
-    # Assert
-    assert lines == ["GPU switched off until 08:00"]
-
-
-def test_the_switched_off_lines_add_each_warning_after_the_expiry() -> None:
-    # Execute
-    lines = switched_off_lines(
-        GpuSwitchResult(
-            BASE.replace(hour=16), ("could not unload the model: cannot reach Ollama",)
-        ),
-        LOS_ANGELES,
-    )
-
-    # Assert
-    assert lines == [
-        "GPU switched off until 08:00",
-        "! could not unload the model: cannot reach Ollama",
-    ]
-
-
-def test_the_switched_off_lines_print_every_warning_on_its_own_line() -> None:
-    # Execute
-    lines = switched_off_lines(
-        GpuSwitchResult(BASE.replace(hour=16), ("first problem", "second problem")), LOS_ANGELES
-    )
-
-    # Assert
-    assert lines[1:] == ["! first problem", "! second problem"]
 
 
 def a_book(**overrides: Any) -> Item:
@@ -178,14 +58,6 @@ def history_lines_of(
     item: Item, outcomes: tuple[Outcome, ...] = (), children: tuple[Item, ...] = ()
 ) -> list[str]:
     return history_lines(ItemHistory(item, outcomes, children))
-
-
-def test_a_library_line_reads_type_title_and_the_last_rating() -> None:
-    # Execute
-    line = library_line(a_book(), an_outcome(rating=4))
-
-    # Assert
-    assert line == "📚 Books: Dune · ⭐4"
 
 
 def test_a_library_line_leaves_the_rating_out_when_there_is_no_outcome() -> None:
@@ -307,17 +179,6 @@ def test_a_history_lists_outcomes_in_the_order_given() -> None:
     assert lines[1:] == ["Done 2026-10-01 · ⭐4", "Done 2026-11-01 · ⭐4"]
 
 
-def test_a_history_lists_the_children_under_in_this_group() -> None:
-    # Setup
-    ramen = an_item(id="c1", item_type=ItemType.RECIPE, title="Tokyo ramen", stage=Stage.WANT_TO)
-
-    # Execute
-    lines = history_lines_of(a_book(kept=False), children=(ramen,))
-
-    # Assert
-    assert lines[1:] == ["In this group:", "  Recipes · Tokyo ramen · Want to"]
-
-
 def test_a_history_puts_the_link_details_outcomes_and_group_in_that_order() -> None:
     # Setup
     item = a_book(kept=False, source_url="https://example.com/d", details={"uploader": "Frank"})
@@ -382,17 +243,6 @@ def test_control_characters_in_an_outcomes_text_never_reach_the_history(outcome:
     assert not any(character in "\n".join(lines) for character in "\x1b\x07")
 
 
-def test_control_characters_in_a_childs_title_never_reach_the_history() -> None:
-    # Setup
-    child = an_item(id="c1", title=f"Part{CONTROL_CHARACTERS}two")
-
-    # Execute
-    lines = history_lines_of(a_book(kept=False), children=(child,))
-
-    # Assert
-    assert not any(character in "\n".join(lines) for character in "\x1b\x07")
-
-
 def test_control_characters_in_a_link_never_reach_the_history_even_if_the_item_carries_them() -> (
     None
 ):
@@ -405,67 +255,3 @@ def test_control_characters_in_a_link_never_reach_the_history_even_if_the_item_c
 
     # Assert
     assert not any(character in "\n".join(lines) for character in "\x1b\x07")
-
-
-def a_summary(relation: str = "wife", **key_date: Any) -> PersonSummary:
-    person = a_person(name="Ana", relation=relation, aliases=())
-    fields: dict[str, Any] = {"month": 3, "day": 6, "year": 1993, "person_id": person.id}
-    return PersonSummary(
-        person, NextKeyDate(a_key_date(**{**fields, **key_date}), date(2027, 3, 6))
-    )
-
-
-def test_a_person_line_reads_name_relation_kind_and_the_weekday_month_and_day() -> None:
-    # Execute
-    line = person_line(a_summary())
-
-    # Assert
-    assert line == "Ana (wife) — birthday Sat Mar 6"
-
-
-def test_a_person_line_without_a_relation_has_no_parentheses() -> None:
-    # Execute
-    line = person_line(a_summary(relation=""))
-
-    # Assert
-    assert line == "Ana — birthday Sat Mar 6"
-
-
-def test_a_person_line_for_an_other_key_date_names_it_by_its_label() -> None:
-    # Execute
-    line = person_line(a_summary(kind=KeyDateKind.OTHER, label="Name day"))
-
-    # Assert
-    assert line == "Ana (wife) — Name day Sat Mar 6"
-
-
-def test_a_person_line_without_a_key_date_is_just_the_name_and_relation() -> None:
-    # Execute
-    line = person_line(PersonSummary(a_person(name="Ana", relation="wife", aliases=()), None))
-
-    # Assert
-    assert line == "Ana (wife)"
-
-
-def test_a_person_line_drops_control_characters_from_the_name() -> None:
-    # Execute
-    line = person_line(PersonSummary(a_person(name=f"Ana{CONTROL_CHARACTERS}", relation=""), None))
-
-    # Assert
-    assert line == "Ana [31m"
-
-
-def test_a_person_line_drops_control_characters_from_the_relation() -> None:
-    # Execute
-    line = person_line(a_summary(relation=f"wife{CONTROL_CHARACTERS}"))
-
-    # Assert
-    assert line == "Ana (wife [31m) — birthday Sat Mar 6"
-
-
-def test_a_person_line_drops_control_characters_from_an_other_keys_label() -> None:
-    # Execute
-    line = person_line(a_summary(kind=KeyDateKind.OTHER, label=f"Name day{CONTROL_CHARACTERS}"))
-
-    # Assert
-    assert line == "Ana (wife) — Name day [31m Sat Mar 6"

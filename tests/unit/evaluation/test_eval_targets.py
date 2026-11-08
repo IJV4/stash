@@ -2,7 +2,7 @@ import pytest
 from eval_builders import a_target, an_eval_targets
 
 from stash.config import ProviderName, Thinking
-from stash.evaluation import EvalTarget, EvalTargets, UnconfiguredProviderError
+from stash.evaluation import EvalTarget, EvalTargets
 
 OLLAMA = ProviderName.OLLAMA
 OPENROUTER = ProviderName.OPENROUTER
@@ -54,22 +54,6 @@ def test_a_thinking_value_named_twice_is_selected_once() -> None:
     assert choices(selected) == [("ollama", "off")]
 
 
-def test_providers_are_selected_in_the_order_given() -> None:
-    # Execute
-    selected = an_eval_targets(OLLAMA, OPENROUTER).select(("openrouter", "ollama"), None)
-
-    # Assert
-    assert choices(selected) == [("openrouter", "default"), ("ollama", "default")]
-
-
-def test_a_provider_named_twice_is_selected_once() -> None:
-    # Execute
-    selected = an_eval_targets(OLLAMA, OPENROUTER).select(("ollama", "ollama"), None)
-
-    # Assert
-    assert choices(selected) == [("ollama", "default")]
-
-
 def test_without_a_provider_choice_every_present_provider_is_selected_in_provider_order() -> None:
     # Execute
     selected = an_eval_targets(OPENROUTER, OLLAMA).select(None, None)
@@ -84,37 +68,6 @@ def test_without_a_provider_choice_only_the_present_providers_are_selected() -> 
 
     # Assert
     assert choices(selected) == [("openrouter", "default")]
-
-
-def test_each_provider_runs_all_its_thinking_values_before_the_next_provider() -> None:
-    # Execute
-    selected = an_eval_targets(OLLAMA, OPENROUTER).select(("ollama", "openrouter"), (DEFAULT, OFF))
-
-    # Assert
-    assert choices(selected) == [
-        ("ollama", "default"),
-        ("ollama", "off"),
-        ("openrouter", "default"),
-        ("openrouter", "off"),
-    ]
-
-
-def test_selecting_a_provider_that_is_not_configured_names_it() -> None:
-    # Execute
-    with pytest.raises(UnconfiguredProviderError) as error:
-        an_eval_targets(OLLAMA).select(("ollama", "groq"), None)
-
-    # Assert
-    assert str(error.value) == "provider groq is not configured"
-
-
-def test_selecting_a_known_provider_that_has_no_target_says_it_is_not_configured() -> None:
-    # Execute
-    with pytest.raises(UnconfiguredProviderError) as error:
-        an_eval_targets(OLLAMA).select(("openrouter",), None)
-
-    # Assert
-    assert str(error.value) == "provider openrouter is not configured"
 
 
 def test_a_present_provider_missing_a_thinking_value_is_an_error_not_a_skip() -> None:

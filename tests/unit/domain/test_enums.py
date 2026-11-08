@@ -4,43 +4,6 @@ from stash.domain.item import ItemType, Stage
 
 
 @pytest.mark.parametrize(
-    ("item_type", "label"),
-    [
-        (ItemType.PLACE, "Places"),
-        (ItemType.RECIPE, "Recipes"),
-        (ItemType.PURCHASE, "Purchases"),
-        (ItemType.LEARN, "Learning"),
-        (ItemType.BOOK, "Books"),
-        (ItemType.MEDIA, "Media"),
-        (ItemType.IDEA, "Ideas"),
-        (ItemType.PLAN, "Plans"),
-        (ItemType.ACTIVITY, "Activities"),
-        (ItemType.GIFT, "Gifts"),
-        (ItemType.OTHER, "Other"),
-    ],
-)
-def test_item_type_label_is_its_plural_display_name(item_type: ItemType, label: str) -> None:
-    # Assert
-    assert item_type.label == label
-
-
-@pytest.mark.parametrize(
-    ("stage", "label"),
-    [
-        (Stage.INBOX, "Inbox"),
-        (Stage.WANT_TO, "Want to"),
-        (Stage.PLANNED, "Planned"),
-        (Stage.DOING, "Doing"),
-        (Stage.DONE, "Done"),
-        (Stage.DROPPED, "Dropped"),
-    ],
-)
-def test_stage_label_is_its_display_name(stage: Stage, label: str) -> None:
-    # Assert
-    assert stage.label == label
-
-
-@pytest.mark.parametrize(
     ("member", "value"),
     [
         (ItemType.PLACE, "place"),

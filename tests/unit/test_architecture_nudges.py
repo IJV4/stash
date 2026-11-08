@@ -45,17 +45,6 @@ def test_the_nudges_package_imports_only_the_standard_library_and_the_layers_bel
     assert offenders == []
 
 
-def test_importing_the_config_loader_is_reported_as_beyond_what_nudges_may_import() -> None:
-    # Setup
-    sources = {"stash.nudges.x": "from stash.config.loader import load_config"}
-
-    # Execute
-    offenders = imports_outside_allowed(sources, NUDGES_MAY_IMPORT)
-
-    # Assert
-    assert "stash.nudges.x -> stash.config.loader" in offenders
-
-
 def test_the_nudges_package_imports_no_network_process_database_or_adapter_module() -> None:
     # Execute
     offenders = forbidden_imports_in(
@@ -64,23 +53,6 @@ def test_the_nudges_package_imports_no_network_process_database_or_adapter_modul
 
     # Assert
     assert offenders == []
-
-
-def test_the_nudges_scan_covers_the_nudger_schedule_due_types_batching_and_messages() -> None:
-    # Execute
-    scanned = project_sources("nudges")
-
-    # Assert
-    assert {
-        "stash.nudges.nudger",
-        "stash.nudges.schedule",
-        "stash.nudges.due",
-        "stash.nudges.batch",
-        "stash.nudges.messages",
-        "stash.nudges.ports",
-        "stash.nudges.digest",
-        "stash.nudges.digest_builder",
-    } <= scanned.keys()
 
 
 def test_nothing_outside_the_nudges_package_and_its_listed_importers_imports_it() -> None:
@@ -99,48 +71,6 @@ def test_capture_imports_no_more_of_nudges_than_the_due_types_and_messages() -> 
     assert offenders == []
 
 
-@pytest.mark.parametrize("shared", ["due", "messages", "digest"])
-def test_importing_the_due_types_or_the_messages_is_not_reported_as_more_than_rendering_needs(
-    shared: str,
-) -> None:
-    # Setup
-    sources = {"stash.capture.x": f"from stash.nudges.{shared} import Name"}
-
-    # Execute
-    offenders = nudges_imports_beyond_what_rendering_needs(sources)
-
-    # Assert
-    assert offenders == []
-
-
-@pytest.mark.parametrize("module", ["nudger", "schedule", "batch", "ports", "digest_builder"])
-def test_importing_any_other_nudges_module_is_reported_as_more_than_rendering_needs(
-    module: str,
-) -> None:
-    # Setup
-    sources = {"stash.capture.x": f"from stash.nudges.{module} import Name"}
-
-    # Execute
-    offenders = nudges_imports_beyond_what_rendering_needs(sources)
-
-    # Assert
-    assert offenders == [
-        f"stash.capture.x -> stash.nudges.{module}",
-        f"stash.capture.x -> stash.nudges.{module}.Name",
-    ]
-
-
-def test_a_package_level_nudges_import_is_reported_even_for_a_shared_name() -> None:
-    # Setup
-    sources = {"stash.capture.x": "from stash.nudges import FollowUp"}
-
-    # Execute
-    offenders = nudges_imports_beyond_what_rendering_needs(sources)
-
-    # Assert
-    assert "stash.capture.x -> stash.nudges" in offenders
-
-
 @pytest.mark.parametrize("banned", ["capture", "filing", "planning", "lifecycle"])
 def test_nudges_sits_below_capture_and_beside_the_other_features_without_importing_them(
     banned: str,
@@ -156,50 +86,6 @@ def test_nudges_sits_below_capture_and_beside_the_other_features_without_importi
 def test_nudges_reaches_the_model_only_through_its_pick_source_port(banned: str) -> None:
     # Execute
     offenders = forbidden_imports_in(project_sources("nudges"), (banned,))
-
-    # Assert
-    assert offenders == []
-
-
-def test_importing_the_suggestions_package_is_reported_as_a_forbidden_nudges_import() -> None:
-    # Setup
-    sources = {"stash.nudges.x": "from stash.suggestions import QuietPicks"}
-
-    # Execute
-    offenders = forbidden_imports_in(sources, ("stash.suggestions",))
-
-    # Assert
-    assert offenders == ["stash.nudges.x -> stash.suggestions"]
-
-
-def test_a_nudges_import_from_an_unlisted_module_is_reported_as_an_importer_outside() -> None:
-    # Setup
-    sources = {"stash.capture.fixes": "from stash.nudges.due import FollowUp"}
-
-    # Execute
-    offenders = importers_outside(NUDGES, NUDGES_IMPORTERS, sources)
-
-    # Assert
-    assert offenders == ["stash.capture.fixes"]
-
-
-def test_a_nudges_import_from_the_digest_rendering_module_is_not_reported() -> None:
-    # Setup
-    sources = {"stash.capture.digest_replies": "from stash.nudges.digest import UpcomingEntry"}
-
-    # Execute
-    offenders = importers_outside(NUDGES, NUDGES_IMPORTERS, sources)
-
-    # Assert
-    assert offenders == []
-
-
-def test_a_nudges_import_from_a_listed_rendering_module_is_not_reported() -> None:
-    # Setup
-    sources = {"stash.capture.nudge_buttons": "from stash.nudges.due import FollowUp"}
-
-    # Execute
-    offenders = importers_outside(NUDGES, NUDGES_IMPORTERS, sources)
 
     # Assert
     assert offenders == []

@@ -8,7 +8,6 @@ T = TypeVar("T")
 
 THREAD_TIMEOUT_SECONDS = 5
 WAIT_LIMIT_SECONDS = 1.0
-OVERLAP_GRACE_SECONDS = 0.005
 
 
 class OverlapGate:
@@ -54,14 +53,6 @@ def start(action: Callable[[], object]) -> threading.Thread:
     thread = threading.Thread(target=action, daemon=True)
     thread.start()
     return thread
-
-
-def start_announcing(announce: threading.Event, action: Callable[[], object]) -> threading.Thread:
-    def announce_then_act() -> None:
-        announce.set()
-        action()
-
-    return start(announce_then_act)
 
 
 def await_signal(signal: threading.Event) -> None:

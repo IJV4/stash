@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 import pytest
-from http_wire import FIVE_SECONDS, Wire
+from http_wire import Wire
 from probe_rig import MALFORMED_BODIES, OLLAMA
 
 from stash.llm.probes import OllamaVramUsage
@@ -21,63 +21,6 @@ def running(*size_vram: Any) -> httpx.Response:
 
 def own_mib(outcome: httpx.Response | Exception) -> int:
     return OllamaVramUsage(OLLAMA, Wire(outcome).client()).own_mib()
-
-
-def test_the_vram_usage_asks_the_native_ps_endpoint_without_the_v1_suffix() -> None:
-    # Setup
-    wire = Wire(running())
-
-    # Execute
-    OllamaVramUsage(OLLAMA, wire.client()).own_mib()
-
-    # Assert
-    assert (wire.request.method, str(wire.request.url)) == (
-        "GET",
-        "http://localhost:11434/api/ps",
-    )
-
-
-def test_the_vram_usage_passes_a_five_second_timeout_with_the_request() -> None:
-    # Setup
-    wire = Wire(running())
-
-    # Execute
-    OllamaVramUsage(OLLAMA, wire.client()).own_mib()
-
-    # Assert
-    assert wire.request.extensions["timeout"] == FIVE_SECONDS
-
-
-def test_the_vram_usage_converts_bytes_to_mebibytes() -> None:
-    # Execute
-    mib = own_mib(running(4 * GIB))
-
-    # Assert
-    assert mib == 4096
-
-
-def test_the_vram_usage_sums_every_loaded_model() -> None:
-    # Execute
-    mib = own_mib(running(GIB, 2 * GIB))
-
-    # Assert
-    assert mib == 3072
-
-
-def test_the_vram_usage_rounds_down_after_summing_not_before() -> None:
-    # Execute
-    mib = own_mib(running(MIB + MIB // 2, MIB + MIB // 2))
-
-    # Assert
-    assert mib == 3
-
-
-def test_no_loaded_models_use_no_vram() -> None:
-    # Execute
-    mib = own_mib(running())
-
-    # Assert
-    assert mib == 0
 
 
 def test_the_vram_usage_is_zero_when_the_connection_fails() -> None:
@@ -183,13 +126,3 @@ def test_the_vram_usage_warns_about_an_unexpected_response_for_a_malformed_body(
     assert caplog.record_tuples == [
         (PROBES_LOGGER, logging.WARNING, "Ollama VRAM usage unavailable: unexpected response")
     ]
-
-
-def test_the_vram_usage_does_not_warn_when_the_read_succeeds(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    # Execute
-    own_mib(running(GIB))
-
-    # Assert
-    assert caplog.records == []

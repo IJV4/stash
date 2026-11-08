@@ -5,7 +5,6 @@ from typing import Any
 from builders import in_los_angeles, stored
 from fakes.fake_pick_source import FakePickSource
 from nudge_builders import (
-    FRIDAY,
     LONG_AGO,
     SATURDAY,
     a_nudge_schedule,
@@ -18,7 +17,7 @@ from suggestion_builders import a_want_to
 
 from stash.domain import Item, Pick, Step
 from stash.nudges import StuckItem, WeeklyDigest
-from stash.nudges.digest import DigestSections, UpcomingEntry, UpcomingItem, UpcomingStep
+from stash.nudges.digest import DigestSections, UpcomingEntry, UpcomingItem
 from stash.nudges.digest_builder import DigestBuilder
 from stash.nudges.ports import PickSource
 from stash.store import Store
@@ -26,7 +25,6 @@ from stash.store import Store
 DIGEST_DAY = date(2027, 2, 7)
 DIGEST_AT = in_los_angeles(DIGEST_DAY, 10).astimezone(UTC)
 ONE_DAY = timedelta(days=1)
-ONE_WEEK = timedelta(days=7)
 SAIL_ID = "sail"
 SAIL_REASON = "Saturday looks free and you wanted something outdoors."
 
@@ -81,12 +79,6 @@ def an_item_entry(
 ) -> UpcomingItem:
     item = a_planned_date_night(id=item_id, title=title, date=day)
     return UpcomingItem(day, item)
-
-
-def a_step_entry(text: str = "Book the table", title: str = "Date night") -> UpcomingStep:
-    item = a_planned_date_night(title=title)
-    step = a_same_day_step(text=text, lead_days=1, item_id=item.id)
-    return UpcomingStep(FRIDAY, item, step)
 
 
 def some_item_entries(count: int, title: str | None = None) -> tuple[UpcomingItem, ...]:

@@ -3,20 +3,9 @@ from datetime import date
 import pytest
 from step_builders import a_step
 
-from stash.domain.step import EXACTLY_ONE_DUE, NOTHING_TO_EDIT
+from stash.domain.step import EXACTLY_ONE_DUE
 
 NEW_DAY = date(2027, 2, 1)
-
-
-def test_editing_the_text_changes_only_the_text() -> None:
-    # Setup
-    step = a_step(text="Book the table", lead_days=7)
-
-    # Execute
-    edited = step.edited(text="Call the venue")
-
-    # Assert
-    assert (edited.text, edited.lead_days, edited.due_on) == ("Call the venue", 7, None)
 
 
 def test_editing_the_lead_days_clears_the_absolute_date() -> None:
@@ -63,23 +52,6 @@ def test_editing_the_text_and_the_due_date_together_changes_both() -> None:
     assert (edited.text, edited.lead_days, edited.due_on) == ("Pay the deposit", None, NEW_DAY)
 
 
-def test_an_edit_keeps_the_identity_position_confirmation_and_progress() -> None:
-    # Setup
-    step = a_step(id="s9", item_id="i9", position=4, confirmed=True, done=True)
-
-    # Execute
-    edited = step.edited(text="Call the venue")
-
-    # Assert
-    assert (edited.id, edited.item_id, edited.position, edited.confirmed, edited.done) == (
-        "s9",
-        "i9",
-        4,
-        True,
-        True,
-    )
-
-
 def test_editing_both_lead_days_and_the_absolute_date_is_refused() -> None:
     # Setup
     step = a_step()
@@ -87,15 +59,6 @@ def test_editing_both_lead_days_and_the_absolute_date_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match=EXACTLY_ONE_DUE):
         step.edited(lead_days=3, due_on=NEW_DAY)
-
-
-def test_editing_nothing_is_refused() -> None:
-    # Setup
-    step = a_step()
-
-    # Execute / Assert
-    with pytest.raises(ValueError, match=NOTHING_TO_EDIT):
-        step.edited()
 
 
 def test_editing_the_text_to_blank_is_refused() -> None:

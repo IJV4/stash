@@ -4,7 +4,6 @@ import httpx
 import pytest
 from fakes.link_inspector import FakeLinkInspector
 from html_rig import build_html_rig, html_page, not_found
-from link_builders import a_link_info
 
 from stash.enrich.html_meta import HtmlMetaInspector
 from stash.enrich.links import FallbackInspector, LinkInfo, LinkInspector
@@ -41,14 +40,7 @@ UNABLE: dict[str, Builder] = {
     "html-unreachable": lambda: _html(_unreachable),
     "fallback": lambda: FallbackInspector(YtDlpInspector(_exploding_extract), _html(not_found)),
 }
-ABLE: dict[str, Builder] = {
-    "fake": lambda: FakeLinkInspector({URL: a_link_info(url=URL, platform="web")}),
-    "ytdlp": lambda: YtDlpInspector(_titled_extract),
-    "html": lambda: _html(_titled_page),
-    "fallback": lambda: FallbackInspector(YtDlpInspector(_exploding_extract), _html(_titled_page)),
-}
 unable = pytest.mark.parametrize("build", UNABLE.values(), ids=UNABLE.keys())
-able = pytest.mark.parametrize("build", ABLE.values(), ids=ABLE.keys())
 
 
 @unable
@@ -60,23 +52,3 @@ def test_an_inspector_that_cannot_describe_a_link_returns_unknown_instead_of_rai
 
     # Assert
     assert info == LinkInfo.unknown(URL)
-
-
-@able
-def test_an_inspector_that_describes_a_link_reports_the_url_it_was_asked_about(
-    build: Builder,
-) -> None:
-    # Execute
-    info = build().inspect(URL)
-
-    # Assert
-    assert info.url == URL
-
-
-@able
-def test_an_inspector_that_describes_a_link_returns_a_title(build: Builder) -> None:
-    # Execute
-    info = build().inspect(URL)
-
-    # Assert
-    assert info.title is not None

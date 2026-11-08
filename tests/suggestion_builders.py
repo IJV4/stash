@@ -1,7 +1,6 @@
-from datetime import timedelta
 from typing import Any
 
-from builders import BASE, an_item
+from builders import an_item
 
 from stash.domain import Item, Stage
 
@@ -23,10 +22,3 @@ def a_raw_pick(
 
 def picks_reply(*raw_picks: object) -> dict[str, object]:
     return {"picks": list(raw_picks)}
-
-
-def want_to_items_oldest_first(count: int) -> list[Item]:
-    return [
-        a_want_to(f"item{n}", created_at=BASE + timedelta(minutes=n), updated_at=BASE)
-        for n in range(count)
-    ]

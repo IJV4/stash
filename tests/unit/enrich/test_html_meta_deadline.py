@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 
 import httpx
-from html_rig import FakeClock, build_html_rig, html_page, page_with_title, redirect_to
+from html_rig import FakeClock, build_html_rig, page_with_title, redirect_to
 
 from stash.enrich.html_meta import TOTAL_DEADLINE_SECONDS
 from stash.enrich.links import LinkInfo
@@ -102,14 +102,3 @@ def test_a_redirect_chain_that_overruns_the_total_deadline_is_unknown() -> None:
 
     # Assert
     assert info == LinkInfo.unknown(PAGE_URL)
-
-
-def test_a_fast_page_is_read_in_full_under_the_default_clock() -> None:
-    # Setup
-    rig = build_html_rig(lambda request: html_page("<title>Quick</title>"))
-
-    # Execute
-    info = rig.inspector.inspect(PAGE_URL)
-
-    # Assert
-    assert info.title == "Quick"

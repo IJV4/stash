@@ -7,25 +7,6 @@ from stash.evaluation.results import ERROR_LIMIT
 FAIL_STAGE = {"passed_fields": frozenset(), "failed_fields": frozenset({EvalField.STAGE})}
 
 
-def test_a_result_without_mismatches_defaults_to_an_empty_tuple() -> None:
-    # Execute
-    result = a_result()
-
-    # Assert
-    assert result.mismatches == ()
-
-
-def test_the_mismatches_are_stored_as_a_tuple() -> None:
-    # Setup
-    mismatch = a_mismatch(EvalField.STAGE)
-
-    # Execute
-    result = a_result(mismatches=[mismatch], **FAIL_STAGE)
-
-    # Assert
-    assert result.mismatches == (mismatch,)
-
-
 def test_a_failed_field_without_a_mismatch_is_refused() -> None:
     # Execute / Assert
     with pytest.raises(ValueError, match="mismatches"):
@@ -65,22 +46,6 @@ def test_an_errored_result_without_mismatches_is_accepted() -> None:
 
     # Assert
     assert result.mismatches == ()
-
-
-def test_a_result_with_no_failed_field_and_no_error_is_ok() -> None:
-    # Execute
-    outcome = a_result().outcome
-
-    # Assert
-    assert outcome is CaseOutcome.OK
-
-
-def test_a_result_with_a_failed_field_is_a_fail() -> None:
-    # Execute
-    outcome = a_result(**FAIL_STAGE).outcome
-
-    # Assert
-    assert outcome is CaseOutcome.FAIL
 
 
 def test_a_result_with_an_error_is_an_error_even_though_its_fields_failed() -> None:

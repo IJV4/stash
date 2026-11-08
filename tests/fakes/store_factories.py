@@ -28,15 +28,6 @@ class FreshStore(SqliteStore):
 
 
 @contextmanager
-def fresh_store() -> Iterator[Store]:
-    store = FreshStore()
-    try:
-        yield store
-    finally:
-        store.close()
-
-
-@contextmanager
 def opened(path: Path, migrations: Traversable | None = None) -> Iterator[SqliteStore]:
     store = SqliteStore(path, migrations)
     try:

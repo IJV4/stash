@@ -16,7 +16,6 @@ from stash.capture import (
     Reply,
     Reroute,
 )
-from stash.capture.callbacks import RATING_ARGUMENTS, FixAction, FixKind
 from stash.domain import CaptureStatus, Item, ItemType, RawCapture, SourceRef, Stage
 from stash.enrich.links import LinkInspector
 
@@ -27,8 +26,6 @@ FORCED_QUESTION = "? what can I do"
 LINK_WITH_A_QUERY = "https://x.test/a?b=1"
 BARE_QUESTION_MARK = "?"
 INDENTED_FORCED_QUESTION = "  ? what can I do"
-FORCING_TEXTS = [BARE_QUESTION_MARK, INDENTED_FORCED_QUESTION, "\n?why"]
-NON_FORCING_TEXTS = [LINK_WITH_A_QUERY, "what time is it?", ""]
 COMPLETED_ITEM_ID = "i1"
 COMPLETED_OUTCOME_ID = "o-i1"
 COMPLETED_TITLE = "Dune"
@@ -155,7 +152,3 @@ def a_store_with_a_completed_item(**item_overrides: Any) -> FreshStore:
 def text_of(answer: Reply | Reroute) -> str:
     assert isinstance(answer, Reply)
     return answer.text
-
-
-def rating_row_data(outcome_id: str) -> list[str]:
-    return [FixAction(FixKind.RATE, outcome_id, argument).encode() for argument in RATING_ARGUMENTS]

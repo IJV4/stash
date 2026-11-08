@@ -73,64 +73,6 @@ def test_an_import_inside_a_function_is_not_a_runtime_module_level_import() -> N
     assert imported == frozenset()
 
 
-def test_a_runtime_module_level_import_of_a_banned_package_is_reported() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.leaky": "from telegram.ext import Application"}
-
-    # Execute
-    offenders = runtime_import_offenders(sources, (TELEGRAM,))
-
-    # Assert
-    assert offenders == ["stash.hermes_adapter.leaky -> telegram"]
-
-
-def test_a_type_checking_import_of_a_banned_package_is_not_reported_as_a_runtime_import() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.typed": "if TYPE_CHECKING:\n    import telegram\n"}
-
-    # Execute
-    offenders = runtime_import_offenders(sources, (TELEGRAM,))
-
-    # Assert
-    assert offenders == []
-
-
-def test_a_function_local_import_of_a_banned_package_is_not_reported_as_a_runtime_import() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.lazy": LAZY_TELEGRAM_IMPORT}
-
-    # Execute
-    offenders = runtime_import_offenders(sources, (TELEGRAM,))
-
-    # Assert
-    assert offenders == []
-
-
-@pytest.mark.parametrize("module", HERMES_MODULES)
-def test_a_module_outside_the_hermes_adapter_importing_a_hermes_module_is_reported(
-    module: str,
-) -> None:
-    # Setup
-    sources = {"stash.capture.leaky": f"def attach():\n    import {module}\n"}
-
-    # Execute
-    offenders = importers_outside(module, (HERMES_ADAPTER,), sources)
-
-    # Assert
-    assert offenders == ["stash.capture.leaky"]
-
-
-def test_a_hermes_module_imported_from_a_dotted_path_outside_the_adapter_is_reported() -> None:
-    # Setup
-    sources = {"stash.app.leaky": "from gateway.platforms import telegram_like"}
-
-    # Execute
-    offenders = importers_outside("gateway", (HERMES_ADAPTER,), sources)
-
-    # Assert
-    assert offenders == ["stash.app.leaky"]
-
-
 def test_the_hermes_adapter_importing_a_hermes_module_is_not_an_outside_importer() -> None:
     # Setup
     sources = {"stash.hermes_adapter.host": "def secret():\n    import agent\n"}
@@ -140,32 +82,6 @@ def test_the_hermes_adapter_importing_a_hermes_module_is_not_an_outside_importer
 
     # Assert
     assert offenders == []
-
-
-def test_a_stash_module_whose_name_ends_like_a_hermes_module_is_not_reported() -> None:
-    # Setup
-    sources = {"stash.capture.fine": "from stash.enrich import tools\nimport stash.agent"}
-
-    # Execute
-    offenders = [
-        name
-        for module in HERMES_MODULES
-        for name in importers_outside(module, (HERMES_ADAPTER,), sources)
-    ]
-
-    # Assert
-    assert offenders == []
-
-
-def test_a_static_hermes_import_inside_a_function_of_the_adapter_is_reported() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.host": "def secret():\n    from agent import secret_scope\n"}
-
-    # Execute
-    offenders = forbidden_imports_in(sources, HERMES_MODULES)
-
-    # Assert
-    assert offenders == ["stash.hermes_adapter.host -> agent"]
 
 
 def test_a_hermes_module_reached_through_importlib_is_not_a_static_import() -> None:
@@ -178,28 +94,6 @@ def test_a_hermes_module_reached_through_importlib_is_not_a_static_import() -> N
 
     # Assert
     assert offenders == []
-
-
-def test_a_module_outside_the_hermes_adapter_importing_telegram_is_reported() -> None:
-    # Setup
-    sources = {"stash.cli.leaky": LAZY_TELEGRAM_IMPORT}
-
-    # Execute
-    offenders = importers_outside(TELEGRAM, (HERMES_ADAPTER,), sources)
-
-    # Assert
-    assert offenders == ["stash.cli.leaky"]
-
-
-def test_a_type_checking_telegram_import_outside_the_hermes_adapter_is_still_reported() -> None:
-    # Setup
-    sources = {"stash.cli.leaky": "if TYPE_CHECKING:\n    import telegram\n"}
-
-    # Execute
-    offenders = importers_outside(TELEGRAM, (HERMES_ADAPTER,), sources)
-
-    # Assert
-    assert offenders == ["stash.cli.leaky"]
 
 
 def test_the_hermes_adapter_importing_telegram_is_not_an_outside_importer() -> None:

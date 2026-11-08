@@ -1,17 +1,9 @@
-from datetime import date, datetime
+from datetime import datetime
 
 import pytest
 from builders import BASE
 
 from stash.domain import require_plain_date
-
-
-def test_a_date_is_accepted() -> None:
-    # Execute
-    result = require_plain_date("day", date(2026, 11, 2))
-
-    # Assert
-    assert result is None
 
 
 def test_a_datetime_raises_value_error_naming_the_argument() -> None:

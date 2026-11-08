@@ -1,9 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from capture_builders import SAMPLE_TEXT, a_message
-
-from stash.hermes_adapter.events import Chat, Inbound
+from capture_builders import SAMPLE_TEXT
 
 OWNER_ID = "42"
 STRANGER_ID = "99"
@@ -36,7 +34,3 @@ def an_event(
     internal: bool = False,
 ) -> FakeEvent:
     return FakeEvent(text, FakeSource(chat_id, user_id), message_id, media_urls, internal)
-
-
-def an_inbound(text: str = SAMPLE_TEXT) -> Inbound:
-    return Inbound(Chat(CHAT_ID, OWNER_ID), a_message(text))

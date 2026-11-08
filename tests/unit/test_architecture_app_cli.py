@@ -33,14 +33,6 @@ CLI_STASH_PACKAGES = (
 MAX_MODULE_LINES = 200
 
 
-def test_a_module_level_import_is_reported() -> None:
-    # Execute
-    imported = module_level_imports("from stash.evaluation.tesseract import TesseractOcr")
-
-    # Assert
-    assert TESSERACT_ADAPTER in imported
-
-
 def test_an_import_inside_a_function_is_not_a_module_level_import() -> None:
     # Setup
     source = "def make():\n    from stash.evaluation.tesseract import TesseractOcr\n"

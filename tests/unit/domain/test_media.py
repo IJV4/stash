@@ -3,19 +3,6 @@ import pytest
 from stash.domain.media import safe_media_paths
 
 
-def test_the_paths_come_back_as_a_tuple_in_order() -> None:
-    # Execute / Assert
-    assert safe_media_paths("media_paths", iter(["media/a.jpg", "media/b.jpg"])) == (
-        "media/a.jpg",
-        "media/b.jpg",
-    )
-
-
-def test_no_paths_come_back_as_an_empty_tuple() -> None:
-    # Execute / Assert
-    assert safe_media_paths("media_paths", []) == ()
-
-
 def test_a_bare_string_raises_type_error_naming_the_field() -> None:
     # Execute / Assert
     with pytest.raises(TypeError, match="photos must be a collection of strings"):

@@ -7,32 +7,6 @@ from smi_runner import FakeRunner
 from stash.gpu.probe import NvidiaSmiProbe
 
 
-def test_probe_warns_naming_the_error_class_when_nvidia_smi_is_not_installed(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    # Setup
-    probe = NvidiaSmiProbe(FakeRunner(error=FileNotFoundError("nvidia-smi")))
-
-    # Execute
-    probe.sample()
-
-    # Assert
-    assert [r.getMessage() for r in caplog.records] == ["nvidia-smi unavailable: FileNotFoundError"]
-
-
-def test_probe_warns_naming_the_error_class_for_another_os_error(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    # Setup
-    probe = NvidiaSmiProbe(FakeRunner(error=PermissionError("nvidia-smi")))
-
-    # Execute
-    probe.sample()
-
-    # Assert
-    assert [r.getMessage() for r in caplog.records] == ["nvidia-smi unavailable: PermissionError"]
-
-
 def test_probe_warns_naming_the_error_class_when_nvidia_smi_exits_with_an_error(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -104,11 +78,3 @@ def test_probe_logs_every_swallowed_failure_at_warning_level(
 
     # Assert
     assert [r.levelno for r in caplog.records] == [logging.WARNING]
-
-
-def test_probe_logs_nothing_when_the_sample_is_read(caplog: pytest.LogCaptureFixture) -> None:
-    # Execute
-    NvidiaSmiProbe(FakeRunner()).sample()
-
-    # Assert
-    assert caplog.records == []

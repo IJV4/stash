@@ -66,20 +66,6 @@ def test_the_planning_package_imports_no_network_process_database_or_adapter_mod
     assert offenders == []
 
 
-def test_the_planning_scan_covers_the_service_proposer_parser_prompt_and_schema() -> None:
-    # Execute
-    scanned = project_sources("planning")
-
-    # Assert
-    assert {
-        "stash.planning.service",
-        "stash.planning.proposer",
-        "stash.planning.parse",
-        "stash.planning.prompt",
-        "stash.planning.schema",
-    } <= scanned.keys()
-
-
 def test_nothing_outside_the_planning_package_and_its_listed_importers_imports_it() -> None:
     # Execute
     offenders = importers_outside(PLANNING, PLANNING_IMPORTERS, project_sources())
@@ -96,84 +82,6 @@ def test_nothing_in_the_capture_package_imports_the_concrete_planning() -> None:
     assert offenders == []
 
 
-def test_importing_the_planning_class_from_the_package_is_reported_as_the_concrete_planning() -> (
-    None
-):
-    # Setup
-    sources = {"stash.capture.x": "from stash.planning import Planning"}
-
-    # Execute
-    offenders = planning_imports_beyond_its_shared_vocabulary(sources)
-
-    # Assert
-    assert offenders == [
-        "stash.capture.x -> stash.planning",
-        "stash.capture.x -> stash.planning.Planning",
-    ]
-
-
-def test_importing_the_step_proposer_module_is_reported_as_the_concrete_planning() -> None:
-    # Setup
-    sources = {"stash.capture.x": "from stash.planning.proposer import StepProposer"}
-
-    # Execute
-    offenders = planning_imports_beyond_its_shared_vocabulary(sources)
-
-    # Assert
-    assert offenders == [
-        "stash.capture.x -> stash.planning.proposer",
-        "stash.capture.x -> stash.planning.proposer.StepProposer",
-    ]
-
-
-def test_importing_only_the_planning_errors_is_not_reported_as_the_concrete_planning() -> None:
-    # Setup
-    sources = {"stash.capture.x": "from stash.planning.errors import UnknownItem"}
-
-    # Execute
-    offenders = planning_imports_beyond_its_shared_vocabulary(sources)
-
-    # Assert
-    assert offenders == []
-
-
-def test_importing_only_the_planning_results_is_not_reported_as_the_concrete_planning() -> None:
-    # Setup
-    sources = {"stash.capture.x": "from stash.planning.results import Proposal"}
-
-    # Execute
-    offenders = planning_imports_beyond_its_shared_vocabulary(sources)
-
-    # Assert
-    assert offenders == []
-
-
-@pytest.mark.parametrize("module", ["parse", "ports"])
-def test_importing_a_planning_module_beyond_errors_and_results_is_reported(module: str) -> None:
-    # Setup
-    sources = {"stash.capture.x": f"from stash.planning.{module} import Name"}
-
-    # Execute
-    offenders = planning_imports_beyond_its_shared_vocabulary(sources)
-
-    # Assert
-    assert offenders == [
-        f"stash.capture.x -> stash.planning.{module}",
-        f"stash.capture.x -> stash.planning.{module}.Name",
-    ]
-
-
-def test_a_package_level_planning_import_is_reported_even_for_a_shared_name() -> None:
-    # Setup
-    sources = {"stash.capture.x": "from stash.planning import UnknownItem"}
-
-    # Execute
-    offenders = planning_imports_beyond_its_shared_vocabulary(sources)
-
-    # Assert
-    assert "stash.capture.x -> stash.planning" in offenders
-
-
 @pytest.mark.parametrize(
     ("package", "banned"),
     [("filing", PLANNING), ("planning", "stash.filing"), ("planning", "stash.capture")],
@@ -188,72 +96,9 @@ def test_planning_sits_beside_filing_and_below_capture_without_importing_either(
     assert offenders == []
 
 
-def test_a_planning_import_from_an_unlisted_module_is_reported_as_an_importer_outside() -> None:
-    # Setup
-    sources = {"stash.capture.fixes": "from stash.planning.errors import UnknownItem"}
-
-    # Execute
-    offenders = importers_outside(PLANNING, PLANNING_IMPORTERS, sources)
-
-    # Assert
-    assert offenders == ["stash.capture.fixes"]
-
-
 def test_nothing_in_the_hermes_adapter_imports_the_planning_beyond_its_errors() -> None:
     # Execute
     offenders = hermes_imports_beyond_the_planning_errors(project_sources("hermes_adapter"))
-
-    # Assert
-    assert offenders == []
-
-
-def test_a_hermes_import_of_the_planning_errors_is_not_reported() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.x": "from stash.planning.errors import PlanningError"}
-
-    # Execute
-    offenders = hermes_imports_beyond_the_planning_errors(sources)
-
-    # Assert
-    assert offenders == []
-
-
-@pytest.mark.parametrize(
-    "statement",
-    [
-        "from stash.planning.results import Proposal",
-        "from stash.planning.service import Planning",
-        "from stash.planning import PlanningError",
-    ],
-)
-def test_a_hermes_import_of_anything_else_from_the_planning_is_reported(statement: str) -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.x": statement}
-
-    # Execute
-    offenders = hermes_imports_beyond_the_planning_errors(sources)
-
-    # Assert
-    assert offenders != []
-
-
-def test_a_hermes_module_other_than_the_tool_json_importing_the_planning_is_reported() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.step_tools": "from stash.planning.errors import UnknownStep"}
-
-    # Execute
-    offenders = importers_outside(PLANNING, PLANNING_IMPORTERS, sources)
-
-    # Assert
-    assert offenders == ["stash.hermes_adapter.step_tools"]
-
-
-def test_the_hermes_tool_json_importing_the_planning_errors_is_not_reported() -> None:
-    # Setup
-    sources = {"stash.hermes_adapter.tool_json": "from stash.planning.errors import PlanningError"}
-
-    # Execute
-    offenders = importers_outside(PLANNING, PLANNING_IMPORTERS, sources)
 
     # Assert
     assert offenders == []

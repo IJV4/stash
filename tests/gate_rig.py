@@ -7,7 +7,6 @@ from stash.gpu.port import GpuSample
 
 CONFIG = GpuConfig(min_free_vram_mib=4000, max_foreign_utilization_pct=50, manual_off_hours=4.0)
 TOTAL = 10000
-USED_WHEN_FREE_EQUALS_MINIMUM = TOTAL - CONFIG.min_free_vram_mib
 
 
 def a_sample(used_mib: int = 1000, utilization_pct: int = 5) -> GpuSample:

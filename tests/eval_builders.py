@@ -145,9 +145,5 @@ def an_eval_targets(
     )
 
 
-def target_for(targets: EvalTargets, provider: ProviderName, thinking: Thinking) -> EvalTarget:
-    return targets.select((provider.value,), (thinking,))[0]
-
-
 def arm_headings(report: str) -> list[str]:
     return [line for line in report.splitlines() if " arm (" in line]

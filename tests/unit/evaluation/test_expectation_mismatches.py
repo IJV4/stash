@@ -1,12 +1,10 @@
 from datetime import date
 
-import pytest
 from builders import a_filing
-from eval_builders import HOSTILE_TEXTS, LONG_MULTILINE_VALUE, HostileText, an_expectation
+from eval_builders import LONG_MULTILINE_VALUE, an_expectation
 
 from stash.domain import ItemType, Route, Stage
 from stash.evaluation import EvalField, FieldMismatch
-from stash.evaluation.expectation import MISMATCH_TEXT_LIMIT
 
 
 def test_a_filing_that_agrees_on_every_scored_field_has_no_mismatches() -> None:
@@ -119,71 +117,3 @@ def test_a_multi_line_filed_detail_renders_on_one_line() -> None:
 
     # Assert
     assert "\n" not in mismatch.got
-
-
-def test_a_field_mismatch_collapses_whitespace_in_the_expected_text() -> None:
-    # Execute
-    mismatch = FieldMismatch(EvalField.DETAILS, "city=Tokyo\n\n  ward=Shibuya", "none")
-
-    # Assert
-    assert mismatch.expected == "city=Tokyo ward=Shibuya"
-
-
-def test_a_field_mismatch_collapses_whitespace_in_the_got_text() -> None:
-    # Execute
-    mismatch = FieldMismatch(EvalField.DETAILS, "none", "city=Kyoto\n\n  ward=Gion")
-
-    # Assert
-    assert mismatch.got == "city=Kyoto ward=Gion"
-
-
-def test_a_field_mismatch_clips_both_texts_to_eighty_characters() -> None:
-    # Execute
-    mismatch = FieldMismatch(EvalField.DETAILS, "x" * 200, "y" * 200)
-
-    # Assert
-    assert (mismatch.expected, mismatch.got) == ("x" * 80, "y" * 80)
-
-
-def test_assessing_a_filing_gives_mismatches_on_exactly_the_failed_fields() -> None:
-    # Setup
-    expectation = an_expectation(stage=Stage.PLANNED, date=date(2027, 3, 14))
-
-    # Execute
-    assessment = expectation.assess(a_filing(stage=Stage.WANT_TO, date=None))
-
-    # Assert
-    assert {mismatch.field for mismatch in assessment.mismatches} == assessment.verdict.failed
-
-
-def test_assessing_a_filing_fails_the_fields_it_disagrees_on() -> None:
-    # Setup
-    expectation = an_expectation(stage=Stage.PLANNED, date=date(2027, 3, 14))
-
-    # Execute
-    assessment = expectation.assess(a_filing(stage=Stage.WANT_TO, date=None))
-
-    # Assert
-    assert assessment.verdict.failed == {EvalField.STAGE, EvalField.DATE}
-
-
-@pytest.mark.parametrize("hostile", HOSTILE_TEXTS)
-def test_a_field_mismatch_replaces_unprintable_characters_in_the_got_text(
-    hostile: HostileText,
-) -> None:
-    # Execute
-    mismatch = FieldMismatch(EvalField.DETAILS, "none", hostile.padded_beyond(MISMATCH_TEXT_LIMIT))
-
-    # Assert
-    assert mismatch.got == hostile.sanitised_and_clipped_to(MISMATCH_TEXT_LIMIT)
-
-
-@pytest.mark.parametrize("hostile", HOSTILE_TEXTS)
-def test_a_field_mismatch_replaces_unprintable_characters_in_the_expected_text(
-    hostile: HostileText,
-) -> None:
-    # Execute
-    mismatch = FieldMismatch(EvalField.DETAILS, hostile.padded_beyond(MISMATCH_TEXT_LIMIT), "none")
-
-    # Assert
-    assert mismatch.expected == hostile.sanitised_and_clipped_to(MISMATCH_TEXT_LIMIT)

@@ -16,7 +16,6 @@ from stash.domain import (
     SourceRef,
     Stage,
 )
-from stash.domain.wire import MAX_ID_LENGTH
 from stash.store import Store
 
 BASE = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
@@ -157,7 +156,6 @@ def in_los_angeles(day: date, hour: int = 0, minute: int = 0, fold: int = 0) -> 
 
 
 UNSAFE_WIRE_IDS = ("", "   ", "a:b", "two words", "bell\x07", "x" * 41, "é" * 40)
-MAX_LENGTH_ID = "x" * MAX_ID_LENGTH
 HEX_ID = "0123456789abcdef0123456789abcdef"
 
 

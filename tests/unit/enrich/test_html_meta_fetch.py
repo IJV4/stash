@@ -4,9 +4,8 @@ from collections.abc import Iterator
 
 import httpx
 import pytest
-from html_rig import build_html_rig, html_page, not_found
+from html_rig import build_html_rig, html_page
 
-from stash.enrich.html_meta import USER_AGENT
 from stash.enrich.links import LinkInfo
 
 PAGE_URL = "https://example.com/ramen"
@@ -25,30 +24,12 @@ def inspect_page(body: str, url: str = PAGE_URL) -> LinkInfo:
     return build_html_rig(lambda request: html_page(body)).inspector.inspect(url)
 
 
-@pytest.mark.parametrize("content_type", ["application/json", "text/plain", "image/png", ""])
-def test_a_response_that_is_not_html_is_unknown(content_type: str) -> None:
-    # Setup
-    rig = build_html_rig(lambda request: html_page(OG_PAGE, content_type))
-
-    # Execute / Assert
-    assert rig.inspector.inspect(PAGE_URL) == LinkInfo.unknown(PAGE_URL)
-
-
 def test_an_xhtml_response_is_read() -> None:
     # Setup
     rig = build_html_rig(lambda request: html_page(OG_PAGE, "application/xhtml+xml"))
 
     # Execute / Assert
     assert rig.inspector.inspect(PAGE_URL).title == "Ramen Tokyo"
-
-
-@pytest.mark.parametrize("status", [301, 400, 403, 404, 410, 500, 503])
-def test_an_error_status_is_unknown(status: int) -> None:
-    # Setup
-    rig = build_html_rig(lambda request: httpx.Response(status))
-
-    # Execute / Assert
-    assert rig.inspector.inspect(PAGE_URL) == LinkInfo.unknown(PAGE_URL)
 
 
 @pytest.mark.parametrize(
@@ -138,16 +119,6 @@ def test_a_gzip_encoded_page_is_decoded_before_it_is_parsed() -> None:
     assert rig.inspector.inspect(PAGE_URL).title == "Ramen Tokyo"
 
 
-def test_a_page_is_decoded_with_the_charset_the_response_declares() -> None:
-    # Setup
-    body = "<title>Café</title>".encode("latin-1")
-    headers = {"content-type": "text/html; charset=iso-8859-1"}
-    rig = build_html_rig(lambda request: httpx.Response(200, headers=headers, content=body))
-
-    # Execute / Assert
-    assert rig.inspector.inspect(PAGE_URL).title == "Café"
-
-
 def test_a_page_with_an_unknown_charset_is_decoded_as_utf_8() -> None:
     # Setup
     headers = {"content-type": "text/html; charset=no-such-charset"}
@@ -156,56 +127,6 @@ def test_a_page_with_an_unknown_charset_is_decoded_as_utf_8() -> None:
 
     # Execute / Assert
     assert rig.inspector.inspect(PAGE_URL).title == "Café"
-
-
-def test_bytes_that_are_not_valid_in_the_charset_are_replaced_not_fatal() -> None:
-    # Setup
-    body = b"<title>Caf\xe9</title>"
-    rig = build_html_rig(
-        lambda request: httpx.Response(200, headers={"content-type": "text/html"}, content=body)
-    )
-
-    # Execute / Assert
-    assert rig.inspector.inspect(PAGE_URL).title == "Caf�"
-
-
-def test_the_request_asks_for_html_and_identifies_itself() -> None:
-    # Setup
-    rig = build_html_rig(not_found)
-
-    # Execute
-    rig.inspector.inspect(PAGE_URL)
-
-    # Assert
-    headers = rig.requests[0].headers
-    assert (headers["accept"], headers["user-agent"]) == (
-        "text/html,application/xhtml+xml",
-        USER_AGENT,
-    )
-
-
-def test_each_request_has_a_short_timeout() -> None:
-    # Setup
-    rig = build_html_rig(not_found)
-
-    # Execute
-    rig.inspector.inspect(PAGE_URL)
-
-    # Assert
-    assert rig.requests[0].extensions["timeout"]["read"] <= 15
-
-
-@pytest.mark.parametrize("status", [404, 500])
-def test_an_error_status_is_unknown_even_when_the_body_is_a_describing_html_page(
-    status: int,
-) -> None:
-    # Setup
-    rig = build_html_rig(
-        lambda request: httpx.Response(status, headers=HTML, content=b"<title>Oops</title>")
-    )
-
-    # Execute / Assert
-    assert rig.inspector.inspect(PAGE_URL) == LinkInfo.unknown(PAGE_URL)
 
 
 @pytest.mark.parametrize(

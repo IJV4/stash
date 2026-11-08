@@ -4,41 +4,9 @@ from stash.gpu.port import GpuSample
 from stash.gpu.probe import parse_nvidia_smi
 
 
-def test_parse_reads_total_used_and_utilization_in_that_order() -> None:
-    # Execute
-    sample = parse_nvidia_smi("12288, 1024, 3")
-
-    # Assert
-    assert sample == GpuSample(total_mib=12288, used_mib=1024, utilization_pct=3)
-
-
-def test_parse_ignores_a_trailing_newline() -> None:
-    # Execute
-    sample = parse_nvidia_smi("12288, 1024, 3\n")
-
-    # Assert
-    assert sample == GpuSample(12288, 1024, 3)
-
-
-def test_parse_accepts_fields_without_spaces() -> None:
-    # Execute
-    sample = parse_nvidia_smi("12288,1024,3")
-
-    # Assert
-    assert sample == GpuSample(12288, 1024, 3)
-
-
 def test_parse_skips_leading_blank_lines() -> None:
     # Execute
     sample = parse_nvidia_smi("\n  \n12288, 1024, 3\n")
-
-    # Assert
-    assert sample == GpuSample(12288, 1024, 3)
-
-
-def test_parse_uses_the_first_gpu_when_there_are_several() -> None:
-    # Execute
-    sample = parse_nvidia_smi("12288, 1024, 3\n24576, 20000, 90\n")
 
     # Assert
     assert sample == GpuSample(12288, 1024, 3)

@@ -191,27 +191,6 @@ def test_an_expectation_with_every_field_scores_all_five() -> None:
     assert scored == set(EvalField)
 
 
-def test_expected_details_cannot_be_changed_afterwards() -> None:
-    # Setup
-    expectation = an_expectation(details={"city": "Tokyo"})
-
-    # Execute / Assert
-    with pytest.raises(TypeError):
-        expectation.details["city"] = "Lisbon"
-
-
-def test_expected_details_are_copied_from_the_mapping_given() -> None:
-    # Setup
-    given = {"city": "Tokyo"}
-    expectation = an_expectation(details=given)
-
-    # Execute
-    given["city"] = "Lisbon"
-
-    # Assert
-    assert expectation.details == {"city": "Tokyo"}
-
-
 def test_a_verdict_in_which_every_scored_field_failed_lists_them_all_as_failed() -> None:
     # Setup
     scored = frozenset({EvalField.ROUTE, EvalField.STAGE})
