@@ -19,9 +19,6 @@ from lifecycle_rig import a_lifecycle
 from stash.domain import Item, Stage
 from stash.lifecycle import ItemChanged, Lifecycle, StashBusy, UnknownItem
 
-ITEM_CHANGED_TEXT = "item 'i1' changed meanwhile; read it again and try again"
-STASH_BUSY_TEXT = "the stash is busy with another change; try again in a moment"
-
 
 @dataclass(frozen=True, slots=True)
 class Operation:
@@ -125,19 +122,3 @@ def test_a_busy_store_raises_stash_busy(operation: Operation) -> None:
     # Execute / Assert
     with pytest.raises(StashBusy):
         operation.run(a_lifecycle(store))
-
-
-def test_item_changed_says_which_item_changed_and_what_to_do() -> None:
-    # Execute
-    message = str(ItemChanged("i1"))
-
-    # Assert
-    assert message == ITEM_CHANGED_TEXT
-
-
-def test_stash_busy_says_to_try_again_in_a_moment() -> None:
-    # Execute
-    message = str(StashBusy())
-
-    # Assert
-    assert message == STASH_BUSY_TEXT

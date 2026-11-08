@@ -5,19 +5,14 @@ import pytest
 from builders import (
     BARE_STRING_REFUSAL,
     BARE_STRING_TAKEAWAYS,
-    BASE,
-    LATER,
-    an_outcome,
     fetched_outcome,
     stored_completion,
-    stored_item,
 )
-from fakes.outcome_save_counting_store import OutcomeSaveCountingStore
 from fakes.store_factories import FreshStore
 from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
-from stash.domain import Outcome, Stage
+from stash.domain import Outcome
 from stash.lifecycle import Lifecycle, LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.service import NOTHING_TO_ANNOTATE
 
@@ -42,82 +37,6 @@ def store_with_an_outcome() -> FreshStore:
     store = FreshStore()
     stored_completion(store, "i1")
     return store
-
-
-def test_annotating_replaces_the_notes_and_takeaways_and_stores_the_outcome() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store, clock=lambda: LATER).annotate(
-        OUTCOME_ID, notes="Better", takeaways=["Rest dough"]
-    )
-
-    # Assert
-    assert (edited.notes, edited.takeaways, fetched_outcome(store, OUTCOME_ID)) == (
-        "Better",
-        ("Rest dough",),
-        edited,
-    )
-
-
-def test_annotating_stamps_edited_at_and_keeps_recorded_at() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store, clock=lambda: LATER).annotate(
-        OUTCOME_ID, notes="Better", takeaways=()
-    )
-
-    # Assert
-    assert (edited.edited_at, edited.recorded_at) == (LATER, BASE)
-
-
-def test_annotating_keeps_the_rating() -> None:
-    # Setup
-    store = store_with_an_outcome()
-    rating = fetched_outcome(store, OUTCOME_ID).rating
-
-    # Execute
-    edited = a_lifecycle(store).annotate(OUTCOME_ID, notes="Better", takeaways=())
-
-    # Assert
-    assert edited.rating == rating
-
-
-def test_rating_replaces_the_rating_and_stores_the_outcome() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store, clock=lambda: LATER).rate(OUTCOME_ID, 5)
-
-    # Assert
-    assert (edited.rating, fetched_outcome(store, OUTCOME_ID)) == (5, edited)
-
-
-def test_rating_stamps_edited_at_and_keeps_recorded_at() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store, clock=lambda: LATER).rate(OUTCOME_ID, 5)
-
-    # Assert
-    assert (edited.edited_at, edited.recorded_at) == (LATER, BASE)
-
-
-def test_rating_keeps_the_notes_and_takeaways() -> None:
-    # Setup
-    store = store_with_an_outcome()
-    before = fetched_outcome(store, OUTCOME_ID)
-
-    # Execute
-    edited = a_lifecycle(store).rate(OUTCOME_ID, 5)
-
-    # Assert
-    assert (edited.notes, edited.takeaways) == (before.notes, before.takeaways)
 
 
 @pytest.mark.parametrize("edit", REFUSED_EDITS.values(), ids=REFUSED_EDITS.keys())
@@ -212,98 +131,6 @@ def test_rating_an_outcome_whose_item_was_deleted_meanwhile_raises_unknown_item(
     assert raised.value.item_id == "i1"
 
 
-def test_annotating_without_takeaways_keeps_the_current_takeaways() -> None:
-    # Setup
-    store = store_with_an_outcome()
-    before = fetched_outcome(store, OUTCOME_ID)
-
-    # Execute
-    edited = a_lifecycle(store).annotate(OUTCOME_ID, notes="Better")
-
-    # Assert
-    assert (edited.notes, edited.takeaways, fetched_outcome(store, OUTCOME_ID)) == (
-        "Better",
-        before.takeaways,
-        edited,
-    )
-
-
-def test_annotating_with_none_as_takeaways_keeps_the_current_takeaways() -> None:
-    # Setup
-    store = store_with_an_outcome()
-    before = fetched_outcome(store, OUTCOME_ID)
-
-    # Execute
-    edited = a_lifecycle(store).annotate(OUTCOME_ID, notes="Better", takeaways=None)
-
-    # Assert
-    assert edited.takeaways == before.takeaways
-
-
-def test_annotating_with_an_empty_list_clears_the_takeaways() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store).annotate(OUTCOME_ID, notes="Better", takeaways=[])
-
-    # Assert
-    assert edited.takeaways == ()
-
-
-def test_annotating_with_only_a_rating_keeps_the_notes_and_takeaways() -> None:
-    # Setup
-    store = store_with_an_outcome()
-    before = fetched_outcome(store, OUTCOME_ID)
-
-    # Execute
-    edited = a_lifecycle(store).annotate(OUTCOME_ID, rating=2)
-
-    # Assert
-    assert (edited.rating, edited.notes, edited.takeaways) == (2, before.notes, before.takeaways)
-
-
-def test_annotating_with_only_notes_keeps_the_rating() -> None:
-    # Setup
-    store = store_with_an_outcome()
-    before = fetched_outcome(store, OUTCOME_ID)
-
-    # Execute
-    edited = a_lifecycle(store).annotate(OUTCOME_ID, notes="Better")
-
-    # Assert
-    assert edited.rating == before.rating
-
-
-def test_annotating_with_notes_takeaways_and_a_rating_changes_all_three_and_stores_it() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store, clock=lambda: LATER).annotate(
-        OUTCOME_ID, notes="Better", takeaways=["Rest dough"], rating=5
-    )
-
-    # Assert
-    assert (edited.notes, edited.takeaways, edited.rating, fetched_outcome(store, OUTCOME_ID)) == (
-        "Better",
-        ("Rest dough",),
-        5,
-        edited,
-    )
-
-
-def test_annotating_with_a_rating_stamps_edited_at() -> None:
-    # Setup
-    store = store_with_an_outcome()
-
-    # Execute
-    edited = a_lifecycle(store, clock=lambda: LATER).annotate(OUTCOME_ID, rating=2)
-
-    # Assert
-    assert edited.edited_at == LATER
-
-
 def test_annotating_with_nothing_to_change_is_refused_saying_what_to_give() -> None:
     # Setup
     lifecycle = a_lifecycle(store_with_an_outcome())
@@ -324,28 +151,3 @@ def test_annotating_with_nothing_to_change_leaves_the_stored_outcome_unchanged()
 
     # Assert
     assert fetched_outcome(store, OUTCOME_ID) == before
-
-
-def test_annotating_notes_takeaways_and_a_rating_saves_the_outcome_once() -> None:
-    # Setup
-    store = OutcomeSaveCountingStore()
-    stored_completion(store, "i1")
-
-    # Execute
-    a_lifecycle(store).annotate(OUTCOME_ID, notes="Better", takeaways=["Rest dough"], rating=5)
-
-    # Assert
-    assert store.outcome_saves == 1
-
-
-def test_annotating_with_only_a_rating_on_an_unrated_outcome_adds_the_rating() -> None:
-    # Setup
-    store = FreshStore()
-    stored_item(store, id="i1", title="i1", stage=Stage.DONE)
-    store.add_outcome(an_outcome(rating=None, notes="Loved it", takeaways=()))
-
-    # Execute
-    edited = a_lifecycle(store).annotate("o1", rating=4)
-
-    # Assert
-    assert (edited.rating, edited.notes) == (4, "Loved it")

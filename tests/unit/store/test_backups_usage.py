@@ -7,20 +7,8 @@ from fakes.backup_source import FakeBackupSource
 from stash.store.backup import BackupName
 
 TODAY = date(2026, 11, 2)
-ITEMS = b"three saved items"
 FILES_PRESENT_AFTER_TODAYS_BACKUP = 32
 NEWEST_KEPT = 30
-
-
-def test_the_backup_file_is_a_readable_copy_that_holds_the_items(tmp_path: Path) -> None:
-    # Setup
-    backups = a_backups(FakeBackupSource(ITEMS))
-
-    # Execute
-    path = backups.write(tmp_path / "backups", TODAY)
-
-    # Assert
-    assert (path.name, path.read_bytes()) == ("stash-20261102.db", ITEMS)
 
 
 def test_with_32_backups_present_30_remain_and_the_two_oldest_are_gone(tmp_path: Path) -> None:

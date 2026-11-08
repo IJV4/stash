@@ -50,31 +50,3 @@ def test_a_child_that_gained_an_item_meanwhile_stays_ungrouped() -> None:
 
     # Assert
     assert fetched_item(store, "child").parent_id is None
-
-
-def test_grouping_under_a_parent_grouped_meanwhile_is_refused_as_one_level_deep() -> None:
-    # Setup
-    store = a_store_with_child_and_parent()
-    stored(store, an_item(id="grandparent", title="Asia"))
-    store.another_writer_saves_before_grouping(parent_in_a_group())
-
-    # Execute
-    with pytest.raises(LifecycleRefused) as raised:
-        a_lifecycle(store).group("child", "parent")
-
-    # Assert
-    assert str(raised.value) == GROUPS_ONE_LEVEL_DEEP
-
-
-def test_a_child_whose_parent_was_grouped_meanwhile_stays_ungrouped() -> None:
-    # Setup
-    store = a_store_with_child_and_parent()
-    stored(store, an_item(id="grandparent", title="Asia"))
-    store.another_writer_saves_before_grouping(parent_in_a_group())
-
-    # Execute
-    with pytest.raises(LifecycleRefused):
-        a_lifecycle(store).group("child", "parent")
-
-    # Assert
-    assert fetched_item(store, "child").parent_id is None

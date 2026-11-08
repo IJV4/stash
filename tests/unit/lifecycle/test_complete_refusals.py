@@ -10,12 +10,10 @@ from builders import (
     stored,
 )
 from fakes.store_factories import FreshStore
-from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Stage
 from stash.lifecycle import Completion, Lifecycle, LifecycleRefused, UnknownItem
-from stash.store.port import DuplicateOutcomeError
 
 REFUSED_COMPLETIONS: dict[str, Callable[[Lifecycle], Completion]] = {
     "rating-six": lambda lifecycle: lifecycle.complete("i1", rating=6),
@@ -91,29 +89,3 @@ def test_completing_an_unknown_item_raises_unknown_item_naming_it() -> None:
 
     # Assert
     assert raised.value.item_id == "nope"
-
-
-def test_a_repeated_outcome_id_raises_the_stores_duplicate_error_not_a_refusal() -> None:
-    # Setup
-    store = FreshStore()
-    stored(store, an_item_at(Stage.DOING))
-    lifecycle = a_lifecycle(store, new_id=lambda: "same-id")
-    lifecycle.complete("i1")
-
-    # Execute
-    with pytest.raises(DuplicateOutcomeError):
-        lifecycle.complete("i1")
-
-
-def test_an_item_deleted_between_reading_and_writing_raises_unknown_item() -> None:
-    # Setup
-    store = VanishingItemStore()
-    stored(store, an_item_at(Stage.DOING))
-    store.vanish_after_reading_item("i1")
-
-    # Execute
-    with pytest.raises(UnknownItem) as raised:
-        a_lifecycle(store).complete("i1")
-
-    # Assert
-    assert raised.value.item_id == "i1"

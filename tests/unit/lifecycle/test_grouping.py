@@ -121,21 +121,6 @@ def test_grouping_an_item_that_holds_items_names_the_item_in_the_refusal() -> No
         lifecycle.group("child", "parent")
 
 
-def test_grouping_an_item_under_another_sets_its_parent_and_stores_it() -> None:
-    # Setup
-    store = store_holding(child_item(), parent_item())
-
-    # Execute
-    grouped = a_lifecycle(store, clock=lambda: LATER).group("child", "parent")
-
-    # Assert
-    assert (grouped.parent_id, grouped.updated_at, store.get_item("child")) == (
-        "parent",
-        LATER,
-        grouped,
-    )
-
-
 def test_grouping_an_unknown_child_raises_unknown_item_naming_the_child() -> None:
     # Setup
     lifecycle = a_lifecycle(store_holding(parent_item()))

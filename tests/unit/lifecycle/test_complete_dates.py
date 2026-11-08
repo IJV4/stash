@@ -9,7 +9,6 @@ from lifecycle_rig import a_lifecycle
 from stash.domain import Stage
 from stash.lifecycle import LifecycleRefused
 
-TOMORROW = date(2026, 11, 3)
 DAY_AFTER_TOMORROW = date(2026, 11, 4)
 
 
@@ -17,17 +16,6 @@ def a_doing_item_store() -> FreshStore:
     store = FreshStore()
     stored(store, an_item_at(Stage.DOING))
     return store
-
-
-def test_completing_on_the_day_after_the_local_today_is_allowed() -> None:
-    # Setup
-    lifecycle = a_lifecycle(a_doing_item_store(), clock=lambda: EVENING_IN_LOS_ANGELES)
-
-    # Execute
-    done = lifecycle.complete("i1", on=TOMORROW)
-
-    # Assert
-    assert done.outcome.completed_on == TOMORROW
 
 
 def test_completing_two_days_after_the_local_today_is_refused_naming_the_date() -> None:

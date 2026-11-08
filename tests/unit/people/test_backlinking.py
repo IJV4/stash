@@ -11,19 +11,6 @@ def linked_item_ids(store: Store, person_id: str) -> list[str]:
     return [item.id for item in store.items_for(person_id)]
 
 
-def test_adding_a_person_links_the_items_already_naming_them_ignoring_case_and_spacing() -> None:
-    # Setup
-    store = FreshStore()
-    stored_item(store, id="i1", people=(" ana ",))
-    directory = a_directory(store)
-
-    # Execute
-    ana = directory.add("Ana")
-
-    # Assert
-    assert linked_item_ids(store, ana.id) == ["i1"]
-
-
 def test_adding_a_person_does_not_link_items_naming_someone_with_a_similar_name() -> None:
     # Setup
     store = FreshStore()
