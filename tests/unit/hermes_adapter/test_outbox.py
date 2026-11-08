@@ -12,13 +12,16 @@ OTHER_REPLY = Reply("Saved again")
 
 @dataclass
 class ScriptedOutbox:
-    calls: list[tuple[str, str, str | None, Reply]] = field(default_factory=list)
+    calls: list[tuple[object, ...]] = field(default_factory=list)
 
     async def send(self, chat_id: str, reply: Reply) -> None:
         self.calls.append(("send", chat_id, None, reply))
 
     async def edit(self, chat_id: str, message_id: str, reply: Reply) -> None:
         self.calls.append(("edit", chat_id, message_id, reply))
+
+    async def send_file(self, chat_id: str, filename: str, data: bytes, caption: str) -> None:
+        self.calls.append(("file", chat_id, filename, data, caption))
 
 
 def test_sending_before_an_outbox_is_bound_raises_outbox_unavailable() -> None:
@@ -83,3 +86,28 @@ def test_rebinding_replaces_the_outbox_that_receives_replies() -> None:
 
     # Assert
     assert (first.calls, second.calls) == ([], [("send", "1001", None, OTHER_REPLY)])
+
+
+def test_sending_a_file_before_an_outbox_is_bound_raises_outbox_unavailable() -> None:
+    # Setup
+    outbox = LateBoundOutbox()
+
+    # Execute
+    with pytest.raises(OutboxUnavailable) as refusal:
+        asyncio.run(outbox.send_file("1001", "library.html", b"<p>", "caption"))
+
+    # Assert
+    assert refusal.type is OutboxUnavailable
+
+
+def test_sending_a_file_after_binding_goes_to_the_bound_outbox() -> None:
+    # Setup
+    bound = ScriptedOutbox()
+    outbox = LateBoundOutbox()
+    outbox.bind(bound)
+
+    # Execute
+    asyncio.run(outbox.send_file("1001", "library.html", b"<p>", "caption"))
+
+    # Assert
+    assert bound.calls == [("file", "1001", "library.html", b"<p>", "caption")]

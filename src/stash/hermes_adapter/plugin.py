@@ -37,7 +37,7 @@ COMMAND_DESCRIPTIONS = {
     "list": ("List saved items, newest first", "[stage]"),
     "gpu": ("Switch stash's use of the GPU", "on|off|status"),
     "retry": ("Retry captures that are still pending", ""),
-    "library": ("List kept items, most recently finished first", "[type]"),
+    "library": ("List kept items, most recently finished first", "[type|html]"),
     "suggest": ("Suggest what to do from Want to", "[context]"),
     "people": ("List people with their next key date", ""),
 }
@@ -156,5 +156,5 @@ def register(
     if owners.admits_nobody():
         logger.warning("TELEGRAM_ALLOWED_USERS is empty: stash will ignore every message")
     _wire_chat(ctx, app, owners, state, new_id)
-    _register_commands(ctx, build_commands(app))
+    _register_commands(ctx, build_commands(app, state.telegram.outbox, _owner_chat(ctx, owners)))
     _register_tools(ctx, build_tools(app))

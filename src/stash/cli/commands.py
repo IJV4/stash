@@ -8,6 +8,7 @@ from stash.cli.failure import FAILURE, CommandFailed
 from stash.doctor import Doctor
 from stash.domain import ItemType, PersonSummary, Stage
 from stash.gpu_switch import GpuSwitch
+from stash.library_html import RenderedLibrary
 from stash.lifecycle import LibraryQuery, Lifecycle, UnknownItem
 from stash.rendering import (
     NO_ITEMS,
@@ -93,6 +94,20 @@ def library(lifecycle: Lifecycle, query: LibraryQuery, out: TextIO) -> int:
         f"{entry.item.id}  {library_line(entry.item, entry.last_outcome)}" for entry in entries
     ]
     _emit(lines or [NO_ITEMS], out)
+    return 0
+
+
+def library_html(
+    render: Callable[[], RenderedLibrary],
+    write: Callable[[Path, bytes], None],
+    path: Path,
+    out: TextIO,
+) -> int:
+    try:
+        write(path, render().encoded())
+    except OSError as error:
+        raise CommandFailed(f"cannot write {path}: {error}", FAILURE) from error
+    print(f"Library written: {path}", file=out)
     return 0
 
 

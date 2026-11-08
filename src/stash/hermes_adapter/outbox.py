@@ -7,7 +7,11 @@ class ReplySender(Protocol):
     async def send(self, chat_id: str, reply: Reply) -> None: ...
 
 
-class Outbox(ReplySender, Protocol):
+class FileSender(Protocol):
+    async def send_file(self, chat_id: str, filename: str, data: bytes, caption: str) -> None: ...
+
+
+class Outbox(ReplySender, FileSender, Protocol):
     async def edit(self, chat_id: str, message_id: str, reply: Reply) -> None: ...
 
 
@@ -20,6 +24,9 @@ class _UnavailableOutbox:
         raise OutboxUnavailable("the Telegram connection is not up yet")
 
     async def edit(self, chat_id: str, message_id: str, reply: Reply) -> None:
+        raise OutboxUnavailable("the Telegram connection is not up yet")
+
+    async def send_file(self, chat_id: str, filename: str, data: bytes, caption: str) -> None:
         raise OutboxUnavailable("the Telegram connection is not up yet")
 
 
@@ -35,3 +42,6 @@ class LateBoundOutbox:
 
     async def edit(self, chat_id: str, message_id: str, reply: Reply) -> None:
         await self._outbox.edit(chat_id, message_id, reply)
+
+    async def send_file(self, chat_id: str, filename: str, data: bytes, caption: str) -> None:
+        await self._outbox.send_file(chat_id, filename, data, caption)

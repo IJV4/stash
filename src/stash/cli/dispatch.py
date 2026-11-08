@@ -1,7 +1,7 @@
 import argparse
 from typing import TextIO, assert_never
 
-from stash.app import StashApp
+from stash.app import StashApp, write_atomically
 from stash.cli import commands
 from stash.cli.eval_command import EvalRequest, run_eval_command
 from stash.cli.parser import Command, GpuAction
@@ -47,6 +47,8 @@ def dispatch(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
 
 
 def _library(arguments: argparse.Namespace, app: StashApp, out: TextIO) -> int:
+    if arguments.html is not None:
+        return commands.library_html(app.rendered_library, write_atomically, arguments.html, out)
     query = LibraryQuery(arguments.item_type, arguments.limit)
     return commands.library(app.lifecycle, query, out)
 

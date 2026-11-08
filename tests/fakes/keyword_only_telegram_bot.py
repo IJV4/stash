@@ -24,3 +24,18 @@ class KeywordOnlyTelegramBot:
                 },
             )
         )
+
+    async def send_document(
+        self, *, chat_id: str, document: Any, filename: str, caption: str | None = None
+    ) -> None:
+        self.calls.append(
+            (
+                "document",
+                {
+                    "chat_id": chat_id,
+                    "document": document,
+                    "filename": filename,
+                    "caption": caption,
+                },
+            )
+        )

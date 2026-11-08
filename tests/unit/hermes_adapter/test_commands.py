@@ -503,8 +503,27 @@ def many_kept_items(count: int, title: Callable[[int], str] = "Item {}".format) 
     return kept_items(*[(title(number), ItemType.BOOK) for number in range(count)])
 
 
+async def no_html() -> str:
+    raise AssertionError("the HTML library was not asked for")
+
+
 def a_library_command(store: MemoryStore) -> LibraryCommand:
-    return LibraryCommand(a_lifecycle(store))
+    return LibraryCommand(a_lifecycle(store), no_html)
+
+
+@pytest.mark.parametrize("argument", ["html", "  HTML ", "Html"])
+def test_library_html_in_any_case_hands_over_to_the_html_sender(argument: str) -> None:
+    # Setup
+    async def sent() -> str:
+        return "sent"
+
+    command = LibraryCommand(a_lifecycle(MemoryStore()), sent)
+
+    # Execute
+    reply = asyncio.run(command.run(argument))
+
+    # Assert
+    assert reply == "sent"
 
 
 def test_library_prints_one_line_per_kept_item_with_its_rating_most_recently_finished_first() -> (
@@ -659,7 +678,7 @@ def test_library_reads_off_the_event_loop_thread() -> None:
     library = ThreadNotingLibrary()
 
     async def scenario() -> int:
-        await LibraryCommand(library).run("")
+        await LibraryCommand(library, no_html).run("")
         return threading.get_ident()
 
     # Execute

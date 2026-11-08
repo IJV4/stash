@@ -501,3 +501,16 @@ def test_sending_after_attaching_a_new_application_no_longer_reaches_the_old_bot
 
     # Assert
     assert original.bot.sent == []
+
+
+def test_the_keywords_of_a_file_are_accepted_by_the_real_telegram_bot() -> None:
+    # Setup
+    bot = KeywordOnlyTelegramBot()
+    asyncio.run(TelegramOutbox(bot).send_file("1001", "library.html", b"<p>", "Your library"))
+    [(_, keywords)] = bot.calls
+
+    # Execute
+    bound = bound_to(Bot.send_document, keywords)
+
+    # Assert
+    assert bound == {"self", "chat_id", "document", "filename", "caption"}

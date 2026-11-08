@@ -22,6 +22,7 @@ HERMES_ADAPTER_STASH_PACKAGES = (
     "stash.gpu",
     "stash.gpu_switch",
     "stash.hermes_adapter",
+    "stash.library_html",
     "stash.lifecycle",
     "stash.planning.errors",
     "stash.rendering",

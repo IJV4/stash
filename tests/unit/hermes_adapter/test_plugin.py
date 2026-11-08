@@ -337,7 +337,7 @@ def test_commands_are_registered_with_their_argument_hints() -> None:
         "list": "[stage]",
         "gpu": "on|off|status",
         "retry": "",
-        "library": "[type]",
+        "library": "[type|html]",
         "suggest": "[context]",
         "people": "",
     }

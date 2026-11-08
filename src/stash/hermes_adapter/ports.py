@@ -17,6 +17,7 @@ from stash.domain import (
 )
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
+from stash.library_html import RenderedLibrary
 from stash.lifecycle import Completion, ItemHistory, LibraryEntry, LibraryQuery
 from stash.suggestions.results import Picked, Unavailable
 
@@ -61,6 +62,12 @@ class ItemReader(Protocol):
 
 class LibraryReader(Protocol):
     def library(self, query: LibraryQuery = ...) -> tuple[LibraryEntry, ...]: ...
+
+
+class LibraryDocuments(Protocol):
+    def rendered_library(self) -> RenderedLibrary: ...
+
+    def keep_library_copy(self, data: bytes) -> None: ...
 
 
 class ItemLifecycle(LibraryReader, Protocol):

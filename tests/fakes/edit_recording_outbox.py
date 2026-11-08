@@ -18,3 +18,6 @@ class EditRecordingOutbox:
         if self._edit_failure is not None:
             raise self._edit_failure
         self.edits.append((chat_id, message_id, reply))
+
+    async def send_file(self, chat_id: str, filename: str, data: bytes, caption: str) -> None:
+        return None

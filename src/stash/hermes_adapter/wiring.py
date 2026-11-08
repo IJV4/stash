@@ -14,6 +14,7 @@ from stash.hermes_adapter.commands import (
 )
 from stash.hermes_adapter.events import EventTranslator
 from stash.hermes_adapter.intake import MessageIntake
+from stash.hermes_adapter.library_file import LibraryFile
 from stash.hermes_adapter.lifecycle_tools import LifecycleTools
 from stash.hermes_adapter.outbox import Outbox, ReplySender
 from stash.hermes_adapter.owners import Owners
@@ -78,12 +79,13 @@ def build_tools(app: StashApp) -> tuple[ToolSpec, ...]:
     )
 
 
-def build_commands(app: StashApp) -> dict[str, Command]:
+def build_commands(app: StashApp, outbox: Outbox, owner_chat: str | None) -> dict[str, Command]:
+    library_file = LibraryFile(app, outbox, owner_chat)
     return {
         "list": ListCommand(app.store),
         "gpu": GpuCommand(app.gpu_switch, app.local_now),
         "retry": RetryCommand(app.pipeline),
-        "library": LibraryCommand(app.lifecycle),
+        "library": LibraryCommand(app.lifecycle, library_file.send),
         "suggest": SuggestCommand(app.suggestions),
         "people": PeopleCommand(app.people, app.today),
     }

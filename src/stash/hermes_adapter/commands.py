@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import replace
 from datetime import date, datetime, tzinfo
 from typing import assert_never
@@ -36,6 +36,7 @@ from stash.rendering import (
 )
 
 GPU_USAGE = "Usage: /gpu on|off|status"
+HTML_ARGUMENT = "html"
 LINE_CAP = 20
 ASK_AGAIN = f" — send it again starting with {QUESTION_PREFIX} to ask"
 
@@ -92,10 +93,13 @@ class ListCommand:
 
 
 class LibraryCommand:
-    def __init__(self, reader: LibraryReader) -> None:
+    def __init__(self, reader: LibraryReader, send_html: Callable[[], Awaitable[str]]) -> None:
         self._reader = reader
+        self._send_html = send_html
 
     async def run(self, raw_args: str) -> str:
+        if raw_args.strip().lower() == HTML_ARGUMENT:
+            return await self._send_html()
         try:
             item_type = item_type_from_text(raw_args)
         except ValueError as refusal:

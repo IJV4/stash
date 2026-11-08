@@ -25,6 +25,7 @@ CLI_STASH_PACKAGES = (
     "stash.evaluation",
     "stash.gpu",
     "stash.gpu_switch",
+    "stash.library_html",
     "stash.lifecycle",
     "stash.rendering",
     "stash.store",

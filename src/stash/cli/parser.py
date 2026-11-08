@@ -15,6 +15,7 @@ DEFAULT_CASES = Path("evals/cases.jsonl")
 MIN_LIMIT = 1
 MAX_LIMIT = 1000
 MIN_UPCOMING_DAYS = 1
+HTML_SUFFIX = ".html"
 
 _E = TypeVar("_E", bound=StrEnum)
 
@@ -65,6 +66,12 @@ def _limit_between(minimum: int, maximum: int) -> Callable[[str], int]:
         return value
 
     return convert
+
+
+def _html_path(text: str) -> Path:
+    if not text.lower().endswith(HTML_SUFFIX):
+        raise argparse.ArgumentTypeError(f"{text!r} must end in {HTML_SUFFIX}")
+    return Path(text)
 
 
 def _names(text: str) -> tuple[str, ...]:
@@ -132,6 +139,9 @@ def _add_library(
         "--limit",
         type=_limit_between(MIN_LIBRARY_LIMIT, MAX_LIBRARY_LIMIT),
         default=DEFAULT_PAGE_SIZE,
+    )
+    library.add_argument(
+        "--html", type=_html_path, metavar="PATH", help="write the whole library as an HTML page"
     )
 
 

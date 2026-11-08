@@ -145,7 +145,7 @@ def test_intakes_built_by_two_registrations_confirm_their_messages_separately() 
 
 def test_the_commands_are_list_gpu_retry_library_suggest_and_people() -> None:
     # Execute
-    commands = build_commands(an_app())
+    commands = build_commands(an_app(), RecordingOutbox(), None)
 
     # Assert
     assert {name: type(command) for name, command in commands.items()} == {
@@ -219,7 +219,7 @@ def test_the_library_command_lists_the_kept_items_of_the_app_lifecycle() -> None
     # Setup
     store = MemoryStore()
     stored_completion(store, "k1", kept=True, title="Dune")
-    command = build_commands(an_app(store=store))["library"]
+    command = build_commands(an_app(store=store), RecordingOutbox(), None)["library"]
 
     # Execute
     text = asyncio.run(command.run(""))
@@ -267,7 +267,7 @@ def test_the_suggest_tool_asks_the_suggestions_of_the_app() -> None:
 def test_the_suggest_command_asks_the_suggestions_of_the_app() -> None:
     # Setup
     desk = FakeSuggestionDesk(Picked(()))
-    command = build_commands(an_app(suggestions=desk))["suggest"]
+    command = build_commands(an_app(suggestions=desk), RecordingOutbox(), None)["suggest"]
 
     # Execute
     asyncio.run(command.run("at home"))

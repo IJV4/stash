@@ -7,7 +7,7 @@ from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.outbox import LateBoundOutbox
 
 if TYPE_CHECKING:
-    from telegram import CallbackQuery, InlineKeyboardMarkup, Update
+    from telegram import CallbackQuery, InlineKeyboardMarkup, InputFile, Update
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,15 @@ class TelegramBot(Protocol):
 
     async def edit_message_text(
         self, *, text: str, chat_id: str, message_id: int, reply_markup: Any = None
+    ) -> object: ...
+
+    async def send_document(
+        self,
+        *,
+        chat_id: str,
+        document: "InputFile | bytes",
+        filename: str,
+        caption: str | None = None,
     ) -> object: ...
 
 
@@ -59,6 +68,11 @@ class TelegramOutbox:
             chat_id=chat_id,
             message_id=int(message_id),
             reply_markup=to_keyboard(reply),
+        )
+
+    async def send_file(self, chat_id: str, filename: str, data: bytes, caption: str) -> None:
+        await self._bot.send_document(
+            chat_id=chat_id, document=data, filename=filename, caption=caption
         )
 
 
