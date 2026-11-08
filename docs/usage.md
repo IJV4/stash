@@ -15,7 +15,8 @@ tests are named after the behaviour they pin.
   make sure it is treated as a question.
 - **Several messages at once.** They get one combined confirmation.
 
-When the AI is busy or down, you get "saved, will file later". `/retry` (or `stash retry`) files
+When the GPU is busy or the AI is down, the reply says the message is saved and will be filed
+when the GPU is free or the AI is reachable. `/retry` (or `stash retry`) files
 what is pending.
 
 ## Buttons

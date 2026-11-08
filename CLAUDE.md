@@ -59,9 +59,9 @@ the layering):
 - **Comments and docstrings:** almost none. Code is named so it reads on its own. A comment
   is for an unverified assumption about a live service (state what must be checked) or a
   non-obvious "why".
-- **Tests:** offline always. Tests use the real SQLite store (`FreshStore()` /
-  `fresh_store()` in `tests/fakes/store_factories.py`, an in-memory database; a temporary
-  file only where two connections or WAL matter) and `FaultyStore` (`tests/fakes/faulty_store.py`)
+- **Tests:** offline always. Tests use the real SQLite store (`FreshStore()` in
+  `tests/fakes/store_factories.py`, an in-memory database; `sqlite_store()` or
+  `two_connections()` for a temporary file where two connections or WAL matter) and `FaultyStore` (`tests/fakes/faulty_store.py`)
   to inject store failures. Fakes exist only at external seams (LLM, Telegram/PTB, the Hermes
   ctx, link inspection, GPU, OCR, the clock). Behaviour is pinned at acceptance and contract
   level first; a unit test is for what those cannot reach or for tricky logic (dates/DST,

@@ -2,10 +2,11 @@ import json
 from typing import Any
 
 import pytest
+from fakes.failing_suggester import FailingSuggester
 from fakes.fake_suggestion_desk import FakeSuggestionDesk
 
 from stash.hermes_adapter.suggest_tools import SUGGEST_SCHEMA, SuggestTools
-from stash.suggestions import CONTEXT_LIMIT, Picked, Unavailable
+from stash.suggestions import CONTEXT_LIMIT, ContextTooLong, Picked, Unavailable
 
 LOGGER = "stash.hermes_adapter.suggest_tools"
 UNAVAILABLE = {"error": "Suggestions are unavailable right now."}
@@ -23,6 +24,14 @@ def test_an_unavailable_model_is_answered_as_an_error() -> None:
 
     # Assert
     assert answer == UNAVAILABLE
+
+
+def test_a_context_that_is_too_long_is_answered_as_an_error_with_the_refusal() -> None:
+    # Execute
+    answer = suggest(FailingSuggester(ContextTooLong()), {"context": "x" * 501})
+
+    # Assert
+    assert answer == {"error": f"context must be at most {CONTEXT_LIMIT} characters"}
 
 
 @pytest.mark.parametrize("arguments", [{"context": 5}, {"context": ["a"]}, "text", None])

@@ -78,3 +78,16 @@ def test_a_failure_while_linking_existing_items_is_logged_and_the_person_is_stil
 
     # Assert
     assert (store.get_person(ana.id), len(recorder.entries())) == (ana, 1)
+
+
+def test_adding_a_person_links_the_items_already_naming_them_ignoring_case_and_spacing() -> None:
+    # Setup
+    store = FreshStore()
+    stored_item(store, id="i1", people=(" ana ",))
+    directory = a_directory(store)
+
+    # Execute
+    ana = directory.add("Ana")
+
+    # Assert
+    assert [item.id for item in store.items_for(ana.id)] == ["i1"]

@@ -14,6 +14,14 @@ PROPOSER_LOGGER = "stash.planning.proposer"
 MODEL_OUTPUT = "sk-secret-model-output {not json"
 
 
+def test_the_proposer_clamps_what_the_model_answered() -> None:
+    # Execute
+    steps = a_proposer(FakeChatModel(steps_reply(50))).propose(a_date_night())
+
+    # Assert
+    assert len(steps) == 10
+
+
 def test_an_unusable_model_answer_proposes_nothing() -> None:
     # Setup
     proposer = a_proposer(FakeChatModel(error=LlmBadOutput(MODEL_OUTPUT)))

@@ -139,6 +139,18 @@ def test_an_owner_event_from_the_reserved_agent_chat_is_left_to_hermes() -> None
     assert outcome == Passthrough()
 
 
+def test_a_stranger_event_with_a_blank_chat_id_is_left_to_hermes() -> None:
+    # Setup
+    translator = a_translator(owners="7")
+    event = FakeEvent(source=FakeSource(chat_id="", user_id=OWNER))
+
+    # Execute
+    outcome = translator.read(event)
+
+    # Assert
+    assert outcome == Passthrough()
+
+
 def test_refused_media_paths_are_reported_by_count_in_one_warning() -> None:
     # Setup
     translator = a_translator()

@@ -55,6 +55,17 @@ def test_the_toolset_is_called_stash() -> None:
     assert TOOLSET == "stash"
 
 
+def test_search_leaves_non_ascii_titles_unescaped() -> None:
+    # Setup
+    store = stored(an_item(title="渋谷のラーメン"))
+
+    # Execute
+    raw = StashTools(store).search({"query": "渋谷"})
+
+    # Assert
+    assert "渋谷のラーメン" in raw
+
+
 @pytest.mark.parametrize("query", ["", "   ", "\n\t"])
 def test_search_with_a_blank_query_answers_an_error(query: str) -> None:
     # Execute
@@ -96,6 +107,17 @@ def test_search_with_arguments_that_are_not_a_dict_answers_an_error(args: Any) -
 
     # Assert
     assert answer == {"error": "arguments must be an object"}
+
+
+def test_list_leaves_non_ascii_titles_unescaped() -> None:
+    # Setup
+    store = stored(an_item(title="渋谷のラーメン"))
+
+    # Execute
+    raw = StashTools(store).list_items({})
+
+    # Assert
+    assert "渋谷のラーメン" in raw
 
 
 def test_list_with_a_limit_that_is_not_an_integer_answers_an_error() -> None:

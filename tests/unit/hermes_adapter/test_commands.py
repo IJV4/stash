@@ -100,6 +100,17 @@ def test_list_shows_the_date_of_an_item_that_has_one() -> None:
     assert text == "Places · Concert · Planned · 2026-12-05"
 
 
+def test_list_keeps_a_title_with_control_characters_on_one_line() -> None:
+    # Setup
+    store = stored(an_item(title="Ramen\nin\x07Shibuya"))
+
+    # Execute
+    text = run(ListCommand(store))
+
+    # Assert
+    assert text == "Places · Ramen in Shibuya · Inbox"
+
+
 def test_list_shows_at_most_20_items_and_counts_the_rest() -> None:
     # Execute
     lines = run(ListCommand(many_items(25))).splitlines()

@@ -30,6 +30,7 @@ from nudge_rig import MINUTE, a_nudge_rig, hourly_ticks_with_minutes_around, tic
 from planning_builders import DATE_NIGHT_ID
 
 from stash.capture.callbacks import FixAction, FixKind, date_argument
+from stash.capture.replies import changed
 from stash.domain import Stage
 
 CATCH_UP_TEXT = "\n".join(
@@ -241,10 +242,10 @@ def test_pressing_didnt_happen_after_the_item_was_rescheduled_leaves_it_as_it_is
     rescheduled = a_lifecycle(store).reschedule(DATE_NIGHT_ID, SATURDAY + timedelta(days=7))
 
     # Execute
-    a_fix_handler(store).apply(didnt_happen.data)
+    reply = a_fix_handler(store).apply(didnt_happen.data)
 
     # Assert
-    assert fetched_item(store, DATE_NIGHT_ID) == rescheduled
+    assert (reply, fetched_item(store, DATE_NIGHT_ID)) == (changed(), rescheduled)
 
 
 def test_a_step_due_tomorrow_sends_no_reminder_once_didnt_happen_moved_the_item_to_want_to() -> (

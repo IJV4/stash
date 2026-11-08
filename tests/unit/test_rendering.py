@@ -3,15 +3,17 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
-from builders import an_item, an_outcome
+from builders import a_capture, an_item, an_outcome
+from people_builders import a_key_date, a_person
 
-from stash.capture import Duplicate
-from stash.domain import Item, ItemType, Outcome, Stage
+from stash.capture import Deferred, Duplicate
+from stash.domain import Item, ItemType, KeyDateKind, NextKeyDate, Outcome, PersonSummary, Stage
 from stash.lifecycle import ItemHistory
 from stash.rendering import (
     history_lines,
     library_line,
     listing_line,
+    person_line,
     result_line,
 )
 
@@ -34,6 +36,22 @@ def test_a_listing_line_appends_the_date_when_the_item_has_one() -> None:
 
     # Assert
     assert line == "Places · Ramen in Shibuya · Planned · 2026-12-05"
+
+
+def test_terminal_control_characters_in_a_title_never_reach_the_line() -> None:
+    # Execute
+    line = listing_line(a_place(title="Ramen\x1b[31m red\x07"))
+
+    # Assert
+    assert line == "Places · Ramen [31m red · Want to"
+
+
+def test_a_deferred_text_line_never_carries_control_characters() -> None:
+    # Execute
+    line = result_line(Deferred(a_capture(text="Ramen\x1b[2J now"), "gpu_busy"))
+
+    # Assert
+    assert line == "deferred (gpu_busy) — Ramen [2J now"
 
 
 def test_a_duplicate_result_line_says_it_was_already_saved() -> None:
@@ -243,6 +261,17 @@ def test_control_characters_in_an_outcomes_text_never_reach_the_history(outcome:
     assert not any(character in "\n".join(lines) for character in "\x1b\x07")
 
 
+def test_control_characters_in_a_childs_title_never_reach_the_history() -> None:
+    # Setup
+    child = an_item(id="c1", title=f"Part{CONTROL_CHARACTERS}two")
+
+    # Execute
+    lines = history_lines_of(a_book(kept=False), children=(child,))
+
+    # Assert
+    assert not any(character in "\n".join(lines) for character in "\x1b\x07")
+
+
 def test_control_characters_in_a_link_never_reach_the_history_even_if_the_item_carries_them() -> (
     None
 ):
@@ -255,3 +284,35 @@ def test_control_characters_in_a_link_never_reach_the_history_even_if_the_item_c
 
     # Assert
     assert not any(character in "\n".join(lines) for character in "\x1b\x07")
+
+
+def a_summary(relation: str = "wife", **key_date: Any) -> PersonSummary:
+    person = a_person(name="Ana", relation=relation, aliases=())
+    fields: dict[str, Any] = {"month": 3, "day": 6, "year": 1993, "person_id": person.id}
+    return PersonSummary(
+        person, NextKeyDate(a_key_date(**{**fields, **key_date}), date(2027, 3, 6))
+    )
+
+
+def test_a_person_line_drops_control_characters_from_the_name() -> None:
+    # Execute
+    line = person_line(PersonSummary(a_person(name=f"Ana{CONTROL_CHARACTERS}", relation=""), None))
+
+    # Assert
+    assert line == "Ana [31m"
+
+
+def test_a_person_line_drops_control_characters_from_the_relation() -> None:
+    # Execute
+    line = person_line(a_summary(relation=f"wife{CONTROL_CHARACTERS}"))
+
+    # Assert
+    assert line == "Ana (wife [31m) — birthday Sat Mar 6"
+
+
+def test_a_person_line_drops_control_characters_from_an_other_keys_label() -> None:
+    # Execute
+    line = person_line(a_summary(kind=KeyDateKind.OTHER, label=f"Name day{CONTROL_CHARACTERS}"))
+
+    # Assert
+    assert line == "Ana (wife) — Name day [31m Sat Mar 6"

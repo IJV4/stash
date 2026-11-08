@@ -32,6 +32,17 @@ def test_sample_with_utilization_above_100_raises_value_error() -> None:
         a_sample(utilization_pct=101)
 
 
+def test_foreign_used_is_clamped_to_zero_when_own_usage_exceeds_used() -> None:
+    # Setup
+    sample = a_sample(used_mib=6000)
+
+    # Execute
+    foreign = sample.foreign_used_mib(own_mib=7000)
+
+    # Assert
+    assert foreign == 0
+
+
 def test_foreign_used_with_negative_own_usage_raises_value_error() -> None:
     # Setup
     sample = a_sample()

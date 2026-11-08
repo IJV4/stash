@@ -18,6 +18,7 @@ STRANGER_ID = "99"
 CHAT_ID = "7001"
 MESSAGE_ID = "55"
 TYPE_MENU_DATA = "stash:t:c1"
+QUESTION_DATA = "stash:q:c1"
 PRESS_RETURNED = "returned"
 
 
@@ -37,6 +38,42 @@ class Harness:
         press = CallbackPress(Chat(CHAT_ID, user_id), MESSAGE_ID, data, done_rows)
         asyncio.run(self.callbacks.on_press(press))
         return PRESS_RETURNED
+
+
+def test_a_press_from_a_non_owner_applies_no_fix() -> None:
+    # Setup
+    harness = Harness()
+
+    # Execute
+    harness.press(QUESTION_DATA, user_id=STRANGER_ID)
+
+    # Assert
+    assert harness.fixes.applied == []
+
+
+def test_a_press_from_a_non_owner_edits_nothing_and_asks_nothing() -> None:
+    # Setup
+    harness = Harness()
+
+    # Execute
+    harness.press(QUESTION_DATA, user_id=STRANGER_ID)
+
+    # Assert
+    assert (harness.outbox.edits, harness.assistant.asked) == ([], [])
+
+
+def test_a_press_from_a_non_owner_is_logged_at_info_with_the_chat_only() -> None:
+    # Setup
+    harness = Harness()
+
+    # Execute
+    with recording_logs(LOGGER) as logs:
+        harness.press(QUESTION_DATA, user_id=STRANGER_ID)
+
+    # Assert
+    assert logs.entries() == [
+        (logging.INFO, "ignoring a button press from a non-owner in chat 7001")
+    ]
 
 
 def test_a_failing_edit_is_swallowed() -> None:

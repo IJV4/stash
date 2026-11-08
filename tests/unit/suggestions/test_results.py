@@ -40,6 +40,14 @@ def test_the_context_limit_is_five_hundred_characters() -> None:
     assert CONTEXT_LIMIT == 500
 
 
+def test_a_context_too_long_error_names_the_limit() -> None:
+    # Execute
+    error = ContextTooLong()
+
+    # Assert
+    assert str(error) == "context must be at most 500 characters"
+
+
 def test_a_context_too_long_error_is_a_value_error() -> None:
     # Assert
     assert issubclass(ContextTooLong, ValueError)
