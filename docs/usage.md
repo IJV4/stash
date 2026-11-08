@@ -1167,6 +1167,10 @@ database. The address is `[library] bind` (default `0.0.0.0`) and `port` (defaul
     status. The token is never logged.
 11. `stash doctor` gains the optional line `library server`: ✔ when `GET /healthz` on
     the configured port answers `ok`, `!` (not blocking) when nothing is listening.
+12. The server answers one request at a time (it shares one database connection), and
+    waits up to 10 s for a slow client. A browser that opens a spare connection and leaves
+    it idle can make the next page load wait that long; so can any device on the home
+    network that sends a request very slowly.
 
 `stash serve` stops on Ctrl-C. Run it for good as the systemd user service
 `deploy/systemd/stash-serve.service`; the network side (mirrored networking, the

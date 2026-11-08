@@ -186,9 +186,16 @@ and open the port to the Private network profile only.
      -LocalPort 8765 -Action Allow -Profile Private
    ```
    Check in `Get-NetConnectionProfile` that the home Wi-Fi is **Private**.
-   **(unverified)** WSL's Hyper-V firewall may need its own inbound rule for mirrored
-   mode (`New-NetFirewallHyperVRule`, VM creator `{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}`);
-   add it only if the phone cannot connect, and record the outcome in `docs/spike-m0.md` #28.
+   **(unverified)** Mirrored mode puts WSL behind the Hyper-V firewall, which blocks inbound
+   connections by default, so this second rule is probably needed too (PowerShell as
+   Administrator; `{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}` is WSL's VM creator id):
+   ```powershell
+   New-NetFirewallHyperVRule -Name "stash-library" -DisplayName "stash library" `
+     -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' `
+     -Protocol TCP -LocalPorts 8765 -Action Allow
+   ```
+   Record in `docs/spike-m0.md` #28 whether the phone needed it, and whether adding
+   `-Profiles Private` is accepted (so the rule stays off public networks).
 3. **Token**: make a long random token and keep it in a file only you can read. The
    service reads it from there, so it never appears in the unit file or on a command line:
    ```bash
