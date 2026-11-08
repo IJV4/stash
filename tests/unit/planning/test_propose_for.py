@@ -1,7 +1,7 @@
 import pytest
 from fakes.fake_step_proposals import FakeStepProposals
+from fakes.faulty_store import FaultyStore, step_writes
 from fakes.store_factories import FreshStore
-from fakes.watched_step_store import WatchedStepStore
 from planning_builders import DATE_NIGHT_ID, stored_date_night
 from planning_rig import planning_over
 
@@ -22,7 +22,7 @@ def test_proposing_for_an_unknown_item_is_refused() -> None:
 
 def test_a_proposed_step_the_domain_refuses_is_a_planning_refusal_and_writes_nothing() -> None:
     # Setup
-    store = WatchedStepStore()
+    store = FaultyStore(record=True)
     stored_date_night(store)
     planning = planning_over(store, FakeStepProposals((ProposedStep("", 3),)))
 
@@ -31,4 +31,4 @@ def test_a_proposed_step_the_domain_refuses_is_a_planning_refusal_and_writes_not
         planning.propose_for(DATE_NIGHT_ID)
 
     # Assert
-    assert store.step_writes == 0
+    assert step_writes(store) == 0

@@ -7,9 +7,10 @@ from capture_builders import (
     a_store_with_a_completed_item,
 )
 from capture_rig import a_fix_handler
-from fakes.vanishing_item_store import VanishingItemStore
+from fakes.faulty_store import FaultyStore
 
 from stash.capture import gone
+from stash.store import UnknownItemError
 
 STORED_RATING = 4
 
@@ -27,9 +28,9 @@ def test_pressing_a_rating_for_an_unknown_outcome_answers_gone() -> None:
 
 def test_a_rating_whose_item_was_deleted_right_after_saving_it_answers_gone() -> None:
     # Setup
-    store = VanishingItemStore()
+    store = FaultyStore()
     stored_completion(store, COMPLETED_ITEM_ID)
-    store.vanish_item_after_saving_outcome(COMPLETED_OUTCOME_ID)
+    store.fail_next("save_outcome", UnknownItemError(COMPLETED_ITEM_ID))
 
     # Execute
     reply = a_fix_handler(store).apply(f"stash:r:{COMPLETED_OUTCOME_ID}:3")

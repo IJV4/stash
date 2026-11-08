@@ -8,10 +8,9 @@ from capture_builders import (
     an_unsure_answer,
     button_data,
 )
-from fakes.busy_store import BusyStore
+from fakes.faulty_store import FaultyStore, busy_store
 from fakes.recording_assistant import RecordingAssistant
 from fakes.store_factories import FreshStore
-from fakes.vanishing_item_store import VanishingItemStore
 from hermes_events import OWNER_ID, STRANGER_ID, an_event
 from hermes_rig import CONFIRMATION_MESSAGE_ID, a_press, build_button_rig, build_hermes_rig
 from planning_builders import DATE_NIGHT_ID, stored_date_night
@@ -21,6 +20,7 @@ from telegram_press_rig import a_telegram_press_rig, two_follow_ups_in_one_messa
 from stash.capture.callbacks import FixAction, FixKind, date_argument
 from stash.domain import Stage
 from stash.hermes_adapter.events import Chat
+from stash.store import UnknownItemError
 
 GONE = "That item no longer exists."
 CHANGED = "That changed meanwhile — try again."
@@ -142,21 +142,20 @@ def test_pressing_that_was_a_question_after_an_allowed_question_injects_the_text
 
 def test_pressing_didnt_happen_on_an_item_deleted_meanwhile_says_it_no_longer_exists() -> None:
     # Setup
-    store = VanishingItemStore()
+    store = FaultyStore(fail_on={"update_item": UnknownItemError("i1")})
     stored(store, an_item_at(Stage.PLANNED))
-    store.vanish_after_reading_item("i1")
     rig = build_button_rig(store)
 
     # Execute
     shown = rig.pressed(FixAction(FixKind.NOT_HAPPENED, "i1", date_argument(PLANNED_FOR)).encode())
 
     # Assert
-    assert (shown, store.get_item("i1")) == (GONE, None)
+    assert shown == GONE
 
 
 def test_pressing_done_while_the_store_is_busy_asks_to_try_again_in_a_moment() -> None:
     # Setup
-    store = BusyStore()
+    store = busy_store()
     stored(store, an_item_at(Stage.DOING))
     rig = build_button_rig(store)
 
@@ -171,7 +170,7 @@ def test_pressing_looks_good_while_the_store_is_busy_asks_to_try_again_and_confi
     None
 ):
     # Setup
-    store = BusyStore()
+    store = busy_store()
     stored_date_night(store)
     store.save_step(a_step(item_id=DATE_NIGHT_ID))
     rig = build_button_rig(store)

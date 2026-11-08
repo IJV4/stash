@@ -6,8 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from app_builders import stored
 from builders import BASE, a_capture, an_item, days_after, stored_completion
-from fakes.failing_list_store import FailingListStore
-from fakes.failing_read_store import FailingReadStore
+from fakes.faulty_store import unlistable_store, unreadable_store
 from fakes.recording_unloader import RecordingUnloader
 from fakes.store_factories import FreshStore
 from fakes.thread_noting_retrier import ThreadNotingRetrier
@@ -144,7 +143,7 @@ def test_list_counts_the_lines_it_had_to_drop_to_fit() -> None:
 def test_list_lets_a_failing_store_propagate() -> None:
     # Execute / Assert
     with pytest.raises(Exception, match="database is closed"):
-        run(ListCommand(FailingListStore()))
+        run(ListCommand(unlistable_store()))
 
 
 def a_switch(
@@ -328,4 +327,4 @@ def test_library_counts_the_lines_it_had_to_drop_to_fit() -> None:
 def test_library_lets_a_failing_store_propagate() -> None:
     # Execute / Assert
     with pytest.raises(Exception, match="database is closed"):
-        run(a_library_command(FailingReadStore()))
+        run(a_library_command(unreadable_store()))

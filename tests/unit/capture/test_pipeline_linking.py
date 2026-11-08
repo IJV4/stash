@@ -5,8 +5,7 @@ from capture_builders import a_filing_answer, a_message, a_pipeline, an_agent_me
 from capture_narrowing import handle_filed
 from capture_rig import CaptureRig, build_rig
 from fakes.capture_filer import FakeCaptureFiler
-from fakes.failing_link_store import FailingLinkStore
-from fakes.failing_status_store import FailingStatusStore, StatusWriteFailed
+from fakes.faulty_store import FaultyStore, StoreFault
 from fakes.link_inspector import FakeLinkInspector
 from fakes.recording_linker import RecordingLinker
 from fakes.store_factories import FreshStore
@@ -18,7 +17,7 @@ PEOPLE_FILING = a_filing_answer(people=["Ana"])
 
 
 def a_rig_whose_linking_fails() -> CaptureRig:
-    rig = build_rig(answer=PEOPLE_FILING, store=FailingLinkStore())
+    rig = build_rig(answer=PEOPLE_FILING, store=FaultyStore(fail_on={"link": StoreFault("link")}))
     rig.people.add("Ana")
     return rig
 
@@ -38,11 +37,11 @@ def test_an_item_filed_from_an_agent_capture_is_handed_to_the_linker() -> None:
 
 def test_resuming_after_a_crash_before_the_status_write_does_not_link_the_item_again() -> None:
     # Setup
-    store = FailingStatusStore()
+    store = FaultyStore()
     linker = RecordingLinker()
     pipeline = a_pipeline(store, FakeLinkInspector(), FakeCaptureFiler(), linker=linker)
-    store.fail_next_status_write = True
-    with pytest.raises(StatusWriteFailed):
+    store.fail_next("set_capture_status", StoreFault("status"))
+    with pytest.raises(StoreFault):
         pipeline.handle(a_message())
 
     # Execute

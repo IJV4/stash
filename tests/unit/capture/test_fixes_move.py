@@ -1,8 +1,7 @@
 from builders import fetched_item
 from capture_builders import store_with_filed_item
 from capture_rig import a_fix_handler
-from fakes.busy_store import BusyStore
-from fakes.faulty_store import FaultyStore
+from fakes.faulty_store import FaultyStore, busy_store
 
 from stash.capture import gone
 from stash.capture.replies import busy, confirmation
@@ -24,7 +23,7 @@ def test_pressing_a_stage_moves_the_item_and_confirms_it() -> None:
 
 def test_pressing_a_stage_while_the_store_is_busy_answers_busy() -> None:
     # Setup
-    store, _ = store_with_filed_item(BusyStore())
+    store, _ = store_with_filed_item(busy_store())
 
     # Execute
     reply = a_fix_handler(store).apply("stash:S:c1:doing")

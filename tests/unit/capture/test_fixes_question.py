@@ -2,7 +2,7 @@ import pytest
 from builders import a_capture
 from capture_builders import store_with_filed_item
 from capture_rig import a_fix_handler
-from fakes.failing_delete_store import DeleteFailed, FailingDeleteStore
+from fakes.faulty_store import FaultyStore, StoreFault
 
 from stash.capture.fixes import HISTORY_KEPT, Reroute
 from stash.domain import CaptureStatus
@@ -10,10 +10,12 @@ from stash.domain import CaptureStatus
 
 def test_a_crash_while_deleting_the_item_leaves_the_capture_already_marked_as_a_request() -> None:
     # Setup
-    store, _ = store_with_filed_item(FailingDeleteStore())
+    store, _ = store_with_filed_item(
+        FaultyStore(fail_once={"delete_item_if_untouched": StoreFault("c1")})
+    )
 
     # Execute
-    with pytest.raises(DeleteFailed):
+    with pytest.raises(StoreFault):
         a_fix_handler(store).apply("stash:q:c1")
 
     # Assert
@@ -25,9 +27,11 @@ def test_pressing_that_was_a_question_again_after_a_crash_while_deleting_hands_t
     None
 ):
     # Setup
-    store, _ = store_with_filed_item(FailingDeleteStore())
+    store, _ = store_with_filed_item(
+        FaultyStore(fail_once={"delete_item_if_untouched": StoreFault("c1")})
+    )
     handler = a_fix_handler(store)
-    with pytest.raises(DeleteFailed):
+    with pytest.raises(StoreFault):
         handler.apply("stash:q:c1")
 
     # Execute
@@ -39,9 +43,11 @@ def test_pressing_that_was_a_question_again_after_a_crash_while_deleting_hands_t
 
 def test_pressing_that_was_a_question_again_after_a_crash_while_deleting_deletes_the_item() -> None:
     # Setup
-    store, _ = store_with_filed_item(FailingDeleteStore())
+    store, _ = store_with_filed_item(
+        FaultyStore(fail_once={"delete_item_if_untouched": StoreFault("c1")})
+    )
     handler = a_fix_handler(store)
-    with pytest.raises(DeleteFailed):
+    with pytest.raises(StoreFault):
         handler.apply("stash:q:c1")
 
     # Execute

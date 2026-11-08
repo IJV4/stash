@@ -4,11 +4,11 @@ import pytest
 from builders import LATER, an_item, store_holding, stored
 from fakes.faulty_store import FaultyStore
 from fakes.store_factories import FreshStore
-from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import GROUPS_ONE_LEVEL_DEEP, Item
 from stash.lifecycle import LifecycleRefused, UnknownItem
+from stash.store import UnknownItemError
 from stash.store.port import ParentIsGroupedError
 
 PARENT_HAS_A_PARENT = "parent-has-a-parent"
@@ -149,10 +149,9 @@ def test_grouping_under_an_unknown_parent_raises_unknown_item_naming_the_parent(
 
 def test_grouping_under_a_parent_deleted_between_reading_and_writing_raises_unknown_item() -> None:
     # Setup
-    store = VanishingItemStore()
+    store = FaultyStore(fail_on={"group_item": UnknownItemError("parent")})
     stored(store, child_item())
     stored(store, parent_item())
-    store.vanish_after_reading_item("parent")
 
     # Execute
     with pytest.raises(UnknownItem) as raised:

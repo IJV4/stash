@@ -5,7 +5,7 @@ from builders import LATER, minutes_after
 from capture_builders import a_message, a_pipeline
 from capture_rig import a_fix_handler
 from fakes.capture_filer import FakeCaptureFiler
-from fakes.failing_status_store import FailingStatusStore, StatusWriteFailed
+from fakes.faulty_store import FaultyStore, StoreFault
 from fakes.link_inspector import FakeLinkInspector
 from fakes.store_factories import FreshStore
 from log_records import recording_logs
@@ -69,11 +69,11 @@ def test_a_capture_that_raises_an_unexpected_error_is_logged_with_its_id_and_tra
     )
 
 
-def failed_status_write_then_fixed_item() -> tuple[FailingStatusStore, FakeCaptureFiler]:
-    store = FailingStatusStore()
+def failed_status_write_then_fixed_item() -> tuple[FaultyStore, FakeCaptureFiler]:
+    store = FaultyStore()
     filer = FakeCaptureFiler()
-    store.fail_next_status_write = True
-    with pytest.raises(StatusWriteFailed):
+    store.fail_next("set_capture_status", StoreFault("status"))
+    with pytest.raises(StoreFault):
         a_pipeline(store, FakeLinkInspector(), filer).handle(a_message())
     return store, filer
 

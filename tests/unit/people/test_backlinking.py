@@ -1,5 +1,5 @@
 from builders import stored_item
-from fakes.failing_link_store import FailingLinkStore
+from fakes.faulty_store import FaultyStore, StoreFault
 from fakes.store_factories import FreshStore
 from log_records import recording_logs
 from people_builders import a_directory, ids_of_people
@@ -68,7 +68,7 @@ def test_adding_an_alias_leaves_an_already_linked_item_linked_once() -> None:
 
 def test_a_failure_while_linking_existing_items_is_logged_and_the_person_is_still_added() -> None:
     # Setup
-    store = FailingLinkStore()
+    store = FaultyStore(fail_on={"link": StoreFault("link")})
     stored_item(store, id="i1", people=("Ana",))
     directory = a_directory(store)
 

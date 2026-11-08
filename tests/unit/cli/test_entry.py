@@ -4,7 +4,7 @@ import pytest
 from app_builders import an_app
 from cli_session import Session
 from fakes.close_counter import CloseCounter
-from fakes.failing_list_store import FailingListStore, ListFailed
+from fakes.faulty_store import StoreFault, unlistable_store
 
 from stash.app import StashApp
 from stash.cli import main
@@ -17,10 +17,10 @@ def counter(app: StashApp) -> CloseCounter:
 
 def test_the_app_is_closed_when_the_command_raises(tmp_path: Path) -> None:
     # Setup
-    session = Session(tmp_path, an_app(store=FailingListStore()))
+    session = Session(tmp_path, an_app(store=unlistable_store()))
 
     # Execute
-    with pytest.raises(ListFailed):
+    with pytest.raises(StoreFault):
         session.run("list", "--config", str(session.config_file))
 
     # Assert

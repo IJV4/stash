@@ -2,7 +2,7 @@ import json
 
 from app_builders import an_app, stored
 from builders import BASE, an_item, an_outcome, minutes_after
-from fakes.failing_list_store import FailingListStore
+from fakes.faulty_store import unlistable_store
 from hermes_registration_rig import register_stash
 from tool_rig import answer_of, calling, store_snapshot
 
@@ -60,7 +60,7 @@ def test_stash_list_returns_the_newest_matching_items_first_within_the_limit() -
 
 def test_a_failing_store_makes_stash_list_answer_an_error() -> None:
     # Setup
-    plugin = register_stash(an_app(store=FailingListStore()))
+    plugin = register_stash(an_app(store=unlistable_store()))
 
     # Execute
     answer = plugin.ctx.tools["stash_list"].handler({})

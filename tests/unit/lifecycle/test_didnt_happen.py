@@ -6,7 +6,7 @@ from builders import (
     an_item_at,
     stored,
 )
-from fakes.failing_save_store import FailingSaveStore
+from fakes.faulty_store import FaultyStore, StoreFault
 from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
 
@@ -30,9 +30,9 @@ def test_an_item_that_is_not_planned_is_returned_unchanged(stage: Stage) -> None
 @pytest.mark.parametrize("stage", NOT_PLANNED_STAGES)
 def test_an_item_that_is_not_planned_is_not_written(stage: Stage) -> None:
     # Setup
-    store = FailingSaveStore()
+    store = FaultyStore()
     stored(store, an_item_at(stage))
-    store.fail_next_save = True
+    store.fail_next("update_item", StoreFault("save"))
 
     # Execute
     returned = a_lifecycle(store, clock=lambda: LATER).didnt_happen("i1", PLANNED_FOR)

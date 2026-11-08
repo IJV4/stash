@@ -8,13 +8,14 @@ from builders import (
     fetched_outcome,
     stored_completion,
 )
+from fakes.faulty_store import FaultyStore
 from fakes.store_factories import FreshStore
-from fakes.vanishing_item_store import VanishingItemStore
 from lifecycle_rig import a_lifecycle
 
 from stash.domain import Outcome
 from stash.lifecycle import Lifecycle, LifecycleRefused, UnknownItem, UnknownOutcome
 from stash.lifecycle.service import NOTHING_TO_ANNOTATE
+from stash.store import UnknownItemError
 
 OUTCOME_ID = "o-i1"
 NON_ITERABLE_TAKEAWAYS: Any = 5
@@ -105,9 +106,9 @@ def test_rating_an_unknown_outcome_raises_unknown_outcome_naming_it() -> None:
 
 def test_annotating_an_outcome_whose_item_was_deleted_meanwhile_raises_unknown_item() -> None:
     # Setup
-    store = VanishingItemStore()
+    store = FaultyStore()
     stored_completion(store, "i1")
-    store.vanish_item_after_reading_outcome(OUTCOME_ID)
+    store.fail_next("save_outcome", UnknownItemError("i1"))
 
     # Execute
     with pytest.raises(UnknownItem) as raised:
@@ -119,9 +120,9 @@ def test_annotating_an_outcome_whose_item_was_deleted_meanwhile_raises_unknown_i
 
 def test_rating_an_outcome_whose_item_was_deleted_meanwhile_raises_unknown_item() -> None:
     # Setup
-    store = VanishingItemStore()
+    store = FaultyStore()
     stored_completion(store, "i1")
-    store.vanish_item_after_reading_outcome(OUTCOME_ID)
+    store.fail_next("save_outcome", UnknownItemError("i1"))
 
     # Execute
     with pytest.raises(UnknownItem) as raised:

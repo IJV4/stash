@@ -1,10 +1,7 @@
 import logging
 
 from builders import stored_item
-from fakes.busy_store import BusyStore
-from fakes.failing_completion_store import FailingCompletionStore
-from fakes.failing_read_store import FailingReadStore
-from fakes.failing_save_store import FailingSaveStore
+from fakes.faulty_store import FaultyStore, StoreFault, busy_store, unreadable_store
 from log_records import recording_logs
 from tool_rig import (
     answer_of,
@@ -21,9 +18,9 @@ COULD_NOT_READ = {"error": "the stash could not be read"}
 
 def test_a_store_that_fails_while_writing_answers_could_not_be_updated() -> None:
     # Setup
-    store = FailingSaveStore()
+    store = FaultyStore()
     stored_item(store, id="w1", stage=Stage.WANT_TO)
-    store.fail_next_save = True
+    store.fail_next("update_item", StoreFault("save"))
 
     # Execute
     answer = answer_of(lifecycle_tools_over(store).set_stage({"item_id": "w1", "stage": "doing"}))
@@ -34,9 +31,9 @@ def test_a_store_that_fails_while_writing_answers_could_not_be_updated() -> None
 
 def test_a_store_that_fails_while_completing_answers_could_not_be_updated() -> None:
     # Setup
-    store = FailingCompletionStore()
+    store = FaultyStore()
     stored_item(store, id="w1", stage=Stage.WANT_TO)
-    store.fail_next_completion = True
+    store.fail_next("record_completion", StoreFault("complete"))
 
     # Execute
     answer = answer_of(lifecycle_tools_over(store).complete({"item_id": "w1"}))
@@ -47,9 +44,9 @@ def test_a_store_that_fails_while_completing_answers_could_not_be_updated() -> N
 
 def test_a_failure_while_writing_is_logged_as_one_error() -> None:
     # Setup
-    store = FailingSaveStore()
+    store = FaultyStore()
     stored_item(store, id="w1", stage=Stage.WANT_TO)
-    store.fail_next_save = True
+    store.fail_next("update_item", StoreFault("save"))
     tools = lifecycle_tools_over(store)
 
     # Execute
@@ -62,7 +59,7 @@ def test_a_failure_while_writing_is_logged_as_one_error() -> None:
 
 def test_a_store_that_fails_while_reading_answers_could_not_be_read() -> None:
     # Setup
-    store = FailingReadStore()
+    store = unreadable_store()
 
     # Execute
     answer = answer_of(lifecycle_tools_over(store).get({"item_id": "w1"}))
@@ -73,7 +70,7 @@ def test_a_store_that_fails_while_reading_answers_could_not_be_read() -> None:
 
 def test_a_library_that_fails_to_load_answers_could_not_be_read() -> None:
     # Execute
-    answer = answer_of(lifecycle_tools_over(FailingReadStore()).library({}))
+    answer = answer_of(lifecycle_tools_over(unreadable_store()).library({}))
 
     # Assert
     assert answer == COULD_NOT_READ
@@ -81,7 +78,7 @@ def test_a_library_that_fails_to_load_answers_could_not_be_read() -> None:
 
 def test_a_failure_while_reading_is_logged_as_one_error() -> None:
     # Setup
-    tools = lifecycle_tools_over(FailingReadStore())
+    tools = lifecycle_tools_over(unreadable_store())
 
     # Execute
     with recording_logs(LOGGER) as logs:
@@ -93,10 +90,10 @@ def test_a_failure_while_reading_is_logged_as_one_error() -> None:
 
 def test_a_failed_write_leaves_the_store_as_it_was() -> None:
     # Setup
-    store = FailingCompletionStore()
+    store = FaultyStore()
     stored_item(store, id="w1", stage=Stage.WANT_TO)
     before = store_snapshot(store)
-    store.fail_next_completion = True
+    store.fail_next("record_completion", StoreFault("complete"))
 
     # Execute
     lifecycle_tools_over(store).complete({"item_id": "w1", "rating": 4})
@@ -107,7 +104,7 @@ def test_a_failed_write_leaves_the_store_as_it_was() -> None:
 
 def test_a_tool_while_the_store_is_busy_answers_the_stash_busy_text() -> None:
     # Setup
-    store = BusyStore()
+    store = busy_store()
     stored_item(store, id="w1", stage=Stage.WANT_TO)
 
     # Execute

@@ -10,9 +10,10 @@ from capture_builders import (
     store_with_filed_item,
 )
 from capture_rig import logged_by_applying
-from fakes.vanishing_item_store import VanishingItemStore
+from fakes.faulty_store import FaultyStore
 
 from stash.capture.callback_log import MAX_LOGGED_CALLBACK_CHARS
+from stash.store import UnknownItemError
 
 FORGED = "g" * 500
 CLAMPED_CALLBACKS_AND_MESSAGES = [
@@ -75,9 +76,9 @@ def test_a_rating_for_an_unknown_outcome_is_logged_at_info() -> None:
 
 def test_a_rating_whose_item_was_deleted_right_after_saving_it_is_logged_at_info() -> None:
     # Setup
-    store = VanishingItemStore()
+    store = FaultyStore()
     stored_completion(store, COMPLETED_ITEM_ID)
-    store.vanish_item_after_saving_outcome(COMPLETED_OUTCOME_ID)
+    store.fail_next("save_outcome", UnknownItemError(COMPLETED_ITEM_ID))
 
     # Execute / Assert
     assert logged_by_applying(store, f"stash:r:{COMPLETED_OUTCOME_ID}:3") == [

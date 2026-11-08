@@ -1,6 +1,6 @@
 import pytest
 from builders import a_capture
-from fakes.faulty_store import FaultyStore
+from fakes.faulty_store import FaultyStore, StoreFault
 
 from stash.store import StoreBusyError
 
@@ -49,3 +49,17 @@ def test_recorded_calls_list_the_store_methods_in_order() -> None:
 
     # Assert
     assert store.calls == ["add_capture", "get_capture"]
+
+
+def test_a_fault_armed_for_the_next_call_fails_that_call_only() -> None:
+    # Setup
+    store = FaultyStore()
+    store.fail_next("add_capture", StoreFault("c1"))
+
+    # Execute
+    with pytest.raises(StoreFault):
+        store.add_capture(a_capture())
+    added = store.add_capture(a_capture())
+
+    # Assert
+    assert added
