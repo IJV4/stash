@@ -101,7 +101,7 @@ def a_step_due_on(day: date, **overrides: Any) -> Step:
 
 
 def stored_step_due_on(store: Store, day: date, **item_overrides: Any) -> Item:
-    item = stored(store, an_undated_date_night(**item_overrides))
+    item = stored(store, an_undated_date_night(**{"stage": Stage.DOING, **item_overrides}))
     stored_step(store, a_step_due_on(day))
     return item
 
@@ -176,7 +176,7 @@ def a_follow_up_whose_line_has(characters: int, number: int = 0) -> FollowUp:
 
 
 def stored_long_step_reminders(store: Store, count: int) -> Item:
-    date_night = stored(store, an_undated_date_night(title=LONG_TITLE))
+    date_night = stored(store, an_undated_date_night(title=LONG_TITLE, stage=Stage.DOING))
     for number in range(count):
         text = f"{number:02d}".ljust(STEP_TEXT_MAX_LENGTH, "x")
         stored_step(store, a_step_due_on(SATURDAY, id=f"step-{number}", text=text, position=number))

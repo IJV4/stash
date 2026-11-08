@@ -27,6 +27,10 @@ class FixKind(StrEnum):
     NOT_HAPPENED = "h"
 
     @property
+    def completes(self) -> bool:
+        return self in (FixKind.DONE, FixKind.STEP_DONE)
+
+    @property
     def takes_argument(self) -> bool:
         return self in (
             FixKind.SET_TYPE,

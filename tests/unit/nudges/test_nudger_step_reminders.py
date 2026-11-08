@@ -55,7 +55,7 @@ def test_a_step_with_a_lead_time_is_due_that_many_days_before_the_item_date() ->
 def test_a_step_that_is_not_confirmed_is_never_due() -> None:
     # Setup
     store = MemoryStore()
-    stored(store, an_undated_date_night())
+    stored(store, an_undated_date_night(stage=Stage.DOING))
     stored_step(store, a_step_due_on(SATURDAY, confirmed=False))
 
     # Execute
@@ -68,7 +68,7 @@ def test_a_step_that_is_not_confirmed_is_never_due() -> None:
 def test_a_step_that_is_done_is_never_due() -> None:
     # Setup
     store = MemoryStore()
-    stored(store, an_undated_date_night())
+    stored(store, an_undated_date_night(stage=Stage.DOING))
     stored_step(store, a_step_due_on(SATURDAY, done=True))
 
     # Execute
@@ -104,11 +104,24 @@ def test_a_step_of_a_done_or_dropped_item_is_never_due(stage: Stage) -> None:
     assert due == []
 
 
-@pytest.mark.parametrize("stage", [Stage.INBOX, Stage.WANT_TO, Stage.DOING])
-def test_a_step_of_an_item_that_is_still_open_is_due(stage: Stage) -> None:
+@pytest.mark.parametrize("stage", [Stage.INBOX, Stage.WANT_TO])
+def test_a_step_of_an_item_that_is_not_planned_or_under_way_is_never_due(stage: Stage) -> None:
     # Setup
     store = MemoryStore()
     stored_step_due_on(store, SATURDAY, stage=stage)
+
+    # Execute
+    due = step_reminders(store, SATURDAY_MORNING)
+
+    # Assert
+    assert due == []
+
+
+@pytest.mark.parametrize("stage", [Stage.PLANNED, Stage.DOING])
+def test_a_step_of_an_item_that_is_planned_or_under_way_is_due(stage: Stage) -> None:
+    # Setup
+    store = MemoryStore()
+    stored_step_due_on(store, SATURDAY, stage=stage, date=SATURDAY)
 
     # Execute
     due = step_reminders(store, SATURDAY_MORNING)
@@ -120,7 +133,7 @@ def test_a_step_of_an_item_that_is_still_open_is_due(stage: Stage) -> None:
 def test_a_step_with_a_lead_time_on_an_item_without_a_date_is_never_due() -> None:
     # Setup
     store = MemoryStore()
-    stored(store, an_undated_date_night())
+    stored(store, an_undated_date_night(stage=Stage.DOING))
     stored_step(store, a_same_day_step(lead_days=3))
 
     # Execute

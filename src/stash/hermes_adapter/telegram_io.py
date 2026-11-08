@@ -2,12 +2,19 @@ import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
 from stash.capture import Reply
+from stash.capture.callbacks import FixAction
 from stash.hermes_adapter.callbacks import CallbackPress, PressHandler
 from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.outbox import LateBoundOutbox
 
 if TYPE_CHECKING:
-    from telegram import CallbackQuery, InlineKeyboardMarkup, InputFile, Update
+    from telegram import (
+        CallbackQuery,
+        InlineKeyboardMarkup,
+        InputFile,
+        MaybeInaccessibleMessage,
+        Update,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +57,22 @@ def to_keyboard(reply: Reply) -> "InlineKeyboardMarkup | None":
             [InlineKeyboardButton(button.label, callback_data=button.data) for button in row]
             for row in reply.buttons
         ]
+    )
+
+
+def _completes(callback_data: object) -> bool:
+    action = FixAction.parse(callback_data) if isinstance(callback_data, str) else None
+    return action is not None and action.kind.completes
+
+
+def done_rows_of(message: "MaybeInaccessibleMessage") -> int:
+    from telegram import Message
+
+    if not isinstance(message, Message) or message.reply_markup is None:
+        return 0
+    return sum(
+        any(_completes(button.callback_data) for button in row)
+        for row in message.reply_markup.inline_keyboard
     )
 
 
@@ -110,7 +133,9 @@ class TelegramAttachment:
         if query.message is None or query.data is None:
             return
         chat = Chat(str(query.message.chat.id), str(query.from_user.id))
-        press = CallbackPress(chat, str(query.message.message_id), query.data)
+        press = CallbackPress(
+            chat, str(query.message.message_id), query.data, done_rows_of(query.message)
+        )
         try:
             await self._on_press(press)
         except Exception:

@@ -1,7 +1,17 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from telegram import Bot, CallbackQuery, Chat, Message, Update, User
+from telegram import (
+    Bot,
+    CallbackQuery,
+    Chat,
+    InaccessibleMessage,
+    InlineKeyboardMarkup,
+    MaybeInaccessibleMessage,
+    Message,
+    Update,
+    User,
+)
 from telegram.request import BaseRequest
 
 FAKE_TOKEN = "123456:fake-token-for-offline-tests"
@@ -38,6 +48,15 @@ class AnsweringBot(Bot):
         return True
 
 
+def _message(
+    chat_id: int, message_id: int, keyboard: InlineKeyboardMarkup | None, inaccessible: bool
+) -> MaybeInaccessibleMessage:
+    chat = Chat(id=chat_id, type=Chat.PRIVATE)
+    if inaccessible:
+        return InaccessibleMessage(chat=chat, message_id=message_id)
+    return Message(message_id=message_id, date=SENT_AT, chat=chat, reply_markup=keyboard)
+
+
 def callback_update(
     bot: Bot,
     data: str | None = "stash:t:abc",
@@ -45,17 +64,11 @@ def callback_update(
     user_id: int = 42,
     message_id: int = 55,
     with_message: bool = True,
+    keyboard: InlineKeyboardMarkup | None = None,
+    inaccessible: bool = False,
 ) -> Update:
     sender = User(id=user_id, first_name="Owner", is_bot=False)
-    message = (
-        Message(
-            message_id=message_id,
-            date=SENT_AT,
-            chat=Chat(id=chat_id, type=Chat.PRIVATE),
-        )
-        if with_message
-        else None
-    )
+    message = _message(chat_id, message_id, keyboard, inaccessible) if with_message else None
     query = CallbackQuery(
         id="query-1", from_user=sender, chat_instance="instance", data=data, message=message
     )

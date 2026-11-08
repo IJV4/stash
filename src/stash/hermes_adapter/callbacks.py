@@ -18,6 +18,11 @@ class CallbackPress:
     chat: Chat
     message_id: str
     data: str
+    done_rows: int = 0
+
+    @property
+    def is_on_a_batched_message(self) -> bool:
+        return self.done_rows > 1
 
 
 PressHandler = Callable[[CallbackPress], Awaitable[None]]
@@ -47,6 +52,8 @@ class FixCallbacks:
 
     async def _deliver(self, outcome: Reply | Reroute, press: CallbackPress) -> None:
         match outcome:
+            case Reply() if press.is_on_a_batched_message:
+                await self._outbox.send(press.chat.chat_id, outcome)
             case Reply():
                 await self._outbox.edit(press.chat.chat_id, press.message_id, outcome)
             case Reroute(text):

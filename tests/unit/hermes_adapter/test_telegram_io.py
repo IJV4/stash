@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import pytest
+from builders import an_item_at
 from fakes.fake_telegram_bot import FakeTelegramApplication, FakeTelegramBot
 from fakes.keyword_only_telegram_bot import KeywordOnlyTelegramBot
 from fakes.ptb_callback_updates import AnsweringBot, callback_update
@@ -14,7 +15,8 @@ from telegram import Bot, InlineKeyboardMarkup
 from telegram.error import NetworkError
 from telegram.ext import CallbackQueryHandler
 
-from stash.capture import Button, Reply
+from stash.capture import Button, Reply, stage_menu
+from stash.domain import Stage
 from stash.hermes_adapter.callbacks import CallbackPress
 from stash.hermes_adapter.events import Chat
 from stash.hermes_adapter.outbox import LateBoundOutbox, OutboxUnavailable
@@ -27,6 +29,13 @@ WITH_BUTTONS = Reply(
     (
         (Button("Type", "stash:t:abc"), Button("Stage", "stash:s:abc")),
         (Button("Undo", "stash:u:abc"),),
+    ),
+)
+TWO_DONE_ROWS = Reply(
+    "How was First?\nHow was Second?",
+    (
+        (Button("Done ✓ · First", "stash:d:a"), Button("Didn't happen", "stash:h:a:20270212")),
+        (Button("Done ✓ · Second", "stash:d:b"),),
     ),
 )
 
@@ -296,6 +305,79 @@ def test_a_press_is_handled_with_the_chat_message_and_data_of_the_query() -> Non
 
     # Assert
     assert presses.presses == [CallbackPress(Chat("1001", "42"), "55", "stash:t:abc")]
+
+
+def test_a_press_on_a_message_with_two_done_rows_carries_two_done_rows() -> None:
+    # Setup
+    presses = PressLog([])
+    handler = attached_handler(presses)
+    keyboard = to_keyboard(TWO_DONE_ROWS)
+    update = callback_update(AnsweringBot([]), data="stash:d:a", keyboard=keyboard)
+
+    # Execute
+    asyncio.run(handler.callback(update, None))
+
+    # Assert
+    assert presses.presses[0].done_rows == 2
+
+
+def test_a_press_on_a_message_with_two_step_done_rows_carries_two_done_rows() -> None:
+    # Setup
+    presses = PressLog([])
+    handler = attached_handler(presses)
+    keyboard = to_keyboard(
+        Reply(
+            "Two steps",
+            ((Button("Done ✓ · Book", "stash:x:s1"),), (Button("Done ✓ · Pack", "stash:x:s2"),)),
+        )
+    )
+    update = callback_update(AnsweringBot([]), data="stash:x:s1", keyboard=keyboard)
+
+    # Execute
+    asyncio.run(handler.callback(update, None))
+
+    # Assert
+    assert presses.presses[0].done_rows == 2
+
+
+def test_a_press_on_a_menu_with_one_done_row_among_other_rows_carries_one_done_row() -> None:
+    # Setup
+    presses = PressLog([])
+    handler = attached_handler(presses)
+    keyboard = to_keyboard(stage_menu(an_item_at(Stage.WANT_TO)))
+    update = callback_update(AnsweringBot([]), data="stash:S:i1:doing", keyboard=keyboard)
+
+    # Execute
+    asyncio.run(handler.callback(update, None))
+
+    # Assert
+    assert presses.presses[0].done_rows == 1
+
+
+def test_a_press_on_a_message_without_a_keyboard_carries_no_done_rows() -> None:
+    # Setup
+    presses = PressLog([])
+    handler = attached_handler(presses)
+    update = callback_update(AnsweringBot([]), data="stash:d:a", keyboard=None)
+
+    # Execute
+    asyncio.run(handler.callback(update, None))
+
+    # Assert
+    assert presses.presses[0].done_rows == 0
+
+
+def test_a_press_on_an_inaccessible_message_carries_no_done_rows() -> None:
+    # Setup
+    presses = PressLog([])
+    handler = attached_handler(presses)
+    update = callback_update(AnsweringBot([]), data="stash:d:a", inaccessible=True)
+
+    # Execute
+    asyncio.run(handler.callback(update, None))
+
+    # Assert
+    assert presses.presses[0].done_rows == 0
 
 
 def test_a_failing_press_does_not_raise_out_of_the_callback() -> None:

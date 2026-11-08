@@ -3,7 +3,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
-from stash.domain import Item, NudgeKind, Step, require_aware
+from stash.domain import Item, NudgeKind, Stage, Step, require_aware
 from stash.nudges.due import (
     DateReminder,
     DueNudge,
@@ -20,6 +20,7 @@ from stash.nudges.schedule import Schedule
 
 LOOKBACK = dt.timedelta(days=14)
 STUCK_LIMIT = 10
+STEP_REMINDER_STAGES = frozenset({Stage.PLANNED, Stage.DOING})
 
 
 class _Timed(Protocol):
@@ -74,7 +75,7 @@ class Nudger:
 
     def _step_reminder(self, step: Step) -> StepReminder | None:
         item = self._store.get_item(step.item_id)
-        if item is None or item.is_closed:
+        if item is None or item.stage not in STEP_REMINDER_STAGES:
             return None
         day = step.due_date(item.date)
         if day is None:

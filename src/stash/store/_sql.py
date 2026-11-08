@@ -168,6 +168,9 @@ DELETE FROM items
 WHERE id = :item_id AND stage <> :done AND kept = 0
   AND NOT EXISTS (SELECT 1 FROM outcomes WHERE outcomes.item_id = items.id)
   AND NOT EXISTS (SELECT 1 FROM items AS child WHERE child.parent_id = items.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM steps WHERE steps.item_id = items.id AND steps.confirmed = 1
+  )
 """
 
 UPSERT_STEP = """

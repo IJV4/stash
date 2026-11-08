@@ -213,6 +213,27 @@ def test_deleting_an_untouched_item_still_succeeds_when_it_has_steps(
 
 
 @all_stores
+def test_an_item_with_a_confirmed_step_is_refused_and_keeps_the_step(
+    open_store: StoreFactory,
+) -> None:
+    # Setup
+    with open_store() as store:
+        with_items(store, "i1")
+        step = a_step(confirmed=True)
+        store.save_steps("i1", [step])
+
+        # Execute
+        deleted = store.delete_item_if_untouched("i1")
+
+        # Assert
+        assert (deleted, store.get_item("i1") is not None, store.steps_for("i1")) == (
+            False,
+            True,
+            [step],
+        )
+
+
+@all_stores
 def test_deleting_an_untouched_item_deletes_its_steps(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

@@ -340,8 +340,10 @@ class MemoryStore:
             self._items[child.id] = replace(child, parent_id=None)
 
     def _has_history(self, item_id: str) -> bool:
-        return any(outcome.item_id == item_id for outcome in self._outcomes.values()) or any(
-            item.parent_id == item_id for item in self._items.values()
+        return (
+            any(outcome.item_id == item_id for outcome in self._outcomes.values())
+            or any(item.parent_id == item_id for item in self._items.values())
+            or any(step.confirmed for step in self._steps.steps_for(item_id))
         )
 
     def _drop_outcomes_of(self, item_id: str) -> None:

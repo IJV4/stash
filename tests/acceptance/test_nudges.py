@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from builders import FALL_BACK_DAY, SPRING_FORWARD_DAY, fetched_item, in_los_angeles
+from builders import FALL_BACK_DAY, SPRING_FORWARD_DAY, fetched_item, in_los_angeles, stored
 from capture_rig import a_fix_handler
 from fakes.failing_nudge_sender import FailingNudgeSender
 from fakes.memory_store import MemoryStore
@@ -19,13 +19,17 @@ from nudge_builders import (
     SUNDAY_DIGEST_TIME,
     SUNDAY_MORNING,
     SUNDAY_NOON,
+    a_planned_date_night,
+    a_step_due_on,
     stored_date_night_week,
     stored_date_night_with_its_step,
+    stored_step,
     stored_step_due_on,
 )
 from nudge_rig import MINUTE, a_nudge_rig, hourly_ticks_with_minutes_around, ticks_between
 from planning_builders import DATE_NIGHT_ID
 
+from stash.capture.callbacks import FixAction, FixKind, date_argument
 from stash.domain import Stage
 
 CATCH_UP_TEXT = "\n".join(
@@ -241,3 +245,22 @@ def test_pressing_didnt_happen_after_the_item_was_rescheduled_leaves_it_as_it_is
 
     # Assert
     assert fetched_item(store, DATE_NIGHT_ID) == rescheduled
+
+
+def test_a_step_due_tomorrow_sends_no_reminder_once_didnt_happen_moved_the_item_to_want_to() -> (
+    None
+):
+    # Setup
+    store = MemoryStore()
+    stored(store, a_planned_date_night())
+    stored_step(store, a_step_due_on(SUNDAY))
+    rig = a_nudge_rig(store)
+    rig.digests_before_were_sent(SUNDAY_MORNING)
+    didnt_happen = FixAction(FixKind.NOT_HAPPENED, DATE_NIGHT_ID, date_argument(SATURDAY))
+    a_fix_handler(store).apply(didnt_happen.encode())
+
+    # Execute
+    rig.tick(SUNDAY_MORNING)
+
+    # Assert
+    assert rig.sent_texts() == []

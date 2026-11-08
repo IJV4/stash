@@ -37,8 +37,8 @@ class Harness:
             self.fixes, Owners.parse(OWNER_ID), self.outbox, self.assistant
         )
 
-    def press(self, data: str, user_id: str = OWNER_ID) -> str:
-        press = CallbackPress(Chat(CHAT_ID, user_id), MESSAGE_ID, data)
+    def press(self, data: str, user_id: str = OWNER_ID, done_rows: int = 0) -> str:
+        press = CallbackPress(Chat(CHAT_ID, user_id), MESSAGE_ID, data, done_rows)
         asyncio.run(self.callbacks.on_press(press))
         return PRESS_RETURNED
 
@@ -52,6 +52,39 @@ def test_an_owner_pressing_a_menu_button_edits_the_message_with_the_menu() -> No
 
     # Assert
     assert harness.outbox.edits == [(CHAT_ID, MESSAGE_ID, type_menu(harness.item))]
+
+
+def test_a_press_on_a_message_with_one_done_row_edits_the_message() -> None:
+    # Setup
+    harness = Harness()
+
+    # Execute
+    harness.press(TYPE_MENU_DATA, done_rows=1)
+
+    # Assert
+    assert harness.outbox.edits == [(CHAT_ID, MESSAGE_ID, type_menu(harness.item))]
+
+
+def test_a_press_on_a_message_with_several_done_rows_answers_in_a_new_message() -> None:
+    # Setup
+    harness = Harness()
+
+    # Execute
+    harness.press(TYPE_MENU_DATA, done_rows=2)
+
+    # Assert
+    assert harness.outbox.sent == [(CHAT_ID, type_menu(harness.item))]
+
+
+def test_a_press_on_a_message_with_several_done_rows_edits_nothing() -> None:
+    # Setup
+    harness = Harness()
+
+    # Execute
+    harness.press(TYPE_MENU_DATA, done_rows=2)
+
+    # Assert
+    assert harness.outbox.edits == []
 
 
 def test_pressing_that_was_a_question_hands_the_text_to_the_assistant_for_that_chat() -> None:
