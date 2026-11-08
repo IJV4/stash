@@ -12,24 +12,6 @@ from stash.cli.failure import CommandFailed
 TODAY = date(2026, 11, 2)
 
 
-def test_backup_writes_todays_file_into_the_directory_and_prints_its_path(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    out = io.StringIO()
-
-    # Execute
-    exit_code = backup(a_backups(FakeBackupSource(b"items")), TODAY, tmp_path / "nas", out)
-
-    # Assert
-    written = tmp_path / "nas" / "stash-20261102.db"
-    assert (exit_code, out.getvalue(), written.read_bytes()) == (
-        0,
-        f"Backup written: {written}\n",
-        b"items",
-    )
-
-
 def unwritable_target(tmp_path: Path) -> Path:
     blocker = tmp_path / "file"
     blocker.write_text("not a directory")

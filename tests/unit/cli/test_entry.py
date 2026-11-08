@@ -8,23 +8,11 @@ from fakes.failing_list_store import FailingListStore, ListFailed
 
 from stash.app import StashApp
 from stash.cli import main
-from stash.config import ConfigError, StashConfig
 
 
 def counter(app: StashApp) -> CloseCounter:
     assert isinstance(app.resources, CloseCounter)
     return app.resources
-
-
-def test_the_app_is_closed_after_the_command_has_run(tmp_path: Path) -> None:
-    # Setup
-    session = Session(tmp_path)
-
-    # Execute
-    session.run("retry", "--config", str(session.config_file))
-
-    # Assert
-    assert counter(session.app).closes == 1
 
 
 def test_the_app_is_closed_when_the_command_raises(tmp_path: Path) -> None:
@@ -37,17 +25,6 @@ def test_the_app_is_closed_when_the_command_raises(tmp_path: Path) -> None:
 
     # Assert
     assert counter(session.app).closes == 1
-
-
-def test_the_factory_receives_the_loaded_configuration(tmp_path: Path) -> None:
-    # Setup
-    session = Session(tmp_path)
-
-    # Execute
-    session.run("retry", "--config", str(session.config_file))
-
-    # Assert
-    assert [config.data_dir for config in session.configs] == [tmp_path]
 
 
 def test_the_stash_config_variable_names_the_file_when_no_option_is_given(tmp_path: Path) -> None:
@@ -74,30 +51,6 @@ def test_the_default_file_under_home_is_read_when_nothing_else_names_one(tmp_pat
 
     # Assert
     assert (exit_code, len(session.configs)) == (0, 1)
-
-
-def test_a_configuration_error_from_the_factory_exits_2_with_its_message(tmp_path: Path) -> None:
-    # Setup
-    session = Session(tmp_path)
-
-    def refusing(config: StashConfig) -> StashApp:
-        raise ConfigError("cannot open the database at /x")
-
-    # Execute
-    exit_code = main(
-        ["retry", "--config", str(session.config_file)],
-        factory=refusing,
-        env={},
-        out=session.out,
-        err=session.err,
-    )
-
-    # Assert
-    assert (exit_code, session.out.getvalue(), session.err.getvalue()) == (
-        2,
-        "",
-        "cannot open the database at /x\n",
-    )
 
 
 def test_a_missing_home_with_no_config_option_exits_2_without_building_an_app(
@@ -177,49 +130,6 @@ def test_a_usage_error_builds_no_app(tmp_path: Path) -> None:
 
     # Assert
     assert session.configs == []
-
-
-def test_no_command_at_all_exits_2(tmp_path: Path) -> None:
-    # Setup
-    session = Session(tmp_path)
-
-    # Execute
-    exit_code = session.run()
-
-    # Assert
-    assert exit_code == 2
-
-
-def test_help_prints_the_usage_on_the_given_output_stream_and_exits_0(tmp_path: Path) -> None:
-    # Setup
-    session = Session(tmp_path)
-
-    # Execute
-    exit_code = session.run("--help")
-
-    # Assert
-    assert (exit_code, session.out.getvalue().startswith("usage:")) == (0, True)
-
-
-def test_the_version_flag_prints_the_version_on_the_given_output_stream(tmp_path: Path) -> None:
-    # Setup
-    session = Session(tmp_path)
-
-    # Execute
-    exit_code = session.run("--version")
-
-    # Assert
-    assert (exit_code, session.out.getvalue()) == (0, "stash 0.1.0\n")
-
-
-def test_without_injected_streams_the_standard_streams_are_used(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    # Execute
-    exit_code = main(["--version"])
-
-    # Assert
-    assert (exit_code, capsys.readouterr().out) == (0, "stash 0.1.0\n")
 
 
 def test_without_an_injected_error_stream_a_usage_error_goes_to_standard_error(

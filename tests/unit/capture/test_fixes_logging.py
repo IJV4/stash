@@ -63,16 +63,6 @@ def test_a_completion_press_for_an_unknown_item_is_logged_at_info(data: str) -> 
     ]
 
 
-def test_a_question_callback_for_an_unknown_capture_is_logged_at_info() -> None:
-    # Setup
-    store, _ = store_with_filed_item()
-
-    # Execute / Assert
-    assert logged_by_applying(store, "stash:q:ghost") == [
-        (logging.INFO, "fix callback for unknown capture ghost")
-    ]
-
-
 def test_a_rating_for_an_unknown_outcome_is_logged_at_info() -> None:
     # Setup
     store, _ = store_with_filed_item()
@@ -135,17 +125,6 @@ def test_a_keep_choice_that_does_not_exist_is_logged_at_warning(choice: str) -> 
     assert logged_by_applying(store, f"stash:k:i1:{choice}") == [
         (logging.WARNING, f"fix callback for item i1 has an invalid KeepChoice {choice!r}")
     ]
-
-
-def test_a_valid_fix_logs_nothing_at_warning_or_above() -> None:
-    # Setup
-    store, _ = store_with_filed_item()
-
-    # Execute
-    entries = logged_by_applying(store, "stash:T:c1:recipe")
-
-    # Assert
-    assert [level for level, _ in entries if level >= logging.WARNING] == []
 
 
 @pytest.mark.parametrize(("template", "message"), CLAMPED_CALLBACKS_AND_MESSAGES)

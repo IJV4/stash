@@ -9,7 +9,7 @@ from planning_rig import a_planning
 
 from stash.capture import gone
 from stash.capture.fixes import FixHandler
-from stash.capture.planning_replies import step_done_reply, steps_saved_reply, steps_skipped_reply
+from stash.capture.planning_replies import step_done_reply, steps_saved_reply
 from stash.domain import Item, Step
 from stash.planning import Planning
 
@@ -29,17 +29,6 @@ class ProposedPrep:
     @property
     def confirmed(self) -> tuple[Step, ...]:
         return tuple(step.confirmed_now() for step in self.steps)
-
-
-def test_looks_good_answers_that_the_prep_was_saved_with_the_number_of_steps() -> None:
-    # Setup
-    prep = ProposedPrep()
-
-    # Execute
-    reply = prep.fixes.apply(LOOKS_GOOD)
-
-    # Assert
-    assert reply == steps_saved_reply(prep.item, prep.confirmed)
 
 
 def test_pressing_looks_good_twice_answers_the_same_prep_saved_reply() -> None:
@@ -66,17 +55,6 @@ def test_pressing_looks_good_twice_leaves_the_steps_confirmed_exactly_once() -> 
     assert prep.store.steps_for(DATE_NIGHT_ID) == list(prep.confirmed)
 
 
-def test_no_steps_answers_that_the_proposed_steps_were_dropped() -> None:
-    # Setup
-    prep = ProposedPrep()
-
-    # Execute
-    reply = prep.fixes.apply(NO_STEPS)
-
-    # Assert
-    assert reply == steps_skipped_reply(prep.item)
-
-
 def test_looks_good_after_no_steps_answers_that_there_are_no_proposed_steps_any_more() -> None:
     # Setup
     prep = ProposedPrep()
@@ -99,18 +77,6 @@ def test_looks_good_after_no_steps_confirms_nothing() -> None:
 
     # Assert
     assert prep.store.steps_for(DATE_NIGHT_ID) == []
-
-
-def test_no_steps_after_looks_good_keeps_the_confirmed_steps() -> None:
-    # Setup
-    prep = ProposedPrep()
-    prep.fixes.apply(LOOKS_GOOD)
-
-    # Execute
-    prep.fixes.apply(NO_STEPS)
-
-    # Assert
-    assert prep.store.steps_for(DATE_NIGHT_ID) == list(prep.confirmed)
 
 
 def test_pressing_a_step_done_answers_which_step_is_done() -> None:

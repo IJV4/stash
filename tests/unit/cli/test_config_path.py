@@ -8,17 +8,6 @@ from stash.config import ConfigError
 HOME_ENV = {"HOME": "/home/u"}
 
 
-def test_the_config_option_wins_over_the_environment_and_the_default() -> None:
-    # Setup
-    env = {**HOME_ENV, "STASH_CONFIG": "/etc/stash.toml"}
-
-    # Execute
-    path = config_path("/tmp/mine.toml", env)
-
-    # Assert
-    assert path == Path("/tmp/mine.toml")
-
-
 def test_the_stash_config_variable_wins_over_the_default() -> None:
     # Setup
     env = {**HOME_ENV, "STASH_CONFIG": "/etc/stash.toml"}

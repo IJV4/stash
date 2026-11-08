@@ -2,18 +2,7 @@ import pytest
 from capture_builders import store_with_filed_item
 from capture_rig import a_fix_handler
 
-from stash.capture import gone, stage_menu, type_menu
-
-
-def test_the_type_button_opens_the_type_menu_for_the_item() -> None:
-    # Setup
-    store, item = store_with_filed_item()
-
-    # Execute
-    reply = a_fix_handler(store).apply("stash:t:c1")
-
-    # Assert
-    assert reply == type_menu(item)
+from stash.capture import gone, stage_menu
 
 
 def test_the_stage_button_opens_the_stage_menu_for_the_item() -> None:

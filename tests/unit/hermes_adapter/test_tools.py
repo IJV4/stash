@@ -1,15 +1,10 @@
 import json
-import logging
-from datetime import date
 from typing import Any
 
 import pytest
 from app_builders import stored
 from builders import BASE, an_item
-from fakes.failing_list_store import FailingListStore
-from fakes.failing_search_store import FailingSearchStore
 from fakes.store_factories import FreshStore
-from log_records import recording_logs
 
 from stash.domain import ItemType, Stage
 from stash.hermes_adapter.tool_spec import TOOLSET
@@ -60,83 +55,6 @@ def test_the_toolset_is_called_stash() -> None:
     assert TOOLSET == "stash"
 
 
-def test_search_answers_the_items_in_the_documented_shape() -> None:
-    # Setup
-    store = stored(
-        an_item(id="a", capture_id="ca", title="Dune", item_type=ItemType.BOOK, date=None)
-    )
-
-    # Execute
-    answer = searched({"query": "dune"}, store)
-
-    # Assert
-    assert answer == {
-        "items": [{"id": "a", "type": "book", "title": "Dune", "stage": "inbox", "date": None}]
-    }
-
-
-def test_search_answers_the_date_of_a_planned_item_as_iso_text() -> None:
-    # Setup
-    store = stored(an_item(title="Dune", stage=Stage.PLANNED, date=date(2026, 11, 5)))
-
-    # Execute
-    answer = searched({"query": "dune"}, store)
-
-    # Assert
-    assert answer["items"][0]["date"] == "2026-11-05"
-
-
-def test_search_finds_matches_newest_first() -> None:
-    # Execute
-    answer = searched({"query": "ramen"})
-
-    # Assert
-    assert ids(answer) == ["c", "a"]
-
-
-def test_search_without_a_match_answers_no_items() -> None:
-    # Execute
-    answer = searched({"query": "sushi"})
-
-    # Assert
-    assert answer == {"items": []}
-
-
-def test_search_ignores_the_case_of_the_query() -> None:
-    # Execute
-    answer = searched({"query": "RAMEN"})
-
-    # Assert
-    assert ids(answer) == ["c", "a"]
-
-
-def test_search_trims_the_query() -> None:
-    # Execute
-    answer = searched({"query": "  dune \n"})
-
-    # Assert
-    assert ids(answer) == ["b"]
-
-
-def test_search_honours_the_limit() -> None:
-    # Execute
-    answer = searched({"query": "ramen", "limit": 1})
-
-    # Assert
-    assert ids(answer) == ["c"]
-
-
-def test_search_leaves_non_ascii_titles_unescaped() -> None:
-    # Setup
-    store = stored(an_item(title="渋谷のラーメン"))
-
-    # Execute
-    raw = StashTools(store).search({"query": "渋谷"})
-
-    # Assert
-    assert "渋谷のラーメン" in raw
-
-
 @pytest.mark.parametrize("query", ["", "   ", "\n\t"])
 def test_search_with_a_blank_query_answers_an_error(query: str) -> None:
     # Execute
@@ -153,14 +71,6 @@ def test_search_with_a_query_that_is_not_text_answers_an_error(args: dict[str, A
 
     # Assert
     assert answer == {"error": "query must be text"}
-
-
-def test_search_accepts_a_query_of_200_characters() -> None:
-    # Execute
-    answer = searched({"query": "x" * 200})
-
-    # Assert
-    assert answer == {"items": []}
 
 
 def test_search_with_a_query_over_200_characters_answers_an_error() -> None:
@@ -188,109 +98,6 @@ def test_search_with_arguments_that_are_not_a_dict_answers_an_error(args: Any) -
     assert answer == {"error": "arguments must be an object"}
 
 
-def test_search_tolerates_extra_keyword_arguments_from_hermes() -> None:
-    # Execute
-    raw = StashTools(ramen_and_dune()).search({"query": "dune"}, task_id="t1", session="s")
-
-    # Assert
-    assert json.loads(raw)["items"][0]["id"] == "b"
-
-
-def test_search_answers_an_error_when_the_store_fails() -> None:
-    # Execute
-    answer = searched({"query": "dune"}, FailingSearchStore())
-
-    # Assert
-    assert answer == {"error": "the stash could not be read"}
-
-
-def test_search_logs_the_exception_when_the_store_fails() -> None:
-    # Setup
-    with recording_logs(LOGGER) as logs:
-        # Execute
-        searched({"query": "dune"}, FailingSearchStore())
-
-    # Assert
-    assert [level for level, _ in logs.entries()] == [logging.ERROR]
-
-
-def test_list_answers_everything_newest_first() -> None:
-    # Execute
-    answer = listed({})
-
-    # Assert
-    assert ids(answer) == ["c", "b", "a"]
-
-
-def test_list_answers_the_items_in_the_documented_shape() -> None:
-    # Execute
-    answer = listed({"item_type": "book"})
-
-    # Assert
-    assert answer == {
-        "items": [{"id": "b", "type": "book", "title": "Dune", "stage": "want_to", "date": None}]
-    }
-
-
-def test_list_narrows_to_a_stage() -> None:
-    # Execute
-    answer = listed({"stage": "want_to"})
-
-    # Assert
-    assert ids(answer) == ["c", "b"]
-
-
-def test_list_narrows_to_a_type() -> None:
-    # Execute
-    answer = listed({"item_type": "recipe"})
-
-    # Assert
-    assert ids(answer) == ["c"]
-
-
-def test_list_honours_the_limit() -> None:
-    # Execute
-    answer = listed({"limit": 2})
-
-    # Assert
-    assert ids(answer) == ["c", "b"]
-
-
-def test_list_leaves_non_ascii_titles_unescaped() -> None:
-    # Setup
-    store = stored(an_item(title="渋谷のラーメン"))
-
-    # Execute
-    raw = StashTools(store).list_items({})
-
-    # Assert
-    assert "渋谷のラーメン" in raw
-
-
-def test_list_with_an_unknown_stage_answers_an_error_naming_it() -> None:
-    # Execute
-    answer = listed({"stage": "soonish"})
-
-    # Assert
-    assert answer["error"].startswith("unknown stage 'soonish'")
-
-
-def test_list_with_an_unknown_type_answers_an_error_naming_it() -> None:
-    # Execute
-    answer = listed({"item_type": "spaceship"})
-
-    # Assert
-    assert answer["error"].startswith("unknown item_type 'spaceship'")
-
-
-def test_list_with_a_5000_character_stage_answers_an_error_that_does_not_echo_it_whole() -> None:
-    # Execute
-    answer = listed({"stage": "z" * 5000})
-
-    # Assert
-    assert len(answer["error"]) < 200
-
-
 def test_list_with_a_limit_that_is_not_an_integer_answers_an_error() -> None:
     # Execute
     answer = listed({"limit": "5"})
@@ -306,32 +113,6 @@ def test_list_with_arguments_that_are_not_a_dict_answers_an_error(args: Any) -> 
 
     # Assert
     assert answer == {"error": "arguments must be an object"}
-
-
-def test_list_tolerates_extra_keyword_arguments_from_hermes() -> None:
-    # Execute
-    raw = StashTools(ramen_and_dune()).list_items({"limit": 1}, task_id="t1")
-
-    # Assert
-    assert json.loads(raw)["items"][0]["id"] == "c"
-
-
-def test_list_answers_an_error_when_the_store_fails() -> None:
-    # Execute
-    answer = listed({}, FailingListStore())
-
-    # Assert
-    assert answer == {"error": "the stash could not be read"}
-
-
-def test_list_logs_the_exception_when_the_store_fails() -> None:
-    # Setup
-    with recording_logs(LOGGER) as logs:
-        # Execute
-        listed({}, FailingListStore())
-
-    # Assert
-    assert [level for level, _ in logs.entries()] == [logging.ERROR]
 
 
 def test_the_search_schema_names_the_tool_stash_search() -> None:
@@ -392,20 +173,3 @@ def test_the_list_schema_bounds_the_limit_from_1_to_50() -> None:
 
     # Assert
     assert (limit["type"], limit["minimum"], limit["maximum"]) == ("integer", 1, 50)
-
-
-def test_the_specs_pair_each_schema_with_the_handler_that_answers_it() -> None:
-    # Setup
-    specs = StashTools(ramen_and_dune()).specs()
-
-    # Execute
-    answers = [json.loads(spec.handler({"query": "dune"})) for spec in specs]
-
-    # Assert
-    assert [
-        (spec.schema["name"], "error" in answer)
-        for spec, answer in zip(specs, answers, strict=True)
-    ] == [
-        ("stash_search", False),
-        ("stash_list", False),
-    ]

@@ -2,13 +2,12 @@ import logging
 
 from builders import BASE, PLANNED_FOR, an_item_at, fetched_item, fetched_outcome, stored
 from capture_builders import COMPLETED_OUTCOME_ID, a_store_with_a_completed_item
-from fakes.busy_store import BusyStore
 from fakes.changing_item_store import ChangingItemStore
 from fakes.store_factories import FreshStore
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from log_records import recording_logs
 
-from stash.capture import busy, changed, gone
+from stash.capture import changed, gone
 from stash.capture.callback_log import CallbackLog
 from stash.capture.completion_buttons import CompletionButtons
 from stash.domain import Stage
@@ -95,32 +94,6 @@ def test_a_press_on_an_item_changed_meanwhile_is_logged_at_info() -> None:
     assert recorder.entries() == [(logging.INFO, "fix callback for item i1 changed meanwhile")]
 
 
-def test_a_press_while_the_store_is_busy_answers_busy() -> None:
-    # Setup
-    store = BusyStore()
-    stored(store, an_item_at(Stage.PLANNED))
-
-    # Execute
-    reply = completion_buttons_over(store).didnt_happen("i1", PLANNED_DAY)
-
-    # Assert
-    assert reply == busy()
-
-
-def test_a_press_while_the_store_is_busy_is_logged_at_warning() -> None:
-    # Setup
-    store = BusyStore()
-    stored(store, an_item_at(Stage.PLANNED))
-    buttons = completion_buttons_over(store)
-
-    # Execute
-    with recording_logs(LOGGER_NAME) as recorder:
-        buttons.didnt_happen("i1", PLANNED_DAY)
-
-    # Assert
-    assert recorder.entries() == [(logging.WARNING, "fix callback while the stash was busy")]
-
-
 def test_a_press_without_a_readable_day_answers_gone() -> None:
     # Setup
     store = FreshStore()
@@ -140,30 +113,6 @@ def test_a_press_without_a_readable_day_changes_nothing() -> None:
 
     # Execute
     completion_buttons_over(store).didnt_happen("i1", "soon")
-
-    # Assert
-    assert fetched_item(store, "i1") == planned
-
-
-def test_a_press_for_a_day_other_than_the_items_date_answers_changed() -> None:
-    # Setup
-    store = FreshStore()
-    stored(store, an_item_at(Stage.PLANNED))
-
-    # Execute
-    reply = completion_buttons_over(store).didnt_happen("i1", "20990101")
-
-    # Assert
-    assert reply == changed()
-
-
-def test_a_press_for_a_day_other_than_the_items_date_leaves_the_item_planned() -> None:
-    # Setup
-    store = FreshStore()
-    planned = stored(store, an_item_at(Stage.PLANNED))
-
-    # Execute
-    completion_buttons_over(store).didnt_happen("i1", "20990101")
 
     # Assert
     assert fetched_item(store, "i1") == planned

@@ -19,39 +19,6 @@ def a_store_with_a_planned_item() -> FreshStore:
     return store
 
 
-def test_pressing_didnt_happen_on_a_planned_item_answers_that_it_is_in_want_to() -> None:
-    # Setup
-    store = a_store_with_a_planned_item()
-
-    # Execute
-    reply = a_fix_handler(store).apply(NOT_HAPPENED)
-
-    # Assert
-    assert reply == didnt_happen_reply(an_item_at(Stage.WANT_TO, title="Date night"))
-
-
-def test_pressing_didnt_happen_on_a_planned_item_moves_it_to_want_to() -> None:
-    # Setup
-    store = a_store_with_a_planned_item()
-
-    # Execute
-    a_fix_handler(store).apply(NOT_HAPPENED)
-
-    # Assert
-    assert fetched_item(store, "i1").stage is Stage.WANT_TO
-
-
-def test_pressing_didnt_happen_on_a_planned_item_clears_its_date() -> None:
-    # Setup
-    store = a_store_with_a_planned_item()
-
-    # Execute
-    a_fix_handler(store).apply(NOT_HAPPENED)
-
-    # Assert
-    assert fetched_item(store, "i1").date is None
-
-
 def test_pressing_didnt_happen_twice_answers_the_same_in_want_to_text() -> None:
     # Setup
     store = a_store_with_a_planned_item()

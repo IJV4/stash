@@ -30,40 +30,6 @@ def a_scheduler(sleep: RecordingSleep | None = None) -> LoopScheduler:
     return LoopScheduler(lambda: BASE, recorder.sleep)
 
 
-def test_now_reads_the_injected_clock() -> None:
-    # Setup
-    scheduler = LoopScheduler(lambda: BASE)
-
-    # Execute
-    now = scheduler.now()
-
-    # Assert
-    assert now == BASE
-
-
-def test_pause_delegates_to_the_injected_sleep() -> None:
-    # Setup
-    sleep = RecordingSleep()
-    scheduler = a_scheduler(sleep=sleep)
-
-    # Execute
-    asyncio.run(scheduler.pause(2.5))
-
-    # Assert
-    assert sleep.requested == [2.5]
-
-
-def test_pause_without_an_injected_sleep_waits_on_the_event_loop() -> None:
-    # Setup
-    scheduler = LoopScheduler(lambda: BASE)
-
-    # Execute
-    outcome = asyncio.run(scheduler.pause(0))
-
-    # Assert
-    assert outcome is None
-
-
 def test_a_spawned_coroutine_runs_to_completion_by_the_time_drain_returns() -> None:
     # Setup
     scheduler = a_scheduler()

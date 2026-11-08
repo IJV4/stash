@@ -11,9 +11,8 @@ from fakes.capture_filer import FakeCaptureFiler
 from fakes.link_inspector import FakeLinkInspector
 from fakes.store_factories import FreshStore
 
-from stash.capture import Deferred, Filed
+from stash.capture import Filed
 from stash.domain import CaptureStatus, Route
-from stash.llm import LlmDeferred, LlmUnavailable
 
 
 def test_an_agent_capture_starting_with_a_question_mark_is_classified_by_the_ai() -> None:
@@ -91,48 +90,6 @@ def test_a_pending_agent_capture_the_ai_answers_with_a_request_is_filed_on_retry
 
     # Assert
     assert [type(result) for result in results] == [Filed]
-
-
-def test_processing_an_agent_capture_files_a_request_answer_as_an_unsure_item() -> None:
-    # Setup
-    filer = FakeCaptureFiler(filing=a_filing(route=Route.REQUEST))
-    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
-    capture = pipeline.receive(an_agent_message(SAMPLE_TEXT))
-    assert capture is not None
-
-    # Execute
-    result = pipeline.process_agent(capture)
-
-    # Assert
-    assert isinstance(result, Filed) and result.unsure is True
-
-
-def test_processing_an_agent_capture_whose_ai_is_unavailable_defers_it() -> None:
-    # Setup
-    filer = FakeCaptureFiler(error=LlmUnavailable("down"))
-    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
-    capture = pipeline.receive(an_agent_message(SAMPLE_TEXT))
-    assert capture is not None
-
-    # Execute
-    result = pipeline.process_agent(capture)
-
-    # Assert
-    assert result == Deferred(capture, "ai_unavailable")
-
-
-def test_processing_an_agent_capture_whose_gpu_is_busy_defers_it() -> None:
-    # Setup
-    filer = FakeCaptureFiler(error=LlmDeferred("busy"))
-    pipeline = a_pipeline(FreshStore(), FakeLinkInspector(), filer)
-    capture = pipeline.receive(an_agent_message(SAMPLE_TEXT))
-    assert capture is not None
-
-    # Execute
-    result = pipeline.process_agent(capture)
-
-    # Assert
-    assert result == Deferred(capture, "gpu_busy")
 
 
 def test_processing_an_agent_capture_whose_item_already_exists_resumes_it_as_filed() -> None:

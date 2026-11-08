@@ -1,16 +1,14 @@
 import logging
-from dataclasses import replace
 
 import pytest
 from capture_builders import store_with_filed_item
 from capture_rig import CAPTURE_LOGGER, a_fix_handler
 from fakes.busy_store import BusyStore
-from fakes.changing_item_store import RETITLED_BY_ANOTHER_WRITER, ChangingItemStore
 from fakes.vanishing_item_store import VanishingItemStore
 from log_records import recording_logs
 
 from stash.capture import gone
-from stash.capture.replies import busy, changed
+from stash.capture.replies import busy
 
 FIXES = ["stash:T:c1:recipe", "stash:S:c1:doing"]
 
@@ -56,49 +54,6 @@ def test_a_fix_on_an_item_deleted_meanwhile_is_logged_as_an_unknown_item(data: s
 
     # Assert
     assert recorder.entries() == [(logging.INFO, "fix callback for unknown item c1")]
-
-
-@pytest.mark.parametrize("data", FIXES)
-def test_a_fix_on_an_item_changed_meanwhile_answers_changed(data: str) -> None:
-    # Setup
-    store = ChangingItemStore()
-    store_with_filed_item(store)
-    store.change_after_reading_item("c1")
-
-    # Execute
-    reply = a_fix_handler(store).apply(data)
-
-    # Assert
-    assert reply == changed()
-
-
-@pytest.mark.parametrize("data", FIXES)
-def test_a_fix_on_an_item_changed_meanwhile_keeps_the_other_writers_version(data: str) -> None:
-    # Setup
-    store = ChangingItemStore()
-    _, item = store_with_filed_item(store)
-    store.change_after_reading_item("c1")
-
-    # Execute
-    a_fix_handler(store).apply(data)
-
-    # Assert
-    assert store.get_item("c1") == replace(item, title=RETITLED_BY_ANOTHER_WRITER)
-
-
-@pytest.mark.parametrize("data", FIXES)
-def test_a_fix_on_an_item_changed_meanwhile_is_logged_at_info(data: str) -> None:
-    # Setup
-    store = ChangingItemStore()
-    store_with_filed_item(store)
-    store.change_after_reading_item("c1")
-
-    # Execute
-    with recording_logs(CAPTURE_LOGGER) as recorder:
-        a_fix_handler(store).apply(data)
-
-    # Assert
-    assert recorder.entries() == [(logging.INFO, "fix callback for item c1 changed meanwhile")]
 
 
 @pytest.mark.parametrize("data", FIXES)

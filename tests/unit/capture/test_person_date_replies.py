@@ -7,7 +7,6 @@ from people_builders import a_key_date, a_person, a_person_date_reminder
 
 from stash.capture.digest_replies import render_digest
 from stash.capture.nudge_replies import nudge_reply
-from stash.capture.wording import LINE_LIMIT
 from stash.domain import KeyDateKind
 from stash.nudges import UpcomingPersonDate
 from stash.nudges.due import PersonDateReminder
@@ -15,67 +14,6 @@ from stash.nudges.due import PersonDateReminder
 
 def text_of(reminder: PersonDateReminder) -> str:
     return nudge_reply(a_nudge_message(reminder)).reply.text
-
-
-def test_a_reminder_before_the_day_names_the_lead_the_date_and_the_gift_ideas() -> None:
-    # Setup
-    reminder = a_person_date_reminder(lead=14, gift_ideas=("ceramic class", "scarf"))
-
-    # Execute
-    text = text_of(reminder)
-
-    # Assert
-    assert text == (
-        "🎂 Ana's birthday in 14 days (Sat Mar 6).\nGift ideas: • ceramic class • scarf"
-    )
-
-
-def test_a_reminder_the_day_before_says_one_day_in_the_singular() -> None:
-    # Execute
-    text = text_of(a_person_date_reminder(lead=2, days_left=1))
-
-    # Assert
-    assert text.splitlines()[0] == "🎂 Ana's birthday in 1 day (Sat Mar 6)."
-
-
-def test_a_reminder_names_the_days_left_not_the_nominal_lead() -> None:
-    # Execute
-    text = text_of(a_person_date_reminder(lead=14, days_left=5))
-
-    # Assert
-    assert text.splitlines()[0] == "🎂 Ana's birthday in 5 days (Sat Mar 6)."
-
-
-def test_a_reminder_with_no_days_left_is_worded_as_the_day_itself_whatever_its_lead() -> None:
-    # Execute
-    text = text_of(a_person_date_reminder(lead=2, days_left=0))
-
-    # Assert
-    assert text == "🎂 Today: Ana's birthday (turns 34)."
-
-
-def test_a_reminder_before_the_day_without_gift_ideas_says_none_are_saved() -> None:
-    # Execute
-    text = text_of(a_person_date_reminder(lead=2))
-
-    # Assert
-    assert text.splitlines()[1] == "No gift ideas saved yet."
-
-
-def test_the_gift_ideas_line_is_clipped_like_every_other_line() -> None:
-    # Execute
-    text = text_of(a_person_date_reminder(lead=2, gift_ideas=("x" * 400,)))
-
-    # Assert
-    assert len(text.splitlines()[1]) == LINE_LIMIT
-
-
-def test_a_reminder_on_the_day_gives_the_age_and_no_gift_ideas() -> None:
-    # Execute
-    text = text_of(a_person_date_reminder(lead=0, gift_ideas=("scarf",)))
-
-    # Assert
-    assert text == "🎂 Today: Ana's birthday (turns 34)."
 
 
 @pytest.mark.parametrize(

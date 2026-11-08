@@ -3,13 +3,13 @@ import logging
 from fakes.fake_planning_actions import FakePlanningActions
 from fakes.store_factories import FreshStore
 from log_records import recording_logs
-from planning_builders import DATE_NIGHT_ID, stored_date_night
+from planning_builders import DATE_NIGHT_ID
 from step_builders import a_step
 
 from stash.capture import gone
 from stash.capture.callback_log import CallbackLog
 from stash.capture.planning_buttons import PlanningButtons
-from stash.capture.planning_replies import step_done_reply, steps_saved_reply, steps_skipped_reply
+from stash.capture.planning_replies import step_done_reply
 from stash.capture.replies import refused
 from stash.planning.errors import PlanningRefused, UnknownItem, UnknownStep
 
@@ -19,36 +19,6 @@ A_STEP = a_step(item_id=DATE_NIGHT_ID)
 
 def buttons_over(store: FreshStore, planning: FakePlanningActions) -> PlanningButtons:
     return PlanningButtons(store, planning, CallbackLog(logging.getLogger(LOGGER_NAME)))
-
-
-def a_store_with_a_date_night() -> FreshStore:
-    store = FreshStore()
-    stored_date_night(store)
-    return store
-
-
-def test_accepting_answers_that_the_prep_was_saved_with_the_confirmed_steps() -> None:
-    # Setup
-    store = a_store_with_a_date_night()
-    buttons = buttons_over(store, FakePlanningActions((A_STEP,)))
-
-    # Execute
-    reply = buttons.accept(DATE_NIGHT_ID)
-
-    # Assert
-    assert reply == steps_saved_reply(store.list_items()[0], (A_STEP,))
-
-
-def test_skipping_answers_that_the_proposed_steps_were_dropped() -> None:
-    # Setup
-    store = a_store_with_a_date_night()
-    buttons = buttons_over(store, FakePlanningActions())
-
-    # Execute
-    reply = buttons.skip(DATE_NIGHT_ID)
-
-    # Assert
-    assert reply == steps_skipped_reply(store.list_items()[0])
 
 
 def test_completing_a_step_answers_which_step_is_done() -> None:

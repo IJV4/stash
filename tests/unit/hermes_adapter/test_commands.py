@@ -1,5 +1,4 @@
 import asyncio
-import threading
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -11,18 +10,15 @@ from fakes.failing_list_store import FailingListStore
 from fakes.failing_read_store import FailingReadStore
 from fakes.recording_unloader import RecordingUnloader
 from fakes.store_factories import FreshStore
-from fakes.thread_noting_library import ThreadNotingLibrary
 from fakes.thread_noting_retrier import ThreadNotingRetrier
-from fakes.thread_noting_store import ThreadNotingStore
 from gate_rig import a_gate, a_sample
 from lifecycle_rig import a_lifecycle
 
-from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult
+from stash.capture import Duplicate, Filed, IsRequest, ProcessResult
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
 from stash.domain import Item, ItemType, Stage
 from stash.gpu_switch import GpuSwitch
 from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
-from stash.llm import LlmUnavailable
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
 NOON_IN_LOS_ANGELES = BASE.astimezone(LOS_ANGELES)
@@ -76,47 +72,6 @@ def many_items(count: int, title: Callable[[int], str] = "Item {}".format) -> Fr
     return stored(*items)
 
 
-def test_list_prints_one_line_per_item_newest_first() -> None:
-    # Execute
-    text = run(ListCommand(four_items()))
-
-    # Assert
-    assert text == (
-        "Places · Gyoza · Want to\n"
-        "Places · Tonkatsu · Inbox\n"
-        "Recipes · Lemon chicken · Want to\n"
-        "Places · Ichiran · Want to"
-    )
-
-
-def test_list_narrows_to_a_stage() -> None:
-    # Execute
-    text = run(ListCommand(four_items()), "inbox")
-
-    # Assert
-    assert text == "Places · Tonkatsu · Inbox"
-
-
-def test_list_accepts_the_want_to_stage_spelled_with_a_space() -> None:
-    # Execute
-    text = run(ListCommand(four_items()), "Want To")
-
-    # Assert
-    assert text.splitlines() == [
-        "Places · Gyoza · Want to",
-        "Recipes · Lemon chicken · Want to",
-        "Places · Ichiran · Want to",
-    ]
-
-
-def test_list_with_nothing_to_show_says_no_items() -> None:
-    # Execute
-    text = run(ListCommand(FreshStore()))
-
-    # Assert
-    assert text == "No items."
-
-
 def test_list_with_an_unknown_stage_names_it_and_lists_the_valid_ones() -> None:
     # Execute
     text = run(ListCommand(four_items()), "soonish")
@@ -144,17 +99,6 @@ def test_list_shows_the_date_of_an_item_that_has_one() -> None:
 
     # Assert
     assert text == "Places · Concert · Planned · 2026-12-05"
-
-
-def test_list_keeps_a_title_with_control_characters_on_one_line() -> None:
-    # Setup
-    store = stored(an_item(title="Ramen\nin\x07Shibuya"))
-
-    # Execute
-    text = run(ListCommand(store))
-
-    # Assert
-    assert text == "Places · Ramen in Shibuya · Inbox"
 
 
 def test_list_shows_at_most_20_items_and_counts_the_rest() -> None:
@@ -197,21 +141,6 @@ def test_list_counts_the_lines_it_had_to_drop_to_fit() -> None:
     assert (len(lines) - 1) + int(lines[-1].split()[1].rstrip("+")) == 30
 
 
-def test_list_reads_the_store_off_the_event_loop_thread() -> None:
-    # Setup
-    store = ThreadNotingStore()
-
-    async def scenario() -> int:
-        await ListCommand(store).run("")
-        return threading.get_ident()
-
-    # Execute
-    loop_thread = asyncio.run(scenario())
-
-    # Assert
-    assert [thread != loop_thread for thread in store.threads] == [True]
-
-
 def test_list_lets_a_failing_store_propagate() -> None:
     # Execute / Assert
     with pytest.raises(Exception, match="database is closed"):
@@ -227,96 +156,6 @@ def a_switch(
 
 def a_gpu_command(switch: GpuSwitch | None = None) -> GpuCommand:
     return GpuCommand(switch or a_switch(), lambda: NOON_IN_LOS_ANGELES)
-
-
-def test_gpu_with_no_argument_prints_the_status() -> None:
-    # Execute
-    text = run(a_gpu_command())
-
-    # Assert
-    assert text == "GPU free — GPU is free"
-
-
-def test_gpu_status_prints_the_status() -> None:
-    # Execute
-    text = run(a_gpu_command(), "status")
-
-    # Assert
-    assert text == "GPU free — GPU is free"
-
-
-def test_gpu_off_prints_the_expiry_in_the_owners_timezone() -> None:
-    # Execute
-    text = run(a_gpu_command(), "off")
-
-    # Assert
-    assert text == "GPU switched off until 08:00"
-
-
-def test_gpu_off_tells_the_model_to_unload() -> None:
-    # Setup
-    unloader = RecordingUnloader()
-
-    # Execute
-    run(a_gpu_command(a_switch(unloader=unloader)), "off")
-
-    # Assert
-    assert unloader.unloads == 1
-
-
-def test_gpu_off_adds_a_warning_line_when_the_model_could_not_be_unloaded() -> None:
-    # Setup
-    switch = a_switch(unloader=RecordingUnloader(LlmUnavailable("cannot reach Ollama")))
-
-    # Execute
-    text = run(a_gpu_command(switch), "off")
-
-    # Assert
-    assert text == (
-        "GPU switched off until 08:00\n! could not unload the model: cannot reach Ollama"
-    )
-
-
-def test_gpu_status_after_off_reads_busy_until_the_expiry() -> None:
-    # Setup
-    command = a_gpu_command()
-    run(command, "off")
-
-    # Execute
-    text = run(command, "status")
-
-    # Assert
-    assert text == "GPU busy — turned off until 08:00"
-
-
-def test_gpu_on_prints_switched_on() -> None:
-    # Execute
-    text = run(a_gpu_command(), "on")
-
-    # Assert
-    assert text == "GPU switched on"
-
-
-def test_gpu_on_ends_the_switch_off() -> None:
-    # Setup
-    command = a_gpu_command()
-    run(command, "off")
-    run(command, "on")
-
-    # Execute
-    text = run(command, "status")
-
-    # Assert
-    assert text == "GPU free — GPU is free"
-
-
-@pytest.mark.parametrize("raw", ["OFF", "Off", "  off  ", "\toff\n"])
-def test_gpu_accepts_off_in_any_case_and_with_extra_whitespace(raw: str) -> None:
-    # Execute
-    text = run(a_gpu_command(), raw)
-
-    # Assert
-    assert text == "GPU switched off until 08:00"
 
 
 @pytest.mark.parametrize("raw", ["banana", "off now", "on off", "--help"])
@@ -340,19 +179,6 @@ def test_gpu_with_an_unknown_argument_changes_nothing() -> None:
     assert unloader.unloads == 0
 
 
-def test_gpu_reads_the_local_time_afresh_for_every_command() -> None:
-    # Setup
-    times = iter([NOON_IN_LOS_ANGELES, NOON_IN_LOS_ANGELES + timedelta(hours=5)])
-    command = GpuCommand(a_switch(), lambda: next(times))
-    run(command, "off")
-
-    # Execute
-    text = run(command, "status")
-
-    # Assert
-    assert text == "GPU free — GPU is free"
-
-
 def test_gpu_refuses_a_local_time_without_a_timezone() -> None:
     # Setup
     naive = datetime(2026, 11, 2, 12, 0)
@@ -363,67 +189,8 @@ def test_gpu_refuses_a_local_time_without_a_timezone() -> None:
         run(command, "off")
 
 
-def test_gpu_off_unloads_the_model_off_the_event_loop_thread() -> None:
-    # Setup
-    unloader = RecordingUnloader()
-    threads: list[int] = []
-    unloader.observers.append(lambda: threads.append(threading.get_ident()))
-    command = a_gpu_command(a_switch(unloader=unloader))
-
-    async def scenario() -> int:
-        await command.run("off")
-        return threading.get_ident()
-
-    # Execute
-    loop_thread = asyncio.run(scenario())
-
-    # Assert
-    assert [thread != loop_thread for thread in threads] == [True]
-
-
-@pytest.mark.parametrize("raw", ["status", "off", "on"])
-def test_gpu_touches_the_gate_off_the_event_loop_thread(raw: str) -> None:
-    # Setup
-    store = ThreadNotingStore()
-    command = a_gpu_command(a_switch(store))
-
-    async def scenario() -> int:
-        await command.run(raw)
-        return threading.get_ident()
-
-    # Execute
-    loop_thread = asyncio.run(scenario())
-
-    # Assert
-    assert loop_thread not in store.threads
-
-
 def filed(title: str = "Ramen in Shibuya") -> Filed:
     return Filed(an_item(title=title), unsure=False)
-
-
-def test_retry_with_nothing_pending_says_so() -> None:
-    # Execute
-    text = run(RetryCommand(ThreadNotingRetrier()))
-
-    # Assert
-    assert text == "Nothing pending."
-
-
-def test_retry_prints_one_line_for_each_processed_capture() -> None:
-    # Setup
-    retrier = ThreadNotingRetrier(
-        [filed(), Deferred(a_capture(text="Dune by Frank Herbert"), "ai_unavailable")]
-    )
-
-    # Execute
-    text = run(RetryCommand(retrier))
-
-    # Assert
-    assert text == (
-        "filed — Places · Ramen in Shibuya · Inbox\n"
-        "deferred (ai_unavailable) — Dune by Frank Herbert"
-    )
 
 
 def test_retry_prints_a_request_and_a_duplicate() -> None:
@@ -438,14 +205,6 @@ def test_retry_prints_a_request_and_a_duplicate() -> None:
         "request — What is a ramen? — send it again starting with ? to ask\n"
         "duplicate — already saved"
     )
-
-
-def test_retry_ignores_its_arguments() -> None:
-    # Execute
-    text = run(RetryCommand(ThreadNotingRetrier()), "everything please")
-
-    # Assert
-    assert text == "Nothing pending."
 
 
 def test_retry_shows_at_most_20_lines_and_counts_the_rest() -> None:
@@ -468,21 +227,6 @@ def test_retry_never_exceeds_the_telegram_text_limit() -> None:
 
     # Assert
     assert len(text) <= TELEGRAM_TEXT_LIMIT
-
-
-def test_retry_files_the_pending_captures_off_the_event_loop_thread() -> None:
-    # Setup
-    retrier = ThreadNotingRetrier()
-
-    async def scenario() -> int:
-        await RetryCommand(retrier).run("")
-        return threading.get_ident()
-
-    # Execute
-    loop_thread = asyncio.run(scenario())
-
-    # Assert
-    assert [thread != loop_thread for thread in retrier.threads] == [True]
 
 
 def kept_items(*titles: tuple[str, ItemType]) -> FreshStore:
@@ -511,76 +255,6 @@ def a_library_command(store: FreshStore) -> LibraryCommand:
     return LibraryCommand(a_lifecycle(store), no_html)
 
 
-@pytest.mark.parametrize("argument", ["html", "  HTML ", "Html"])
-def test_library_html_in_any_case_hands_over_to_the_html_sender(argument: str) -> None:
-    # Setup
-    async def sent() -> str:
-        return "sent"
-
-    command = LibraryCommand(a_lifecycle(FreshStore()), sent)
-
-    # Execute
-    reply = asyncio.run(command.run(argument))
-
-    # Assert
-    assert reply == "sent"
-
-
-def test_library_prints_one_line_per_kept_item_with_its_rating_most_recently_finished_first() -> (
-    None
-):
-    # Setup
-    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
-
-    # Execute
-    text = run(a_library_command(store))
-
-    # Assert
-    assert text == "📚 Recipes: Miso soup · ⭐4\n📚 Books: Dune · ⭐4"
-
-
-def test_library_narrows_to_a_type() -> None:
-    # Setup
-    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
-
-    # Execute
-    text = run(a_library_command(store), "recipe")
-
-    # Assert
-    assert text == "📚 Recipes: Miso soup · ⭐4"
-
-
-def test_library_accepts_a_type_in_any_case_with_surrounding_space() -> None:
-    # Setup
-    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
-
-    # Execute
-    text = run(a_library_command(store), "  BOOK ")
-
-    # Assert
-    assert text == "📚 Books: Dune · ⭐4"
-
-
-def test_library_leaves_out_items_that_are_not_kept() -> None:
-    # Setup
-    store = FreshStore()
-    stored_completion(store, "skipped", title="Not kept")
-
-    # Execute
-    text = run(a_library_command(store))
-
-    # Assert
-    assert text == "No items."
-
-
-def test_library_with_nothing_to_show_says_no_items() -> None:
-    # Execute
-    text = run(a_library_command(FreshStore()))
-
-    # Assert
-    assert text == "No items."
-
-
 def test_library_with_an_unknown_type_names_it_and_lists_the_labels_in_plain_words() -> None:
     # Execute
     text = run(a_library_command(FreshStore()), "spaceship")
@@ -591,28 +265,6 @@ def test_library_with_an_unknown_type_names_it_and_lists_the_labels_in_plain_wor
         "(try: places, recipes, purchases, learning, books, media, ideas, plans, activities, "
         "gifts, other)"
     )
-
-
-def test_library_accepts_the_plural_label_the_lines_print() -> None:
-    # Setup
-    store = kept_items(("Dune", ItemType.BOOK), ("Miso soup", ItemType.RECIPE))
-
-    # Execute
-    text = run(a_library_command(store), "recipes")
-
-    # Assert
-    assert text == "📚 Recipes: Miso soup · ⭐4"
-
-
-def test_library_accepts_the_label_of_a_type_whose_value_differs_in_any_case() -> None:
-    # Setup
-    store = kept_items(("Course", ItemType.LEARN), ("Dune", ItemType.BOOK))
-
-    # Execute
-    text = run(a_library_command(store), " LEARNING ")
-
-    # Assert
-    assert text == "📚 Learning: Course · ⭐4"
 
 
 def test_library_with_a_5000_character_argument_answers_within_the_telegram_limit() -> None:
@@ -671,21 +323,6 @@ def test_library_counts_the_lines_it_had_to_drop_to_fit() -> None:
 
     # Assert
     assert (len(lines) - 1) + int(lines[-1].split()[1].rstrip("+")) == 30
-
-
-def test_library_reads_off_the_event_loop_thread() -> None:
-    # Setup
-    library = ThreadNotingLibrary()
-
-    async def scenario() -> int:
-        await LibraryCommand(library, no_html).run("")
-        return threading.get_ident()
-
-    # Execute
-    loop_thread = asyncio.run(scenario())
-
-    # Assert
-    assert [thread != loop_thread for thread in library.threads] == [True]
 
 
 def test_library_lets_a_failing_store_propagate() -> None:

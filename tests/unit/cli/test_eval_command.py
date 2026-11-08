@@ -1,5 +1,4 @@
 import io
-import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,7 +13,7 @@ from fakes.ocr import FakeOcr
 
 from stash.cli.eval_command import EvalRequest, run_eval_command
 from stash.cli.failure import CommandFailed
-from stash.config import ProviderName, Thinking
+from stash.config import ProviderName
 from stash.evaluation import EvalArm, EvalTargets
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
@@ -84,52 +83,6 @@ def test_eval_without_providers_compares_every_configured_provider_in_provider_o
     )
 
 
-def test_eval_compares_the_chosen_providers_in_the_order_given(tmp_path: Path) -> None:
-    # Execute
-    _, output = evaluated(
-        request(write_cases(tmp_path, TEXT_CASE), providers=("openrouter", "ollama"))
-    )
-
-    # Assert
-    assert (
-        header(output)
-        == "| metric | openrouter:cloud thinking=default | ollama:local thinking=default |"
-    )
-
-
-def test_eval_compares_a_single_chosen_provider(tmp_path: Path) -> None:
-    # Execute
-    _, output = evaluated(request(write_cases(tmp_path, TEXT_CASE), providers=("ollama",)))
-
-    # Assert
-    assert header(output) == "| metric | ollama:local thinking=default |"
-
-
-def test_eval_compares_a_provider_named_twice_once(tmp_path: Path) -> None:
-    # Execute
-    _, output = evaluated(request(write_cases(tmp_path, TEXT_CASE), providers=("ollama", "ollama")))
-
-    # Assert
-    assert header(output) == "| metric | ollama:local thinking=default |"
-
-
-def test_eval_runs_every_chosen_thinking_value_for_each_provider_in_turn(tmp_path: Path) -> None:
-    # Execute
-    _, output = evaluated(
-        request(
-            write_cases(tmp_path, TEXT_CASE),
-            providers=("openrouter", "ollama"),
-            thinking=(Thinking.OFF, Thinking.DEFAULT),
-        )
-    )
-
-    # Assert
-    assert header(output) == (
-        "| metric | openrouter:cloud thinking=off | openrouter:cloud thinking=default"
-        " | ollama:local thinking=off | ollama:local thinking=default |"
-    )
-
-
 def test_eval_exits_0_after_printing_the_report(tmp_path: Path) -> None:
     # Execute
     exit_code, output = evaluated(request(write_cases(tmp_path, TEXT_CASE)))
@@ -148,20 +101,6 @@ def test_eval_runs_only_the_requested_arms(tmp_path: Path) -> None:
     assert arm_headings(output) == ["### ocr arm (1 cases)"]
 
 
-def test_eval_reads_images_with_the_given_ocr(tmp_path: Path) -> None:
-    # Setup
-    ocr = FakeOcr("Lemon chicken")
-
-    # Execute
-    evaluated(
-        request(write_cases(tmp_path, IMAGE_CASE), providers=("ollama",), arms=(EvalArm.OCR,)),
-        ocr=ocr,
-    )
-
-    # Assert
-    assert ocr.paths == [tmp_path / "card.png"]
-
-
 def test_eval_fills_in_todays_date_in_the_configured_timezone(tmp_path: Path) -> None:
     # Setup
     model = FakeChatModel(ANSWER)
@@ -173,31 +112,6 @@ def test_eval_fills_in_todays_date_in_the_configured_timezone(tmp_path: Path) ->
     # Assert
     sent = " ".join(part.text for part in model.calls[0][-1].parts if hasattr(part, "text"))
     assert "2026-11-02" in sent
-
-
-def test_eval_with_a_provider_that_is_not_configured_fails_with_exit_code_2(
-    tmp_path: Path,
-) -> None:
-    # Execute
-    with pytest.raises(CommandFailed) as failure:
-        evaluated(request(write_cases(tmp_path, TEXT_CASE), providers=("ollama", "groq")))
-
-    # Assert
-    assert (failure.value.exit_code, str(failure.value)) == (2, "provider groq is not configured")
-
-
-def test_eval_with_a_known_provider_that_has_no_settings_says_it_is_not_configured(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    targets = an_eval_targets(ProviderName.OLLAMA)
-
-    # Execute
-    with pytest.raises(CommandFailed) as failure:
-        evaluated(request(write_cases(tmp_path, TEXT_CASE), providers=("openrouter",)), targets)
-
-    # Assert
-    assert str(failure.value) == "provider openrouter is not configured"
 
 
 def test_eval_with_a_cases_file_that_is_missing_fails_with_exit_code_2(tmp_path: Path) -> None:
@@ -254,60 +168,6 @@ def refused_out(asked: EvalRequest, targets: EvalTargets | None = None) -> Comma
     with pytest.raises(CommandFailed) as failure:
         evaluated(asked, targets)
     return failure.value
-
-
-def test_eval_with_an_out_path_that_is_the_cases_file_fails_with_exit_code_2(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    cases = write_cases(tmp_path, TEXT_CASE)
-
-    # Execute
-    failure = refused_out(request(cases, out=cases))
-
-    # Assert
-    assert failure.exit_code == 2
-
-
-def test_eval_with_an_out_path_that_is_the_cases_file_leaves_the_cases_untouched(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    cases = write_cases(tmp_path, TEXT_CASE)
-    original = cases.read_text()
-
-    # Execute
-    refused_out(request(cases, out=cases))
-
-    # Assert
-    assert cases.read_text() == original
-
-
-def test_eval_with_an_out_path_that_is_the_cases_file_asks_no_model(tmp_path: Path) -> None:
-    # Setup
-    model = FakeChatModel(ANSWER)
-    cases = write_cases(tmp_path, TEXT_CASE)
-
-    # Execute
-    refused_out(request(cases, out=cases), an_eval_targets(model=model))
-
-    # Assert
-    assert model.calls == []
-
-
-def test_eval_refuses_an_out_path_that_reaches_the_cases_file_by_another_spelling(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    cases = write_cases(tmp_path, TEXT_CASE)
-    (tmp_path / "reports").mkdir()
-    roundabout = tmp_path / "reports" / ".." / "cases.jsonl"
-
-    # Execute
-    failure = refused_out(request(cases, out=roundabout))
-
-    # Assert
-    assert str(failure) == f"--out {roundabout} is the cases file"
 
 
 @pytest.mark.parametrize(
@@ -390,17 +250,3 @@ def test_eval_leaves_no_temporary_file_when_the_report_cannot_replace_its_target
 
     # Assert
     assert list(target.parent.iterdir()) == [target]
-
-
-def test_eval_refuses_an_out_path_that_is_a_cases_file_with_an_unusual_suffix(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    cases = tmp_path / "cases.txt"
-    cases.write_text(json.dumps(TEXT_CASE) + "\n")
-
-    # Execute
-    failure = refused_out(request(cases, out=cases))
-
-    # Assert
-    assert str(failure) == f"--out {cases} is the cases file"

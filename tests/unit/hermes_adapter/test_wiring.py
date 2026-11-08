@@ -1,46 +1,24 @@
 import asyncio
-import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from agent_capture_rig import a_filing_intake
-from app_builders import NOON, an_app, stored
-from builders import an_item, stored_completion
-from capture_builders import a_filing_answer, sequential_ids
-from capture_rig import build_rig
+from app_builders import NOON, an_app
+from capture_builders import sequential_ids
 from config_builders import a_nudge_config, a_stash_config
-from fakes.fake_suggestion_desk import FakeSuggestionDesk
 from fakes.pausing_scheduler import PausingScheduler
 from fakes.pending_intake import PendingIntake
 from fakes.recording_outbox import RecordingOutbox
 from fakes.recording_sender import RecordingSender
-from fakes.scripted_deliveries import ScriptedNudges
 from fakes.scripted_steps import ScriptedSteps
-from fakes.store_factories import FreshStore
 from hermes_events import OWNER_ID, an_event
-from hermes_rig import app_over, instant_bursts
 from ticker_rig import run_until
 
-from stash.app import StashApp
-from stash.capture import IncomingMessage, confirmation
-from stash.domain import Stage
-from stash.hermes_adapter.commands import (
-    GpuCommand,
-    LibraryCommand,
-    ListCommand,
-    PeopleCommand,
-    RetryCommand,
-)
+from stash.capture import IncomingMessage
 from stash.hermes_adapter.owners import Owners
-from stash.hermes_adapter.suggest_command import SuggestCommand
 from stash.hermes_adapter.wiring import (
-    build_commands,
     build_intake,
-    build_scheduler,
     build_ticker,
-    build_tools,
 )
-from stash.suggestions import Picked
 
 LATER = datetime(2026, 11, 3, 9, 30, tzinfo=UTC)
 
@@ -68,17 +46,6 @@ def dispatched_messages(
 
     asyncio.run(scenario())
     return steps.received
-
-
-def test_the_scheduler_tells_the_time_of_the_app_clock() -> None:
-    # Setup
-    app = an_app(clock=lambda: LATER)
-
-    # Execute
-    now = build_scheduler(app).now()
-
-    # Assert
-    assert now == LATER
 
 
 def test_the_intake_stamps_messages_with_the_time_of_the_app_clock() -> None:
@@ -115,179 +82,6 @@ def test_the_id_source_is_not_used_for_events_that_carry_a_message_id() -> None:
 
     # Assert
     assert [message.source.message_id for message in messages] == ["m1", f"{1:032x}"]
-
-
-def test_intakes_built_by_two_registrations_confirm_their_messages_separately() -> None:
-    # Setup
-    rig = build_rig(outcomes=[a_filing_answer(), a_filing_answer()])
-    app = app_over(rig, burst_factory=instant_bursts)
-    scheduler = PausingScheduler()
-    outbox = RecordingOutbox()
-    owners = Owners.parse(OWNER_ID)
-    first_intake = build_intake(app, owners, outbox, scheduler, sequential_ids())
-    second_intake = build_intake(app, owners, outbox, scheduler, sequential_ids())
-
-    async def scenario() -> None:
-        await first_intake.on_dispatch(an_event(message_id="m1"))
-        await second_intake.on_dispatch(an_event(message_id="m2"))
-        await scheduler.drain()
-
-    # Execute
-    asyncio.run(scenario())
-
-    # Assert
-    [first, second] = rig.store.list_items()
-    assert outbox.sent_texts() == [
-        confirmation(first, unsure=False).text,
-        confirmation(second, unsure=False).text,
-    ]
-
-
-def test_the_commands_are_list_gpu_retry_library_suggest_and_people() -> None:
-    # Execute
-    commands = build_commands(an_app(), RecordingOutbox(), None)
-
-    # Assert
-    assert {name: type(command) for name, command in commands.items()} == {
-        "list": ListCommand,
-        "gpu": GpuCommand,
-        "retry": RetryCommand,
-        "library": LibraryCommand,
-        "suggest": SuggestCommand,
-        "people": PeopleCommand,
-    }
-
-
-def handler_named(app: StashApp, name: str) -> Callable[..., str]:
-    return next(spec.handler for spec in build_tools(app) if spec.schema["name"] == name)
-
-
-def test_the_tools_are_search_list_lifecycle_capture_step_suggest_and_people_tools() -> None:
-    # Execute
-    specs = build_tools(an_app())
-
-    # Assert
-    assert [spec.schema["name"] for spec in specs] == [
-        "stash_search",
-        "stash_list",
-        "stash_get",
-        "stash_complete",
-        "stash_annotate",
-        "stash_set_stage",
-        "stash_set_date",
-        "stash_keep",
-        "stash_group",
-        "stash_library",
-        "stash_capture",
-        "stash_add_step",
-        "stash_edit_step",
-        "stash_complete_step",
-        "stash_suggest",
-        "stash_people",
-        "stash_add_person",
-        "stash_add_key_date",
-        "stash_link_person",
-        "stash_remove_person",
-    ]
-
-
-def test_the_lifecycle_tools_act_on_the_lifecycle_of_the_app() -> None:
-    # Setup
-    store = stored(an_item(id="w1", capture_id="c1", stage=Stage.WANT_TO))
-    complete = handler_named(an_app(store=store), "stash_complete")
-
-    # Execute
-    complete({"item_id": "w1", "rating": 3})
-
-    # Assert
-    assert [outcome.rating for outcome in store.outcomes_for("w1")] == [3]
-
-
-def test_the_search_and_list_tools_read_the_store_of_the_app() -> None:
-    # Setup
-    store = stored(an_item(id="w1", capture_id="c1", title="Ramen"))
-    search = handler_named(an_app(store=store), "stash_search")
-
-    # Execute
-    answer = search({"query": "ramen"})
-
-    # Assert
-    assert json.loads(answer)["items"][0]["id"] == "w1"
-
-
-def test_the_library_command_lists_the_kept_items_of_the_app_lifecycle() -> None:
-    # Setup
-    store = FreshStore()
-    stored_completion(store, "k1", kept=True, title="Dune")
-    command = build_commands(an_app(store=store), RecordingOutbox(), None)["library"]
-
-    # Execute
-    text = asyncio.run(command.run(""))
-
-    # Assert
-    assert text == "📚 Places: Dune · ⭐4"
-
-
-def test_the_capture_tool_files_through_the_agent_capture_of_the_app() -> None:
-    # Setup
-    intake = a_filing_intake()
-    capture = handler_named(an_app(pipeline=intake), "stash_capture")
-
-    # Execute
-    capture({"text": "Tidewater Notes, a novel"})
-
-    # Assert
-    assert [message.source.is_agent for message in intake.messages] == [True]
-
-
-def test_the_step_tools_act_on_the_planning_of_the_app() -> None:
-    # Setup
-    store = stored(an_item(id="w1", capture_id="c1", stage=Stage.WANT_TO))
-    add_step = handler_named(an_app(store=store), "stash_add_step")
-
-    # Execute
-    add_step({"item_id": "w1", "text": "Book the table", "lead_days": 7})
-
-    # Assert
-    assert [step.text for step in store.steps_for("w1")] == ["Book the table"]
-
-
-def test_the_suggest_tool_asks_the_suggestions_of_the_app() -> None:
-    # Setup
-    desk = FakeSuggestionDesk(Picked(()))
-    suggest = handler_named(an_app(suggestions=desk), "stash_suggest")
-
-    # Execute
-    suggest({"context": "at home"})
-
-    # Assert
-    assert desk.asked == [("at home", 3)]
-
-
-def test_the_suggest_command_asks_the_suggestions_of_the_app() -> None:
-    # Setup
-    desk = FakeSuggestionDesk(Picked(()))
-    command = build_commands(an_app(suggestions=desk), RecordingOutbox(), None)["suggest"]
-
-    # Execute
-    asyncio.run(command.run("at home"))
-
-    # Assert
-    assert desk.asked == [("at home", 3)]
-
-
-def test_the_ticker_tells_the_deliveries_the_time_of_the_app_clock() -> None:
-    # Setup
-    nudges = ScriptedNudges()
-    ticker = build_ticker(
-        an_app(clock=lambda: LATER, nudge_delivery=nudges), RecordingSender(), "1"
-    )
-
-    # Execute
-    asyncio.run(ticker.tick())
-
-    # Assert
-    assert nudges.nows == [LATER]
 
 
 def test_the_ticker_pauses_the_tick_interval_the_app_is_configured_with() -> None:

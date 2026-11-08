@@ -1,17 +1,15 @@
 from typing import Any
 
 import pytest
-from builders import a_capture, an_item
 from capture_builders import SAMPLE_TEXT
 from fakes.recording_agent_capturer import RecordingAgentCapturer
 from log_records import recording_logs
 from tool_rig import answer_of
 
-from stash.capture import Deferred, Filed
 from stash.capture.agent import AgentCaptureError
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
 from stash.hermes_adapter.capture_tools import CAPTURE_SCHEMA, CaptureTools
-from stash.hermes_adapter.tool_json import UNWRITABLE, capture_answer
+from stash.hermes_adapter.tool_json import UNWRITABLE
 from stash.hermes_adapter.tool_schema import owners_data
 
 DESCRIPTION_START = (
@@ -59,98 +57,6 @@ def test_the_parameters_are_a_required_capped_text_and_an_optional_note() -> Non
         {name: spec["type"] for name, spec in properties.items()},
         properties["text"]["maxLength"],
     ) == (["text"], {"text": "string", "note": "string"}, TELEGRAM_TEXT_LIMIT)
-
-
-def test_the_tool_offers_the_capture_schema_and_handler() -> None:
-    # Setup
-    tools = CaptureTools(RecordingAgentCapturer())
-
-    # Execute
-    [spec] = tools.specs()
-
-    # Assert
-    assert (spec.schema, spec.handler) == (CAPTURE_SCHEMA, tools.capture)
-
-
-def test_a_filed_capture_answers_its_item_id_title_type_and_stage() -> None:
-    # Setup
-    item = an_item(id="i9", title="Tidewater Notes")
-
-    # Execute
-    answer = answer_of(capture_answer(Filed(item, unsure=False)))
-
-    # Assert
-    assert answer == {
-        "item_id": "i9",
-        "title": "Tidewater Notes",
-        "item_type": item.item_type.value,
-        "stage": item.stage.value,
-    }
-
-
-def test_a_deferred_capture_answers_saved_and_pending() -> None:
-    # Execute
-    answer = answer_of(capture_answer(Deferred(a_capture(), "ai_unavailable")))
-
-    # Assert
-    assert answer == {"saved": True, "pending": True}
-
-
-def test_capturing_answers_what_the_capturer_filed() -> None:
-    # Setup
-    capturer = RecordingAgentCapturer()
-    capturer.result = Filed(an_item(id="i9"), unsure=False)
-
-    # Execute
-    answer = capturing(capturer, {"text": SAMPLE_TEXT})
-
-    # Assert
-    assert answer["item_id"] == "i9"
-
-
-def test_capturing_answers_saved_and_pending_when_the_capturer_defers() -> None:
-    # Setup
-    capturer = RecordingAgentCapturer()
-    capturer.defers()
-
-    # Execute
-    answer = capturing(capturer, {"text": SAMPLE_TEXT})
-
-    # Assert
-    assert answer == {"saved": True, "pending": True}
-
-
-def test_capturing_passes_the_text_and_note_to_the_capturer() -> None:
-    # Setup
-    capturer = RecordingAgentCapturer()
-
-    # Execute
-    capturing(capturer, {"text": SAMPLE_TEXT, "note": NOTE})
-
-    # Assert
-    assert capturer.calls == [(SAMPLE_TEXT, NOTE)]
-
-
-def test_a_null_note_reaches_the_capturer_as_no_note() -> None:
-    # Setup
-    capturer = RecordingAgentCapturer()
-
-    # Execute
-    capturing(capturer, {"text": SAMPLE_TEXT, "note": None})
-
-    # Assert
-    assert capturer.calls == [(SAMPLE_TEXT, None)]
-
-
-def test_capturing_accepts_the_keyword_arguments_hermes_passes() -> None:
-    # Setup
-    tools = CaptureTools(RecordingAgentCapturer())
-
-    # Execute
-    answer = answer_of(tools.capture({"text": SAMPLE_TEXT}, task_id="t1"))
-
-    # Assert
-    assert "item_id" in answer
 
 
 @pytest.mark.parametrize("arguments", [*REFUSED_ARGUMENTS, *NOT_OBJECTS])

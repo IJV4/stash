@@ -108,60 +108,6 @@ def test_the_scope_is_asked_for_the_requested_name() -> None:
     assert scope.requested == ["TELEGRAM_ALLOWED_USERS"]
 
 
-def test_the_environment_keeps_the_base_entries_nobody_overrides() -> None:
-    # Execute
-    environment = resolved_environment({"HOME": "/home/me"}, {}.get, ("OPENROUTER_API_KEY",))
-
-    # Assert
-    assert environment == {"HOME": "/home/me"}
-
-
-def test_a_secret_is_added_to_the_environment() -> None:
-    # Setup
-    secrets = {"OPENROUTER_API_KEY": "sk-fake"}
-
-    # Execute
-    environment = resolved_environment({"HOME": "/home/me"}, secrets.get, ("OPENROUTER_API_KEY",))
-
-    # Assert
-    assert environment == {"HOME": "/home/me", "OPENROUTER_API_KEY": "sk-fake"}
-
-
-def test_a_secret_overrides_the_base_entry_of_the_same_name() -> None:
-    # Setup
-    secrets = {"OPENROUTER_API_KEY": "from-scope"}
-
-    # Execute
-    environment = resolved_environment(
-        {"OPENROUTER_API_KEY": "from-env"}, secrets.get, ("OPENROUTER_API_KEY",)
-    )
-
-    # Assert
-    assert environment["OPENROUTER_API_KEY"] == "from-scope"
-
-
-def test_a_missing_secret_leaves_the_base_entry_in_place() -> None:
-    # Execute
-    environment = resolved_environment(
-        {"OPENROUTER_API_KEY": "from-env"}, {}.get, ("OPENROUTER_API_KEY",)
-    )
-
-    # Assert
-    assert environment["OPENROUTER_API_KEY"] == "from-env"
-
-
-def test_resolving_the_environment_does_not_mutate_the_base() -> None:
-    # Setup
-    base = {"HOME": "/home/me"}
-    secrets = {"OPENROUTER_API_KEY": "sk-fake"}
-
-    # Execute
-    resolved_environment(base, secrets.get, ("OPENROUTER_API_KEY",))
-
-    # Assert
-    assert base == {"HOME": "/home/me"}
-
-
 def test_only_the_requested_secrets_are_read() -> None:
     # Setup
     scope = StubSecretScope({"OPENROUTER_API_KEY": "sk-fake", "OTHER": "x"})

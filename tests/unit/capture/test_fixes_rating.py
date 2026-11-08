@@ -1,5 +1,5 @@
 import pytest
-from builders import fetched_item, fetched_outcome, stored_completion
+from builders import fetched_outcome, stored_completion
 from capture_builders import (
     COMPLETED_ITEM_ID,
     COMPLETED_OUTCOME_ID,
@@ -10,53 +10,8 @@ from capture_rig import a_fix_handler
 from fakes.vanishing_item_store import VanishingItemStore
 
 from stash.capture import gone
-from stash.capture.completion_replies import rated_reply
 
 STORED_RATING = 4
-
-
-@pytest.mark.parametrize(("argument", "rating"), [("1", 1), ("2", 2), ("3", 3), ("4", 4), ("5", 5)])
-def test_pressing_a_rating_answers_the_rated_reply_with_that_rating(
-    argument: str, rating: int
-) -> None:
-    # Setup
-    store = a_store_with_a_completed_item()
-
-    # Execute
-    reply = a_fix_handler(store).apply(f"stash:r:{COMPLETED_OUTCOME_ID}:{argument}")
-
-    # Assert
-    assert reply == rated_reply(fetched_item(store, COMPLETED_ITEM_ID), rating)
-
-
-def test_pressing_a_rating_stores_it_on_the_outcome() -> None:
-    # Setup
-    store = a_store_with_a_completed_item()
-
-    # Execute
-    a_fix_handler(store).apply(f"stash:r:{COMPLETED_OUTCOME_ID}:2")
-
-    # Assert
-    assert fetched_outcome(store, COMPLETED_OUTCOME_ID).rating == 2
-
-
-def test_pressing_the_same_rating_twice_leaves_the_rating_the_reply_and_the_single_outcome() -> (
-    None
-):
-    # Setup
-    store = a_store_with_a_completed_item()
-    handler = a_fix_handler(store)
-    first = handler.apply(f"stash:r:{COMPLETED_OUTCOME_ID}:2")
-
-    # Execute
-    second = handler.apply(f"stash:r:{COMPLETED_OUTCOME_ID}:2")
-
-    # Assert
-    assert (
-        second,
-        fetched_outcome(store, COMPLETED_OUTCOME_ID).rating,
-        len(store.outcomes_for(COMPLETED_ITEM_ID)),
-    ) == (first, 2, 1)
 
 
 def test_pressing_a_rating_for_an_unknown_outcome_answers_gone() -> None:

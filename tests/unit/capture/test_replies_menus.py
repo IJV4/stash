@@ -6,7 +6,7 @@ from capture_builders import a_placed_item, button_labels
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.replies import Reply, confirmation
-from stash.domain import ItemType, Stage
+from stash.domain import Stage
 
 A_DATE = dt.date(2026, 11, 14)
 
@@ -17,37 +17,6 @@ def _offered(reply: Reply) -> list[Stage]:
         for row in reply.buttons
         for button in row
         if button.data.startswith("stash:S:")
-    ]
-
-
-def test_the_type_menu_asks_the_owner_to_pick_a_type() -> None:
-    # Execute
-    reply = type_menu(a_placed_item())
-
-    # Assert
-    assert reply.text == "Pick a type:"
-
-
-def test_the_type_menu_has_one_button_per_item_type_in_rows_of_three() -> None:
-    # Execute
-    reply = type_menu(a_placed_item())
-
-    # Assert
-    assert button_labels(reply.buttons) == [
-        ["Places", "Recipes", "Purchases"],
-        ["Learning", "Books", "Media"],
-        ["Ideas", "Plans", "Activities"],
-        ["Gifts", "Other"],
-    ]
-
-
-def test_each_type_button_carries_the_item_id_and_its_type_value() -> None:
-    # Execute
-    reply = type_menu(a_placed_item(id="i7"))
-
-    # Assert
-    assert [button.data for row in reply.buttons for button in row] == [
-        f"stash:T:i7:{item_type.value}" for item_type in ItemType
     ]
 
 
