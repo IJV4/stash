@@ -251,7 +251,7 @@ def test_completing_a_reopened_item_again_lists_both_outcomes(open_store: StoreF
         item = stored_item(store, stage=Stage.DOING)
         done = item.completed(LATER)
         store.record_completion(done, an_outcome(id="o1"))
-        reopened = done.reopened(minutes_after(300))
+        reopened = done.relocated_to(Stage.WANT_TO, minutes_after(300))
         store.save_item(reopened)
 
         # Execute
@@ -273,7 +273,7 @@ def test_completing_a_reopened_item_again_leaves_the_first_outcome_unchanged(
         item = stored_item(store, stage=Stage.DOING)
         done = item.completed(LATER)
         store.record_completion(done, an_outcome(id="o1"))
-        reopened = done.reopened(minutes_after(300))
+        reopened = done.relocated_to(Stage.WANT_TO, minutes_after(300))
         store.save_item(reopened)
 
         # Execute

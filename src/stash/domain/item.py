@@ -230,16 +230,11 @@ class Item:
             raise ValueError("item is already done")
         return self.moved_to(Stage.DONE, now)
 
-    def reopened(self, now: dt.datetime) -> "Item":
-        if not self.is_done:
-            raise ValueError("only done items can be reopened")
-        return self.moved_to(Stage.WANT_TO, now)
-
     def dropped(self, reason: str | None, now: dt.datetime) -> "Item":
         return replace(self.moved_to(Stage.DROPPED, now), drop_reason=reason)
 
     def kept_as(self, kept: bool, now: dt.datetime) -> "Item":
-        # Unkeeping is allowed at any stage: a reopened item stays kept until unkept
+        # Unkeeping is allowed at any stage: an item moved back out of done stays kept until unkept
         if kept and not self.is_done:
             raise ValueError("only done items can be kept")
         return replace(self, kept=kept, updated_at=now)

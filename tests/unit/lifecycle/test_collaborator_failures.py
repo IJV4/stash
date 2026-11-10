@@ -14,7 +14,6 @@ ID_SOURCE_BROKE = "id source broke"
 OPERATIONS: dict[str, Callable[[Lifecycle], object]] = {
     "complete": lambda lifecycle: lifecycle.complete("i1"),
     "keep": lambda lifecycle: lifecycle.keep("i1", True),
-    "reopen": lambda lifecycle: lifecycle.reopen("i1"),
     "drop": lambda lifecycle: lifecycle.drop("i1", "why"),
     "group": lambda lifecycle: lifecycle.group("i1", "p1"),
     "ungroup": lambda lifecycle: lifecycle.ungroup("i1"),

@@ -76,21 +76,6 @@ def test_saving_a_key_date_for_an_unknown_person_is_refused(open_store: StoreFac
 
 
 @on_sqlite
-def test_a_deleted_key_date_is_gone(open_store: StoreFactory) -> None:
-    # Setup
-    with open_store() as store:
-        stored_person(store)
-        store.save_key_date(a_key_date())
-        store.delete_key_date("k1")
-
-        # Execute
-        found = store.key_dates_for("p1")
-
-        # Assert
-        assert found == []
-
-
-@on_sqlite
 def test_deleting_a_person_removes_their_key_dates(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

@@ -12,7 +12,6 @@ from stash.domain import (
     PersonSummary,
     matching_key,
 )
-from stash.people.results import Resolution
 from stash.store.port import Store, UnknownPersonError
 
 logger = logging.getLogger(__name__)
@@ -82,16 +81,13 @@ class PeopleDirectory:
         wanted = [item for item in summaries if within_days is None or item.next_date is not None]
         return tuple(sorted(wanted, key=_by_next_date))
 
-    def resolve(self, names: Sequence[str]) -> Resolution:
+    def resolve(self, names: Sequence[str]) -> tuple[Person, ...]:
         linked: dict[str, Person] = {}
-        unknown: dict[str, str] = {}
         for name in _non_blank_names(names):
             person = self._store.find_by_name(name)
-            if person is None:
-                unknown.setdefault(name.casefold(), name)
-            else:
+            if person is not None:
                 linked.setdefault(person.id, person)
-        return Resolution(tuple(linked.values()), tuple(unknown.values()))
+        return tuple(linked.values())
 
     def _next_dates(self, first: date, last: date) -> dict[str, NextKeyDate]:
         next_dates: dict[str, NextKeyDate] = {}

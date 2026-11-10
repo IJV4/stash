@@ -12,7 +12,6 @@ from stash.lifecycle import Lifecycle, LifecycleRefused
 OPERATIONS_OTHER_THAN_COMPLETE: dict[str, Callable[[Lifecycle], object]] = {
     "keep": lambda lifecycle: lifecycle.keep("i1", True),
     "unkeep": lambda lifecycle: lifecycle.keep("i1", False),
-    "reopen": lambda lifecycle: lifecycle.reopen("i1"),
     "drop": lambda lifecycle: lifecycle.drop("i1", "why"),
     "group": lambda lifecycle: lifecycle.group("i1", "p1"),
     "ungroup": lambda lifecycle: lifecycle.ungroup("i1"),

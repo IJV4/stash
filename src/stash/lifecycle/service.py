@@ -68,9 +68,6 @@ class Lifecycle:
     def keep(self, item_id: str, kept: bool) -> Item:
         return self._changed(item_id, lambda item, now: item.kept_as(kept, now))
 
-    def reopen(self, item_id: str) -> Item:
-        return self._changed(item_id, lambda item, now: item.reopened(now))
-
     def drop(self, item_id: str, reason: str | None) -> Item:
         return self._changed(item_id, lambda item, now: item.dropped(_unless_blank(reason), now))
 

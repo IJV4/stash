@@ -10,10 +10,6 @@ logger = logging.getLogger(__name__)
 START_UP_FAILED_LOG = "the start-up callback failed; Telegram is still attached"
 
 
-def _nothing() -> None:
-    return None
-
-
 async def _unrouted(press: CallbackPress) -> None:
     raise RuntimeError("no registration is handling button presses yet")
 
@@ -22,7 +18,7 @@ class TelegramLink:
     def __init__(self) -> None:
         self._outbox = LateBoundOutbox()
         self._on_press: PressHandler = _unrouted
-        self._on_connected: Callable[[], None] = _nothing
+        self._on_connected: Callable[[], None] = lambda: None
         self._attachment = TelegramAttachment(self._outbox, self._press)
 
     @property

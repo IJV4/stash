@@ -265,9 +265,6 @@ class SqliteStore:
     def save_key_date(self, key_date: KeyDate) -> None:
         self._people.save_key_date(key_date)
 
-    def delete_key_date(self, key_date_id: str) -> None:
-        self._people.delete_key_date(key_date_id)
-
     def key_dates_for(self, person_id: str) -> list[KeyDate]:
         return self._people.key_dates_for(person_id)
 
@@ -276,9 +273,6 @@ class SqliteStore:
 
     def link(self, item_id: str, person_id: str) -> None:
         self._people.link(item_id, person_id)
-
-    def unlink(self, item_id: str, person_id: str) -> None:
-        self._people.unlink(item_id, person_id)
 
     def people_for(self, item_id: str) -> list[Person]:
         return self._people.people_for(item_id)

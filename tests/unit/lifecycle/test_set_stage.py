@@ -6,6 +6,7 @@ from builders import (
     an_item_at,
     fetched_item,
     stored,
+    stored_completion,
 )
 from fakes.store_factories import FreshStore
 from lifecycle_rig import a_lifecycle
@@ -150,6 +151,24 @@ def test_setting_a_stage_on_a_dropped_item_clears_its_drop_reason() -> None:
 
     # Assert
     assert moved.drop_reason is None
+
+
+def test_setting_want_to_on_a_done_item_puts_it_back_still_kept_with_its_outcomes() -> None:
+    # Setup
+    store = FreshStore()
+    stored_completion(store, "i1", kept=True)
+    outcomes = store.outcomes_for("i1")
+
+    # Execute
+    moved = a_lifecycle(store).set_stage("i1", Stage.WANT_TO)
+
+    # Assert
+    assert (moved.stage, moved.kept, fetched_item(store, "i1"), store.outcomes_for("i1")) == (
+        Stage.WANT_TO,
+        True,
+        moved,
+        outcomes,
+    )
 
 
 def test_a_reason_with_stage_done_is_refused_for_the_reason_and_changes_nothing() -> None:

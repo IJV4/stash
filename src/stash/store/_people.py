@@ -52,10 +52,6 @@ class SqlitePeople:
             self._require_person(key_date.person_id)
             self._connection.execute(sql.UPSERT_KEY_DATE, key_date_values(key_date))
 
-    def delete_key_date(self, key_date_id: str) -> None:
-        with self._lock:
-            self._connection.execute(sql.DELETE_KEY_DATE, (key_date_id,))
-
     def key_dates_for(self, person_id: str) -> list[KeyDate]:
         with self._lock:
             rows = self._connection.execute(sql.KEY_DATES_FOR_PERSON, (person_id,)).fetchall()
@@ -73,10 +69,6 @@ class SqlitePeople:
                 raise UnknownItemError(item_id)
             self._require_person(person_id)
             self._connection.execute(sql.LINK_ITEM_TO_PERSON, (item_id, person_id))
-
-    def unlink(self, item_id: str, person_id: str) -> None:
-        with self._lock:
-            self._connection.execute(sql.UNLINK_ITEM_FROM_PERSON, (item_id, person_id))
 
     def people_for(self, item_id: str) -> list[Person]:
         with self._lock:

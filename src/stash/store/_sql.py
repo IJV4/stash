@@ -235,15 +235,11 @@ ON CONFLICT (id) DO UPDATE SET
     year = excluded.year
 """
 
-DELETE_KEY_DATE = "DELETE FROM key_dates WHERE id = ?"
-
 KEY_DATES_FOR_PERSON = "SELECT * FROM key_dates WHERE person_id = ? ORDER BY month, day, id"
 
 ALL_KEY_DATES = "SELECT * FROM key_dates"
 
 LINK_ITEM_TO_PERSON = "INSERT OR IGNORE INTO item_people (item_id, person_id) VALUES (?, ?)"
-
-UNLINK_ITEM_FROM_PERSON = "DELETE FROM item_people WHERE item_id = ? AND person_id = ?"
 
 PEOPLE_FOR_ITEM = """
 SELECT people.* FROM people

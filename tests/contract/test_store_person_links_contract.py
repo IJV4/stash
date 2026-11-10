@@ -69,39 +69,6 @@ def test_linking_twice_leaves_one_link(open_store: StoreFactory) -> None:
 
 
 @on_sqlite
-def test_an_unlinked_person_is_no_longer_listed_for_the_item(open_store: StoreFactory) -> None:
-    # Setup
-    with open_store() as store:
-        stored_item(store, id="i1")
-        stored_person(store, id="p1", name="Ana", aliases=())
-        store.link("i1", "p1")
-        store.unlink("i1", "p1")
-
-        # Execute
-        found = store.people_for("i1")
-
-        # Assert
-        assert found == []
-
-
-@on_sqlite
-def test_unlinking_a_person_who_was_never_linked_changes_nothing(
-    open_store: StoreFactory,
-) -> None:
-    # Setup
-    with open_store() as store:
-        stored_item(store, id="i1")
-        stored_person(store, id="p1", name="Ana", aliases=())
-        store.unlink("i1", "p1")
-
-        # Execute
-        found = store.get_person("p1")
-
-        # Assert
-        assert found is not None
-
-
-@on_sqlite
 def test_linking_an_unknown_item_is_refused(open_store: StoreFactory) -> None:
     # Setup
     with open_store() as store:

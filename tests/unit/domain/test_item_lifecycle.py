@@ -22,7 +22,6 @@ Transition = Callable[[Item, datetime], Item]
 
 TRANSITIONS = [
     pytest.param(lambda item, now: item.completed(now), an_item(), id="completed"),
-    pytest.param(lambda item, now: item.reopened(now), an_item(stage=Stage.DONE), id="reopened"),
     pytest.param(lambda item, now: item.dropped("Not for me", now), an_item(), id="dropped"),
     pytest.param(
         lambda item, now: item.kept_as(True, now), an_item(stage=Stage.DONE), id="kept_as"

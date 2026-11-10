@@ -9,5 +9,5 @@ class PeopleLinker:
         self._links = links
 
     def link(self, item: Item) -> None:
-        for person in self._directory.resolve(item.people).linked:
+        for person in self._directory.resolve(item.people):
             self._links.link(item.id, person.id)

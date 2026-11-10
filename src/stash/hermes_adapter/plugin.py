@@ -97,10 +97,6 @@ class AdapterState:
 PROCESS_STATE = AdapterState(SharedApp(), TelegramLink(), TickerLauncher())
 
 
-def _nothing() -> None:
-    return None
-
-
 def _owner_chat(ctx: Any, owners: Owners) -> str | None:
     configured = ctx.get_config(OWNER_CHAT_SETTING)
     chat = str(configured).strip() if isinstance(configured, str | int) else ""
@@ -113,7 +109,7 @@ def _ticker_start(
     owner_chat = _owner_chat(ctx, owners)
     if owner_chat is None:
         logger.warning(NO_OWNER_CHAT_LOG)
-        return _nothing
+        return lambda: None
     return lambda: launcher.start_once(
         ctx.spawn_task, lambda: build_ticker(app, link.outbox, owner_chat)
     )

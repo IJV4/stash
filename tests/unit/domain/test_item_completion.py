@@ -19,16 +19,6 @@ def test_completed_on_a_done_item_raises_value_error() -> None:
 
 
 @pytest.mark.parametrize("stage", NON_DONE_STAGES)
-def test_reopened_on_an_item_that_is_not_done_raises_value_error(stage: Stage) -> None:
-    # Setup
-    item = an_item_at(stage)
-
-    # Execute / Assert
-    with pytest.raises(ValueError, match="only done items can be reopened"):
-        item.reopened(LATER)
-
-
-@pytest.mark.parametrize("stage", NON_DONE_STAGES)
 def test_kept_as_true_on_an_item_that_is_not_done_raises_value_error(stage: Stage) -> None:
     # Setup
     item = an_item_at(stage)

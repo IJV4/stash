@@ -2,10 +2,9 @@ import tomllib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
-from typing import TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from stash.config._section import Section
+from stash.config._section import Section, _Choice
 from stash.config.errors import ConfigError
 from stash.config.model import (
     BUSY_FALLBACKS,
@@ -35,8 +34,6 @@ XDG_DATA_HOME_VAR = "XDG_DATA_HOME"
 HOME_PREFIX = "~"
 DEFAULT_DATA_SUBPATH = Path(".local/share/stash")
 APP_DIR_NAME = "stash"
-
-_PerTask = TypeVar("_PerTask", bound=str)
 
 
 def load_config(path: Path, env: Mapping[str, str]) -> StashConfig:
@@ -174,8 +171,8 @@ def _api_key(name: ProviderName, env: Mapping[str, str]) -> str | None:
     return env.get(OPENROUTER_API_KEY_VAR, "").strip() or None
 
 
-def _per_task(section: Section, choices: Sequence[_PerTask]) -> dict[LlmTask, _PerTask]:
-    chosen: dict[LlmTask, _PerTask] = {}
+def _per_task(section: Section, choices: Sequence[_Choice]) -> dict[LlmTask, _Choice]:
+    chosen: dict[LlmTask, _Choice] = {}
     for task in LlmTask:
         choice = section.take_optional_choice(task.value, choices)
         if choice is not None:
