@@ -33,6 +33,12 @@ def test_a_reply_over_the_telegram_text_limit_raises_value_error() -> None:
         Reply("x" * (TELEGRAM_TEXT_LIMIT + 1), ())
 
 
+def test_a_reply_over_the_telegram_text_limit_in_utf16_units_raises_value_error() -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match="4096"):
+        Reply("😀" * 2049, ())
+
+
 def test_the_deferred_notices_cannot_be_changed_at_runtime() -> None:
     # Execute / Assert
     with pytest.raises(TypeError):

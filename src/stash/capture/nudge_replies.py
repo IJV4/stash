@@ -4,7 +4,7 @@ from typing import assert_never
 from stash.capture.digest_replies import render_digest
 from stash.capture.nudge_buttons import action_rows
 from stash.capture.occasions import emoji_of, occasion_of
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT, Reply
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, Reply, telegram_length
 from stash.capture.wording import LINE_LIMIT, counted, short_day
 from stash.domain import KeyDateKind, collapse_and_clip
 from stash.nudges.due import (
@@ -45,7 +45,7 @@ def _fitting(message: NudgeMessage) -> NudgeMessage:
     kept: list[DueNudge] = []
     for due in message.due:
         candidate = NudgeMessage((*kept, due), message.catch_up)
-        if kept and len(_text(candidate)) > TELEGRAM_TEXT_LIMIT:
+        if kept and telegram_length(_text(candidate)) > TELEGRAM_TEXT_LIMIT:
             break
         kept.append(due)
     return NudgeMessage(tuple(kept), message.catch_up)

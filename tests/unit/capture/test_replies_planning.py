@@ -9,12 +9,12 @@ from stash.capture.planning_replies import (
     step_done_reply,
     steps_saved_reply,
 )
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
-from stash.domain import Step
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
+from stash.domain import STEP_TEXT_LIMIT, Step
 from stash.planning.results import Proposal
 
 FRIDAY_FEB_5 = date(2027, 2, 5)
-STEP_TEXT_AT_THE_LIMIT = "x" * 200
+ASCII_STEP_AT_THE_LIMIT = "x" * STEP_TEXT_LIMIT
 TEN_STEPS = 10
 
 
@@ -48,10 +48,10 @@ def test_a_step_says_when_it_is_due_in_the_words_of_its_lead_time_or_its_date(
     assert when_text_of(a_proposed_step(**overrides)) == when
 
 
-def test_a_proposal_of_ten_steps_at_the_text_limit_fits_a_telegram_message() -> None:
+def test_a_proposal_of_ten_ascii_steps_at_the_text_limit_fits_a_telegram_message() -> None:
     # Setup
     steps = tuple(
-        a_proposed_step(id=f"s{n}", text=STEP_TEXT_AT_THE_LIMIT, lead_days=n, position=n)
+        a_proposed_step(id=f"s{n}", text=ASCII_STEP_AT_THE_LIMIT, lead_days=n, position=n)
         for n in range(TEN_STEPS)
     )
 
@@ -59,7 +59,7 @@ def test_a_proposal_of_ten_steps_at_the_text_limit_fits_a_telegram_message() -> 
     reply = proposal_reply(proposed(*steps), DATE_NIGHT_ON)
 
     # Assert
-    assert len(reply.text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply.text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_saving_no_steps_says_there_are_no_proposed_steps_any_more() -> None:

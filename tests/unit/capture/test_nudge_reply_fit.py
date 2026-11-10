@@ -13,7 +13,7 @@ from nudge_builders import (
 )
 
 from stash.capture.nudge_replies import LINE_LIMIT, nudge_reply
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 from stash.nudges import DateReminder, FollowUp, StepReminder, StuckItem, WeeklyDigest
 
 LINE_OF_THE_BOUNDARY_LENGTH = 272
@@ -24,6 +24,13 @@ FULL_WIDTH_LINES_PER_MESSAGE = 13
 
 def full_width_follow_ups(count: int) -> list[FollowUp]:
     return [a_follow_up_whose_line_has(LINE_LIMIT, number) for number in range(count)]
+
+
+def smiley_follow_ups(count: int) -> list[FollowUp]:
+    return [
+        FollowUp(a_planned_date_night(id=f"item-{number}", title="😀" * 100), SATURDAY_MORNING)
+        for number in range(count)
+    ]
 
 
 def long_date_reminders(count: int) -> list[DateReminder]:
@@ -98,7 +105,7 @@ def test_the_text_of_a_message_over_the_telegram_limit_fits_it() -> None:
     rendered = nudge_reply(a_nudge_message(*follow_ups))
 
     # Assert
-    assert len(rendered.reply.text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(rendered.reply.text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_the_shown_nudges_are_exactly_the_ones_the_text_has_lines_for() -> None:
@@ -162,6 +169,17 @@ def test_the_offline_heading_counts_towards_the_telegram_limit() -> None:
 
     # Assert
     assert len(rendered.shown.due) == LINES_THAT_FIT_WITH_THE_HEADING
+
+
+def test_a_message_of_emoji_titles_shows_only_the_nudges_that_fit_in_utf16_units() -> None:
+    # Setup
+    follow_ups = smiley_follow_ups(30)
+
+    # Execute
+    rendered = nudge_reply(a_nudge_message(*follow_ups, catch_up=True))
+
+    # Assert
+    assert len(rendered.shown.due) == 19
 
 
 def test_a_follow_up_that_does_not_fit_gets_no_buttons() -> None:

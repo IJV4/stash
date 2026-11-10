@@ -5,7 +5,7 @@ from typing import Self, assert_never
 
 from stash.capture.occasions import emoji_of, occasion_of
 from stash.capture.pick_lines import pick_line
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT, Reply
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, Reply, telegram_length
 from stash.capture.wording import LINE_LIMIT, short_day
 from stash.domain import collapse_and_clip
 from stash.nudges.digest import UpcomingEntry, UpcomingItem, UpcomingPersonDate, UpcomingStep
@@ -67,7 +67,7 @@ def render_digest(digest: WeeklyDigest) -> Reply:
 
 
 def _fitted(sections: Mapping[_Part, _Section]) -> Mapping[_Part, _Section]:
-    if len(_text(sections)) <= TELEGRAM_TEXT_LIMIT:
+    if telegram_length(_text(sections)) <= TELEGRAM_TEXT_LIMIT:
         return sections
     giving_way = next((part for part in _SHRINKING_ORDER if sections[part].shown > 0), None)
     if giving_way is None:

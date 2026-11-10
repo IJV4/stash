@@ -4,7 +4,7 @@ from capture_rig import build_rig
 from link_builders import a_link_info
 
 from stash.capture import Duplicate, reply_for
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 from stash.domain import CaptureStatus, Stage
 
 TEN_THOUSAND = 10_000
@@ -79,7 +79,7 @@ def test_a_message_of_ten_thousand_characters_is_saved_whole_with_a_short_title_
     assert len(text) == TEN_THOUSAND
     assert result.item.note == text
     assert len(result.item.title) <= TITLE_LIMIT
-    assert len(reply_for(result).text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply_for(result).text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_an_image_with_no_caption_is_saved_untitled_without_asking_the_ai_and_confirmed() -> None:

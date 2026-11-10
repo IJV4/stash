@@ -7,6 +7,7 @@ from stash.capture.replies import (
     TELEGRAM_TEXT_LIMIT,
     reply_for,
     summary,
+    telegram_length,
 )
 from stash.capture.results import Deferred, Duplicate, Filed
 from stash.domain import ItemType
@@ -38,7 +39,7 @@ def test_a_summary_of_many_long_titles_never_exceeds_the_telegram_limit() -> Non
     reply = summary(results)
 
     # Assert
-    assert len(reply.text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply.text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_a_truncated_summary_keeps_the_total_in_its_header() -> None:
@@ -60,9 +61,9 @@ def test_a_truncated_summary_ends_by_counting_exactly_the_bullets_it_left_out() 
 
 def test_a_summary_one_character_too_long_is_truncated_with_a_tail() -> None:
     # Setup
-    header_and_newline = len("✅ Saved 2 items:\n")
+    header_and_newline = telegram_length("✅ Saved 2 items:\n")
     bullet = "• Places · "
-    room = TELEGRAM_TEXT_LIMIT - header_and_newline - 1 - 2 * len(bullet) + 1
+    room = TELEGRAM_TEXT_LIMIT - header_and_newline - 1 - 2 * telegram_length(bullet) + 1
     results = [a_filed("a" * (room // 2)), a_filed("b" * (room - room // 2))]
 
     # Execute
@@ -73,27 +74,34 @@ def test_a_summary_one_character_too_long_is_truncated_with_a_tail() -> None:
 
 
 def three_results_whose_first_two_bullets_total(length: int) -> list[Filed]:
-    room = length - 2 * len("• Places · ")
+    room = length - 2 * telegram_length("• Places · ")
     return [a_filed("a" * (room // 2)), a_filed("b" * (room - room // 2)), a_filed("c" * 200)]
 
 
 def test_a_truncated_summary_whose_tail_ends_exactly_at_the_limit_keeps_both_bullets() -> None:
     # Setup
-    tail_and_separators = len("✅ Saved 3 items:") + 3 + len("• …and 1 more")
+    tail_and_separators = (
+        telegram_length("✅ Saved 3 items:") + 3 + telegram_length("• …and 1 more")
+    )
     results = three_results_whose_first_two_bullets_total(TELEGRAM_TEXT_LIMIT - tail_and_separators)
 
     # Execute
     reply = summary(results)
 
     # Assert
-    assert (len(reply.text), reply.text.endswith("• …and 1 more")) == (TELEGRAM_TEXT_LIMIT, True)
+    assert (telegram_length(reply.text), reply.text.endswith("• …and 1 more")) == (
+        TELEGRAM_TEXT_LIMIT,
+        True,
+    )
 
 
 def test_a_truncated_summary_whose_tail_would_pass_the_limit_by_one_drops_the_second_bullet() -> (
     None
 ):
     # Setup
-    tail_and_separators = len("✅ Saved 3 items:") + 3 + len("• …and 1 more")
+    tail_and_separators = (
+        telegram_length("✅ Saved 3 items:") + 3 + telegram_length("• …and 1 more")
+    )
     results = three_results_whose_first_two_bullets_total(
         TELEGRAM_TEXT_LIMIT - tail_and_separators + 1
     )
@@ -103,6 +111,17 @@ def test_a_truncated_summary_whose_tail_would_pass_the_limit_by_one_drops_the_se
 
     # Assert
     assert reply.text.endswith("• …and 2 more")
+
+
+def test_a_summary_of_emoji_titles_keeps_only_the_bullets_that_fit_in_utf16_units() -> None:
+    # Setup
+    results = [a_filed("😀" * 100) for _ in range(25)]
+
+    # Execute
+    lines = summary(results).text.splitlines()
+
+    # Assert
+    assert (len(lines), lines[-1]) == (21, "• …and 6 more")
 
 
 def test_a_result_that_is_neither_filed_nor_deferred_is_refused_by_reply_for() -> None:

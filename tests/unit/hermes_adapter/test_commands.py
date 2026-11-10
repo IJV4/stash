@@ -14,7 +14,7 @@ from gate_rig import a_gate, a_sample
 from lifecycle_rig import a_lifecycle
 
 from stash.capture import Duplicate, Filed, IsRequest, ProcessResult
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 from stash.domain import Item, ItemType, Stage
 from stash.gpu_switch import GpuSwitch
 from stash.hermes_adapter.commands import GpuCommand, LibraryCommand, ListCommand, RetryCommand
@@ -86,7 +86,7 @@ def test_list_with_a_5000_character_argument_answers_within_the_telegram_limit()
     text = run(ListCommand(four_items()), "x" * 5000)
 
     # Assert
-    assert len(text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_list_shows_the_date_of_an_item_that_has_one() -> None:
@@ -140,7 +140,7 @@ def test_list_never_exceeds_the_telegram_text_limit() -> None:
     text = run(ListCommand(many_items(30, lambda number: f"{number} " + "x" * 500)))
 
     # Assert
-    assert len(text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_list_counts_the_lines_it_had_to_drop_to_fit() -> None:
@@ -149,6 +149,14 @@ def test_list_counts_the_lines_it_had_to_drop_to_fit() -> None:
 
     # Assert
     assert (len(lines) - 1) + int(lines[-1].split()[1].rstrip("+")) == 30
+
+
+def test_list_of_emoji_titles_keeps_only_the_lines_that_fit_in_utf16_units() -> None:
+    # Execute
+    lines = run(ListCommand(many_items(25, lambda _: "😀" * 100))).splitlines()
+
+    # Assert
+    assert (len(lines), lines[-1]) == (19, "…and 7 more")
 
 
 def test_list_lets_a_failing_store_propagate() -> None:
@@ -236,7 +244,7 @@ def test_retry_never_exceeds_the_telegram_text_limit() -> None:
     text = run(RetryCommand(ThreadNotingRetrier(results)))
 
     # Assert
-    assert len(text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(text) <= TELEGRAM_TEXT_LIMIT
 
 
 def kept_items(*titles: tuple[str, ItemType]) -> FreshStore:
@@ -282,7 +290,7 @@ def test_library_with_a_5000_character_argument_answers_within_the_telegram_limi
     text = run(a_library_command(FreshStore()), "x" * 5000)
 
     # Assert
-    assert len(text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_library_shows_at_most_20_items_and_counts_the_rest() -> None:
@@ -322,7 +330,7 @@ def test_library_never_exceeds_the_telegram_text_limit() -> None:
     text = run(a_library_command(many_kept_items(30, lambda number: f"{number} " + "x" * 100)))
 
     # Assert
-    assert len(text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_library_counts_the_lines_it_had_to_drop_to_fit() -> None:

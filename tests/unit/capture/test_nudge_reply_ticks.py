@@ -1,7 +1,7 @@
 from nudge_builders import SATURDAY_MORNING, stored_long_step_reminders
 from nudge_rig import a_nudge_rig
 
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 
 STEP_REMINDERS_TO_DELIVER = 60
 TICKS_ENOUGH_FOR_ALL = 20
@@ -46,4 +46,4 @@ def test_every_message_the_sixty_reminders_make_fits_the_telegram_limit() -> Non
     rig.tick_through([SATURDAY_MORNING] * TICKS_ENOUGH_FOR_ALL)
 
     # Assert
-    assert max(len(text) for _, text in rig.sent_texts()) <= TELEGRAM_TEXT_LIMIT
+    assert max(telegram_length(text) for _, text in rig.sent_texts()) <= TELEGRAM_TEXT_LIMIT

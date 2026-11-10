@@ -8,6 +8,7 @@ from stash.capture.results import DeferralReason, Deferred, Filed
 from stash.domain import Item, derive_title
 
 TELEGRAM_TEXT_LIMIT = 4096
+UTF16_UNIT_BYTES = 2
 DETAIL_KEYS = ("city", "author", "platform")
 GONE_TEXT = "That item no longer exists."
 CHANGED_TEXT = "That changed meanwhile — try again."
@@ -20,6 +21,11 @@ DEFERRED_TEXT = MappingProxyType[DeferralReason, str](
         "ai_unavailable": "📥 Saved — I'll file it once the AI is reachable.",
     }
 )
+
+
+# Telegram counts UTF-16 code units, so an emoji outside the BMP counts as 2.
+def telegram_length(text: str) -> int:
+    return len(text.encode("utf-16-le")) // UTF16_UNIT_BYTES
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,7 +48,7 @@ class Reply:
     def __post_init__(self) -> None:
         if not self.text.strip():
             raise ValueError("reply text must not be blank")
-        if len(self.text) > TELEGRAM_TEXT_LIMIT:
+        if telegram_length(self.text) > TELEGRAM_TEXT_LIMIT:
             raise ValueError(f"reply text exceeds {TELEGRAM_TEXT_LIMIT} characters")
         object.__setattr__(self, "buttons", tuple(tuple(row) for row in self.buttons))
 
@@ -115,12 +121,12 @@ def _bullet(result: Filed | Deferred) -> str:
 
 def _within_limit(header: str, bullets: list[str]) -> str:
     full = "\n".join([header, *bullets])
-    if len(full) <= TELEGRAM_TEXT_LIMIT:
+    if telegram_length(full) <= TELEGRAM_TEXT_LIMIT:
         return full
-    used = len(header) + 1 + len(_more(len(bullets)))
+    used = telegram_length(header) + 1 + telegram_length(_more(len(bullets)))
     kept: list[str] = []
     for bullet in bullets:
-        used += 1 + len(bullet)
+        used += 1 + telegram_length(bullet)
         if used > TELEGRAM_TEXT_LIMIT:
             break
         kept.append(bullet)

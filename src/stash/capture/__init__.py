@@ -23,6 +23,7 @@ from stash.capture.replies import (
     gone,
     reply_for,
     summary,
+    telegram_length,
 )
 from stash.capture.results import (
     UNEXPECTED_FAILURE_REASON,
@@ -69,5 +70,6 @@ __all__ = [
     "reply_for",
     "stage_menu",
     "summary",
+    "telegram_length",
     "type_menu",
 ]

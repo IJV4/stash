@@ -12,6 +12,7 @@ from stash.capture import (
     Filed,
     IsRequest,
     ProcessResult,
+    telegram_length,
 )
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
 from stash.gpu_switch import GpuSwitch
@@ -49,7 +50,7 @@ def _text(shown: Sequence[str], hidden: int, exact: bool) -> str:
 def _bounded(lines: Sequence[str], exact: bool = True) -> str:
     shown = list(lines[:LINE_CAP])
     hidden = len(lines) - len(shown)
-    while len(_text(shown, hidden, exact)) > TELEGRAM_TEXT_LIMIT:
+    while telegram_length(_text(shown, hidden, exact)) > TELEGRAM_TEXT_LIMIT:
         shown.pop()
         hidden += 1
     return _text(shown, hidden, exact)

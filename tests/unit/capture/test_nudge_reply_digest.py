@@ -8,7 +8,7 @@ from digest_builders import (
 from nudge_builders import a_follow_up_whose_line_has, a_nudge_message
 
 from stash.capture.nudge_replies import nudge_reply
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 from stash.capture.wording import LINE_LIMIT
 from stash.domain import NudgeKind
 from stash.nudges import FollowUp, WeeklyDigest
@@ -66,4 +66,4 @@ def test_a_digest_that_is_all_the_message_has_is_shown_even_when_it_is_the_longe
     reply = nudge_reply(a_nudge_message(digest)).reply
 
     # Assert
-    assert len(reply.text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply.text) <= TELEGRAM_TEXT_LIMIT

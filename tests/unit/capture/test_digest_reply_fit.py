@@ -10,7 +10,7 @@ from digest_builders import (
 )
 
 from stash.capture.digest_replies import render_digest
-from stash.capture.replies import TELEGRAM_TEXT_LIMIT
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 from stash.capture.wording import LINE_LIMIT
 from stash.domain import Item
 from stash.domain.item import TITLE_LIMIT
@@ -46,7 +46,7 @@ def section(heading: str, lines: list[str]) -> list[str]:
 
 
 def digest_filling_the_limit_exactly(with_title_length: Callable[[int], WeeklyDigest]) -> int:
-    short = len(render_digest(with_title_length(1)).text)
+    short = telegram_length(render_digest(with_title_length(1)).text)
     return 1 + TELEGRAM_TEXT_LIMIT - short
 
 
@@ -66,7 +66,7 @@ def test_text_of_exactly_the_telegram_limit_is_shown_whole() -> None:
     reply = render_digest(new_item_filling(title_length))
 
     # Assert
-    assert len(reply.text) == TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply.text) == TELEGRAM_TEXT_LIMIT
 
 
 def test_text_one_character_over_the_telegram_limit_shows_one_new_item_fewer() -> None:
@@ -191,7 +191,7 @@ def test_even_the_worst_case_digest_fits_the_telegram_limit() -> None:
     reply = render_digest(worst_case_digest())
 
     # Assert
-    assert len(reply.text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply.text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_the_worst_case_digest_still_lists_every_forgotten_item() -> None:
@@ -225,7 +225,7 @@ def test_a_digest_with_every_section_at_its_cap_and_the_longest_titles_fits_the_
     reply = render_digest(digest_with_every_section_at_its_cap_and_the_longest_titles())
 
     # Assert
-    assert len(reply.text) <= TELEGRAM_TEXT_LIMIT
+    assert telegram_length(reply.text) <= TELEGRAM_TEXT_LIMIT
 
 
 def test_that_digest_hides_no_forgotten_and_no_stuck_line() -> None:
