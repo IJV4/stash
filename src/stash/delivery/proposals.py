@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from stash.capture import Reply, proposal_reply
 from stash.domain import Item, Stage
-from stash.planning import Planning, PlanningRefused
+from stash.planning import Planning, PlanningRefused, Proposal
 from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
@@ -41,11 +41,13 @@ class ProposalDelivery:
         except Exception as error:
             logger.warning(PROPOSAL_FAILED_LOG, type(error).__name__)
             return
-        self._send(item, proposal_reply(proposal, day), send)
+        self._send(item, proposal, day, send)
 
-    def _send(self, item: Item, reply: Reply, send: Callable[[Reply], None]) -> None:
+    def _send(
+        self, item: Item, proposal: Proposal, day: dt.date, send: Callable[[Reply], None]
+    ) -> None:
         try:
-            send(reply)
+            send(proposal_reply(proposal, day))
         except Exception as error:
             logger.warning(PROPOSAL_SEND_FAILED_LOG, type(error).__name__)
             self._withdraw(item)

@@ -38,10 +38,11 @@ from suggestion_builders import picks_reply
 from stash.capture import Reply, proposal_reply
 from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.delivery.nudges import ALREADY_RECORDED_LOG, SEND_FAILED_LOG
-from stash.domain import NudgeKind
+from stash.delivery.proposals import PROPOSAL_SEND_FAILED_LOG
+from stash.domain import STEP_TEXT_LIMIT, NudgeKind
 from stash.llm import LlmError, LlmUnavailable
 from stash.nudges import Nudger
-from stash.planning import Planning, Proposal, ProposedStep
+from stash.planning import MAX_PROPOSED_STEPS, Planning, Proposal, ProposedStep
 from stash.store import StoreBusyError
 
 NUDGE_LOGGER = "stash.delivery.nudges"
@@ -310,6 +311,29 @@ def test_a_withdraw_that_fails_after_a_failed_send_does_not_stop_the_next_item_b
 
     # Assert
     assert len(sent) == 1
+
+
+def test_a_proposal_too_long_for_one_telegram_message_is_withdrawn_and_nothing_is_sent() -> None:
+    # Setup
+    store = FreshStore()
+    stored_date_night(store)
+    longest_steps = [
+        ProposedStep("😀" * STEP_TEXT_LIMIT, lead_days)
+        for lead_days in range(1, MAX_PROPOSED_STEPS + 1)
+    ]
+    planning = planning_over(store, FakeStepProposals(longest_steps))
+    sent: list[Reply] = []
+
+    # Execute
+    with recording_logs(PROPOSAL_LOGGER) as logs:
+        ProposalDelivery(planning, store).deliver(sent.append)
+
+    # Assert
+    assert (sent, store.steps_for(DATE_NIGHT_ID), logs.entries()) == (
+        [],
+        [],
+        [(logging.WARNING, PROPOSAL_SEND_FAILED_LOG % "ValueError")],
+    )
 
 
 def test_a_model_outage_skips_one_item_until_the_next_call_without_stopping_the_next_item() -> None:
