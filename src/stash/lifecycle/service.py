@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from stash.domain import Item, Outcome, Stage, frozen_strings
+from stash.domain import Item, ItemType, Outcome, Stage, frozen_strings
 from stash.lifecycle._guards import (
     refusing_what_the_domain_refuses,
     refusing_what_the_store_refuses_for_a_group,
@@ -70,6 +70,9 @@ class Lifecycle:
 
     def drop(self, item_id: str, reason: str | None) -> Item:
         return self._changed(item_id, lambda item, now: item.dropped(_unless_blank(reason), now))
+
+    def retype(self, item_id: str, item_type: ItemType) -> Item:
+        return self._changed(item_id, lambda item, now: item.retyped(item_type, now))
 
     def didnt_happen(self, item_id: str, on: date) -> Item:
         with self._store.writing():

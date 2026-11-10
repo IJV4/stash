@@ -3,7 +3,7 @@ from typing import Protocol
 
 from stash.capture.message import IncomingMessage
 from stash.capture.results import Deferred, Filed, ProcessResult
-from stash.domain import Filing, Item, Outcome, RawCapture, Step
+from stash.domain import Filing, Item, ItemType, Outcome, RawCapture, Stage, Step
 from stash.enrich.links import LinkInfo
 from stash.lifecycle.results import Completion, ItemHistory
 
@@ -16,6 +16,10 @@ class LifecycleActions(Protocol):
     def keep(self, item_id: str, kept: bool) -> Item: ...
 
     def didnt_happen(self, item_id: str, on: date) -> Item: ...
+
+    def set_stage(self, item_id: str, stage: Stage, reason: str | None = None) -> Item: ...
+
+    def retype(self, item_id: str, item_type: ItemType) -> Item: ...
 
     def history(self, item_id: str) -> ItemHistory: ...
 

@@ -2,19 +2,20 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from typing import assert_never
 from zoneinfo import ZoneInfo
 
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import FixAction, FixKind
-from stash.capture.completion_buttons import CompletionButtons
+from stash.capture.completion_buttons import CompletionButtons, answering
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.planning_buttons import PlanningButtons
 from stash.capture.ports import LifecycleActions, PlanningActions
-from stash.capture.replies import Reply, busy, confirmation, gone
+from stash.capture.replies import Reply, confirmation, gone
 from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
-from stash.store.port import Store, StoreBusyError, UnknownItemError
+from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,10 @@ class FixHandler:
         timezone: ZoneInfo,
     ) -> None:
         self._store = store
+        self._lifecycle = lifecycle
         self._log = CallbackLog(logger)
         self._completion = CompletionButtons(store, lifecycle, self._log, clock, timezone)
         self._planning = PlanningButtons(store, planning, self._log)
-        self._clock = clock
 
     def apply(self, data: str) -> Reply | Reroute:
         with self._store.writing():
@@ -97,7 +98,7 @@ class FixHandler:
         if item_type is None:
             self._log.invalid(Subject.ITEM, item.id, ItemType.__name__, argument)
             return gone()
-        return self._replaced(item, item.retyped(item_type, self._clock()))
+        return self._confirming(partial(self._lifecycle.retype, item.id, item_type))
 
     def _move(self, item: Item, argument: str | None) -> Reply:
         stage = enum_member(Stage, argument)
@@ -106,18 +107,11 @@ class FixHandler:
             return stage_menu(item)
         if not item.can_move_to(stage):
             return stage_menu(item)
-        return self._replaced(item, item.moved_to(stage, self._clock()))
+        reason = item.drop_reason if stage is Stage.DROPPED else None
+        return self._confirming(partial(self._lifecycle.set_stage, item.id, stage, reason))
 
-    def _replaced(self, read: Item, updated: Item) -> Reply:
-        try:
-            self._store.update_item(updated)
-        except UnknownItemError:
-            self._log.unknown(Subject.ITEM, read.id)
-            return gone()
-        except StoreBusyError:
-            self._log.busy()
-            return busy()
-        return confirmation(updated, unsure=False)
+    def _confirming(self, change: Callable[[], Item]) -> Reply:
+        return answering(lambda: confirmation(change(), unsure=False), self._log)
 
     def _question(self, capture_id: str) -> Reply | Reroute:
         capture = self._store.get_capture(capture_id)

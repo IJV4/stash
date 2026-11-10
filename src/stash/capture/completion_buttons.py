@@ -40,28 +40,28 @@ class CompletionButtons:
         self._timezone = timezone
 
     def done(self, item_id: str) -> Reply:
-        return self._answering(partial(self._completed, item_id))
+        return answering(partial(self._completed, item_id), self._log)
 
     def rate(self, outcome_id: str, argument: str | None) -> Reply:
         rating = rating_for(argument)
         if rating is None:
             self._log.invalid(Subject.OUTCOME, outcome_id, RATING_KIND, argument)
             return gone()
-        return self._answering(partial(self._rated, outcome_id, rating))
+        return answering(partial(self._rated, outcome_id, rating), self._log)
 
     def keep(self, item_id: str, argument: str | None) -> Reply:
         choice = enum_member(KeepChoice, argument)
         if choice is None:
             self._log.invalid(Subject.ITEM, item_id, KeepChoice.__name__, argument)
             return gone()
-        return self._answering(partial(self._kept, item_id, choice))
+        return answering(partial(self._kept, item_id, choice), self._log)
 
     def didnt_happen(self, item_id: str, argument: str | None) -> Reply:
         on = date_for(argument)
         if on is None:
             self._log.invalid(Subject.ITEM, item_id, DAY_KIND, argument)
             return gone()
-        return self._answering(partial(self._didnt_happen, item_id, on))
+        return answering(partial(self._didnt_happen, item_id, on), self._log)
 
     def _completed(self, item_id: str) -> Reply:
         history = self._lifecycle.history(item_id)
@@ -96,20 +96,21 @@ class CompletionButtons:
     def _didnt_happen(self, item_id: str, on: date) -> Reply:
         return didnt_happen_reply(self._lifecycle.didnt_happen(item_id, on))
 
-    def _answering(self, build_reply: Callable[[], Reply]) -> Reply:
-        try:
-            return build_reply()
-        except UnknownItem as error:
-            self._log.unknown(Subject.ITEM, error.item_id)
-            return gone()
-        except ItemChanged as error:
-            self._log.changed(Subject.ITEM, error.item_id)
-            return changed()
-        except StashBusy:
-            self._log.busy()
-            return busy()
-        except UnknownOutcome as error:
-            self._log.unknown(Subject.OUTCOME, error.outcome_id)
-            return gone()
-        except LifecycleRefused as error:
-            return refused(str(error))
+
+def answering(build_reply: Callable[[], Reply], log: CallbackLog) -> Reply:
+    try:
+        return build_reply()
+    except UnknownItem as error:
+        log.unknown(Subject.ITEM, error.item_id)
+        return gone()
+    except ItemChanged as error:
+        log.changed(Subject.ITEM, error.item_id)
+        return changed()
+    except StashBusy:
+        log.busy()
+        return busy()
+    except UnknownOutcome as error:
+        log.unknown(Subject.OUTCOME, error.outcome_id)
+        return gone()
+    except LifecycleRefused as error:
+        return refused(str(error))
