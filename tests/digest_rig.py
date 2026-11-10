@@ -38,9 +38,7 @@ def a_digest_rig(
     store = store or FreshStore()
     model = ScriptedChatModel(model_outcomes)
     schedule = a_nudge_schedule()
-    builder = DigestBuilder(
-        store, QuietPicks(SuggestionDesk(store, an_engine(model))), schedule, store
-    )
+    builder = DigestBuilder(store, QuietPicks(SuggestionDesk(store, an_engine(model))), schedule)
     nudger = Nudger(store, schedule, a_person_dates(store, schedule))
     rig = DigestRig(
         store, schedule, nudger, send, NudgeDelivery(nudger, builder), model=model, builder=builder

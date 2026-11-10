@@ -4,6 +4,7 @@ from typing import NoReturn
 
 from stash.domain import Item, Outcome
 from stash.store import _sql as sql
+from stash.store._checks import require_outcome_for_item, require_parent
 from stash.store._rows import item_from_row, item_values, outcome_values
 from stash.store._transaction import immediate_transaction
 from stash.store.port import (
@@ -12,8 +13,6 @@ from stash.store.port import (
     ParentIsGroupedError,
     UnknownCaptureError,
     UnknownItemError,
-    require_outcome_for_item,
-    require_parent,
 )
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"

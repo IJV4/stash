@@ -4,9 +4,10 @@ from collections.abc import Sequence
 
 from stash.domain import Step
 from stash.store import _sql as sql
+from stash.store._checks import require_steps_for_item
 from stash.store._rows import step_from_row, step_values
 from stash.store._transaction import immediate_transaction
-from stash.store.port import DuplicateStepError, UnknownItemError, require_steps_for_item
+from stash.store.port import DuplicateStepError, UnknownItemError
 
 
 class SqliteSteps:

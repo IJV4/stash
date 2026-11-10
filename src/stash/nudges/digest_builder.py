@@ -28,11 +28,11 @@ PREVIOUS_DIGESTS_WINDOW = dt.timedelta(weeks=PREVIOUS_DIGESTS, days=1)
 
 
 class DigestBuilder:
-    def __init__(self, store: Store, picks: PickSource, schedule: Schedule, people: Store) -> None:
+    def __init__(self, store: Store, picks: PickSource, schedule: Schedule) -> None:
         self._store = store
         self._picks = picks
         self._forgotten = _Forgotten(store, schedule)
-        self._upcoming = _Upcoming(store, schedule, people)
+        self._upcoming = _Upcoming(store, schedule)
 
     def build(self, due: WeeklyDigest, now: dt.datetime) -> WeeklyDigest:
         require_aware("now", now)
@@ -74,10 +74,10 @@ class _Forgotten:
 
 
 class _Upcoming:
-    def __init__(self, store: Store, schedule: Schedule, people: Store) -> None:
+    def __init__(self, store: Store, schedule: Schedule) -> None:
         self._store = store
         self._schedule = schedule
-        self._key_dates = PersonKeyDates(people)
+        self._key_dates = PersonKeyDates(store)
 
     def entries(self, now: dt.datetime) -> tuple[UpcomingEntry, ...]:
         first = self._schedule.local_date(now)

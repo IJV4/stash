@@ -94,7 +94,7 @@ def build_app(
         suggestions = SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone))
         schedule = Schedule(config.nudges, config.timezone)
         person_dates = PersonDates(sqlite, schedule, config.people.lead_days)
-        digests = DigestBuilder(sqlite, QuietPicks(suggestions), schedule, sqlite)
+        digests = DigestBuilder(sqlite, QuietPicks(suggestions), schedule)
         return StashApp(
             config=config,
             store=sqlite,

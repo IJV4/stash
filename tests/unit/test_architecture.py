@@ -46,6 +46,12 @@ TRANSACTION_IMPORTERS = (
     "stash.store._people",
     "stash.store._ledger",
 )
+CHECKS_IMPORTERS = (
+    "stash.store.sqlite",
+    "stash.store._item_writes",
+    "stash.store._steps",
+    "stash.store._people",
+)
 LLM_ADAPTERS = tuple(module for module in ADAPTER_MODULES if is_within(module, "stash.llm"))
 ENTRY_POINTS = (
     "stash.app",
@@ -229,6 +235,7 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         ("stash.store._people", SQLITE_STORE_IMPORTERS),
         ("stash.store._ledger", SQLITE_STORE_IMPORTERS),
         ("stash.store._transaction", TRANSACTION_IMPORTERS),
+        ("stash.store._checks", CHECKS_IMPORTERS),
         (ADAPTER_MODULE, ADAPTER_IMPORTERS),
         ("stash.store.backup", ADAPTER_IMPORTERS),
         ("stash.http_client", ADAPTER_IMPORTERS),
@@ -254,6 +261,7 @@ def test_the_store_port_has_no_storage_dependencies() -> None:
         "people",
         "ledger",
         "transaction",
+        "checks",
         "adapter",
         "store-backup",
         "http-client",

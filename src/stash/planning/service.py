@@ -4,8 +4,9 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from stash.domain import Item, Stage, Step
+from stash.planning.declines import Declines
 from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
-from stash.planning.ports import ProposalDeclines, StepProposals
+from stash.planning.ports import StepProposals
 from stash.planning.results import Proposal, ProposedStep
 from stash.store.port import Store, StoreBusyError, UnknownItemError
 
@@ -39,7 +40,7 @@ class Planning:
         self,
         store: Store,
         proposer: StepProposals,
-        declines: ProposalDeclines,
+        declines: Declines,
         new_id: Callable[[], str],
         clock: Callable[[], datetime],
         timezone: ZoneInfo,

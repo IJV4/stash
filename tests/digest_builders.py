@@ -53,7 +53,7 @@ def a_digest_builder(
     **config_overrides: object,
 ) -> DigestBuilder:
     schedule = a_nudge_schedule(**config_overrides)
-    return DigestBuilder(store, picks or FakePickSource(), schedule, store)
+    return DigestBuilder(store, picks or FakePickSource(), schedule)
 
 
 def a_due_digest(at: datetime = DIGEST_AT, *stuck: Item) -> WeeklyDigest:

@@ -24,6 +24,7 @@ from stash.domain import (
     utc_text,
 )
 from stash.store import _sql as sql
+from stash.store._checks import require_date_range, require_instant_range, require_non_negative
 from stash.store._connect import open_connection
 from stash.store._item_writes import SqliteItemWrites
 from stash.store._ledger import SqliteLedger
@@ -36,14 +37,7 @@ from stash.store._rows import (
     outcome_from_row,
 )
 from stash.store._steps import SqliteSteps
-from stash.store.port import (
-    DEFAULT_PAGE_SIZE,
-    BackupError,
-    UnknownCaptureError,
-    require_date_range,
-    require_instant_range,
-    require_non_negative,
-)
+from stash.store.port import DEFAULT_PAGE_SIZE, BackupError, UnknownCaptureError
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
 BUSY_TIMEOUT = timedelta(seconds=5)

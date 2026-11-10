@@ -66,7 +66,7 @@ def an_app(**overrides: Any) -> StashApp:
         "suggestions": suggestions,
         "nudge_delivery": NudgeDelivery(
             Nudger(store, schedule, a_person_dates(store, schedule)),
-            DigestBuilder(store, QuietPicks(suggestions), schedule, store),
+            DigestBuilder(store, QuietPicks(suggestions), schedule),
         ),
         "proposal_delivery": ProposalDelivery(planning, store),
         "gpu": gate,

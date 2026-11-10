@@ -17,11 +17,9 @@ from stash.domain import (
     RawCapture,
     Stage,
     Step,
-    require_aware,
 )
 
 DEFAULT_PAGE_SIZE = 20
-RANGE_ORDER_MESSAGE = "start must not be after end"
 BACKUP_LAST_SUCCESS_KEY = "backup.last_success"
 
 
@@ -66,64 +64,6 @@ class UnknownPersonError(Exception):
     def __init__(self, person_id: str) -> None:
         super().__init__(person_id)
         self.person_id = person_id
-
-
-def require_non_negative(name: str, value: int) -> None:
-    if value < 0:
-        raise ValueError(f"{name} must not be negative")
-
-
-def require_date_range(start: date, end: date) -> None:
-    if start > end:
-        raise ValueError(RANGE_ORDER_MESSAGE)
-
-
-def require_instant_range(start: datetime, end: datetime) -> None:
-    require_aware("start", start)
-    require_aware("end", end)
-    if start > end:
-        raise ValueError(RANGE_ORDER_MESSAGE)
-
-
-def require_parent(child: Item) -> str:
-    if child.parent_id is None:
-        raise ValueError(f"item {child.id!r} has no parent to be grouped under")
-    return child.parent_id
-
-
-def require_outcome_for_item(item: Item, outcome: Outcome) -> None:
-    if outcome.item_id != item.id:
-        raise ValueError(f"outcome {outcome.id!r} is for item {outcome.item_id!r}, not {item.id!r}")
-
-
-def require_steps_for_item(item_id: str, steps: Sequence[Step]) -> None:
-    seen: set[str] = set()
-    for step in steps:
-        if step.item_id != item_id:
-            raise ValueError(f"step {step.id!r} is for item {step.item_id!r}, not {item_id!r}")
-        if step.id in seen:
-            raise ValueError(f"step id {step.id!r} is repeated")
-        seen.add(step.id)
-
-
-def require_distinct_names(person: Person, others: Sequence[Person]) -> None:
-    for other in others:
-        if other.id != person.id and person.shares_a_name_with(other):
-            raise DuplicateNameError(person, other)
-
-
-def find_named(people: Sequence[Person], name: str) -> Person | None:
-    return next((person for person in people if person.answers_to(name)), None)
-
-
-class CaptureStore(Protocol):
-    def add_capture(self, capture: RawCapture) -> bool: ...
-
-    def set_capture_status(self, capture_id: str, status: CaptureStatus) -> None: ...
-
-    def get_capture(self, capture_id: str) -> RawCapture | None: ...
-
-    def pending_captures(self) -> list[RawCapture]: ...
 
 
 class ItemStore(Protocol):
@@ -171,7 +111,21 @@ class ItemStore(Protocol):
     def created_between(self, start: datetime, end: datetime) -> list[Item]: ...
 
 
-class OutcomeStore(Protocol):
+class SettingsStore(Protocol):
+    def get_setting(self, key: str) -> str | None: ...
+
+    def put_setting(self, key: str, value: str) -> None: ...
+
+
+class Store(ItemStore, SettingsStore, Protocol):
+    def add_capture(self, capture: RawCapture) -> bool: ...
+
+    def set_capture_status(self, capture_id: str, status: CaptureStatus) -> None: ...
+
+    def get_capture(self, capture_id: str) -> RawCapture | None: ...
+
+    def pending_captures(self) -> list[RawCapture]: ...
+
     def add_outcome(self, outcome: Outcome) -> None: ...
 
     def save_outcome(self, outcome: Outcome) -> None: ...
@@ -182,8 +136,6 @@ class OutcomeStore(Protocol):
 
     def get_outcome(self, outcome_id: str) -> Outcome | None: ...
 
-
-class StepStore(Protocol):
     def save_steps(self, item_id: str, steps: Sequence[Step]) -> None: ...
 
     def steps_for(self, item_id: str) -> list[Step]: ...
@@ -194,8 +146,6 @@ class StepStore(Protocol):
 
     def open_confirmed_steps(self) -> list[Step]: ...
 
-
-class PeopleStore(Protocol):
     def save_person(self, person: Person) -> None: ...
 
     def get_person(self, person_id: str) -> Person | None: ...
@@ -220,31 +170,11 @@ class PeopleStore(Protocol):
 
     def items_naming_people(self) -> list[Item]: ...
 
-
-class NudgeLedger(Protocol):
     def was_sent(self, key: NudgeKey) -> bool: ...
 
     def record_all_sent(self, nudges: Sequence[Nudge], sent_at: datetime) -> bool: ...
 
     def last_sent(self, kind: NudgeKind) -> datetime | None: ...
-
-
-class SettingsStore(Protocol):
-    def get_setting(self, key: str) -> str | None: ...
-
-    def put_setting(self, key: str, value: str) -> None: ...
-
-
-class Store(
-    CaptureStore,
-    ItemStore,
-    OutcomeStore,
-    StepStore,
-    PeopleStore,
-    NudgeLedger,
-    SettingsStore,
-    Protocol,
-): ...
 
 
 class StoreBusyError(Exception):

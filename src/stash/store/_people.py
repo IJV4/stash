@@ -4,6 +4,7 @@ from datetime import date
 
 from stash.domain import Item, ItemType, KeyDate, Person, occurrences_between
 from stash.store import _sql as sql
+from stash.store._checks import find_named, require_date_range, require_distinct_names
 from stash.store._rows import (
     item_from_row,
     key_date_from_row,
@@ -12,13 +13,7 @@ from stash.store._rows import (
     person_values,
 )
 from stash.store._transaction import immediate_transaction
-from stash.store.port import (
-    UnknownItemError,
-    UnknownPersonError,
-    find_named,
-    require_date_range,
-    require_distinct_names,
-)
+from stash.store.port import UnknownItemError, UnknownPersonError
 
 
 class SqlitePeople:

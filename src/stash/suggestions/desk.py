@@ -5,7 +5,7 @@ from typing import assert_never
 from stash.domain import Item, Pick, Stage
 from stash.llm import LlmUnavailable
 from stash.store.port import Store
-from stash.suggestions.ports import PickDesk, SuggestionPicker
+from stash.suggestions.ports import SuggestionPicker
 from stash.suggestions.results import (
     CONTEXT_LIMIT,
     ContextTooLong,
@@ -38,7 +38,7 @@ class SuggestionDesk:
 
 
 class QuietPicks:
-    def __init__(self, desk: PickDesk) -> None:
+    def __init__(self, desk: SuggestionDesk) -> None:
         self._desk = desk
 
     def picks(self, context: str, limit: int) -> tuple[Pick, ...]:

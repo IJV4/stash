@@ -7,10 +7,7 @@ from stash.planning.errors import (
     UnknownStep,
 )
 from stash.planning.parse import MAX_PROPOSED_STEPS, parse_steps
-from stash.planning.ports import (
-    ProposalDeclines,
-    StepProposals,
-)
+from stash.planning.ports import StepProposals
 from stash.planning.prompt import build_step_messages
 from stash.planning.proposer import StepProposer
 from stash.planning.results import Proposal, ProposedStep
@@ -26,7 +23,6 @@ __all__ = [
     "PlanningError",
     "PlanningRefused",
     "Proposal",
-    "ProposalDeclines",
     "ProposedStep",
     "StepProposals",
     "StepProposer",
