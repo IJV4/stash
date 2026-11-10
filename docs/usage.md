@@ -120,4 +120,6 @@ See `deploy/stash.toml.example`; every key has its default there. Unknown keys a
 - Install and run it on the PC (WSL2, Hermes profile, systemd units, NAS backup):
   `docs/deploy/wsl-setup.md`.
 - What still has to be verified against the live services: `docs/spike-m0.md`.
+- Taking new code onto the PC (backup first, config, order of steps, what to re-check):
+  `docs/superpowers/notes/2026-11-10-pc-ledger.md`.
 - Decisions behind the setup: `docs/adr/`.
