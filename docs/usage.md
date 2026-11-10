@@ -88,7 +88,7 @@ All of them answer JSON. Bad input answers `{"error": "..."}` and stores nothing
 
 ## Command line
 
-`stash [--config PATH] <command>`. The config defaults to `$STASH_CONFIG`.
+`stash <command> [--config PATH]`. The config defaults to `$STASH_CONFIG`.
 
 | Command | Does |
 |---|---|
