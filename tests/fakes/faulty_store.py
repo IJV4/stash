@@ -3,9 +3,20 @@ from typing import Any
 
 from fakes.store_factories import FreshStore
 
-from stash.store import StoreBusyError
+from stash.store import Store, StoreBusyError
 
 _OWN_ATTRIBUTES = frozenset({"fail_on", "fail_next", "calls", "record"})
+_STORE_MEMBERS = frozenset(name for name in dir(Store) if not name.startswith("_"))
+
+
+def _store_member(name: str) -> str:
+    if name not in _STORE_MEMBERS:
+        raise ValueError(f"{name!r} is not a public member of Store")
+    return name
+
+
+def _checked_faults(faults: Mapping[str, BaseException] | None) -> dict[str, BaseException]:
+    return {_store_member(name): error for name, error in (faults or {}).items()}
 
 
 class StoreFault(Exception):
@@ -20,14 +31,14 @@ class FaultyStore(FreshStore):
         fail_once: Mapping[str, BaseException] | None = None,
         record: bool = False,
     ) -> None:
-        self.fail_on: dict[str, BaseException] = dict(fail_on or {})
-        self._once: dict[str, BaseException] = dict(fail_once or {})
+        self.fail_on: dict[str, BaseException] = _checked_faults(fail_on)
+        self._once: dict[str, BaseException] = _checked_faults(fail_once)
         self.calls: list[str] = []
         self.record = record
         super().__init__()
 
     def fail_next(self, name: str, error: BaseException) -> None:
-        self._once[name] = error
+        self._once[_store_member(name)] = error
 
     def __getattribute__(self, name: str) -> Any:
         attribute = super().__getattribute__(name)

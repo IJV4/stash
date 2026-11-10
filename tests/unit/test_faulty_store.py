@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from builders import a_capture
 from fakes.faulty_store import FaultyStore, StoreFault
@@ -63,3 +65,21 @@ def test_a_fault_armed_for_the_next_call_fails_that_call_only() -> None:
 
     # Assert
     assert added
+
+
+# a real method rides along so stopping at the first key, or letting it excuse the rest, goes red
+ARMING_ROUTES = {
+    "fail_on": lambda name, error: FaultyStore(fail_on={"add_capture": error, name: error}),
+    "fail_once": lambda name, error: FaultyStore(fail_once={"add_capture": error, name: error}),
+    "fail_next": lambda name, error: FaultyStore().fail_next(name, error),
+}
+
+
+@pytest.mark.parametrize("name", ["add_captur", "__init__"])
+@pytest.mark.parametrize("arm", ARMING_ROUTES.values(), ids=ARMING_ROUTES.keys())
+def test_a_fault_armed_under_a_name_that_is_not_a_public_store_method_raises_value_error_naming_it(
+    arm: Callable[[str, BaseException], object], name: str
+) -> None:
+    # Execute / Assert
+    with pytest.raises(ValueError, match=name):
+        arm(name, StoreBusyError())
