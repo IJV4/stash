@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 from collections.abc import Iterator, Mapping, Sequence
-from contextlib import AbstractContextManager, closing, contextmanager
+from contextlib import closing, contextmanager
 from datetime import date, datetime, timedelta
 from enum import StrEnum
 from importlib.resources.abc import Traversable
@@ -36,7 +36,6 @@ from stash.store._rows import (
     outcome_from_row,
 )
 from stash.store._steps import SqliteSteps
-from stash.store._transaction import read_snapshot
 from stash.store.port import (
     DEFAULT_PAGE_SIZE,
     BackupError,
@@ -309,9 +308,6 @@ class SqliteStore:
     def put_setting(self, key: str, value: str) -> None:
         with self._lock:
             self._connection.execute(sql.UPSERT_SETTING, (key, value))
-
-    def read_snapshot(self) -> AbstractContextManager[None]:
-        return read_snapshot(self._connection)
 
     def backup_to(self, target: Path) -> None:
         try:

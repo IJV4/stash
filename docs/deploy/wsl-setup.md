@@ -16,7 +16,8 @@ them on the PC and fix this file if they differ.
    ```
    then `wsl --shutdown` from PowerShell and reopen Ubuntu.
 4. Copy `deploy/windows/wslconfig.example` to `%USERPROFILE%\.wslconfig`, then
-   `wsl --shutdown`.
+   `wsl --shutdown`. It sets mirrored networking (Windows 11 22H2+), so `localhost` works
+   both ways between Windows and WSL.
 
 **Check:** `ps -p 1 -o comm=` prints `systemd`; `nvidia-smi` shows the RTX 3080 Ti.
 
@@ -170,62 +171,11 @@ systemctl --user daemon-reload && systemctl --user enable --now stash-backup.tim
 **Check:** `systemctl --user list-timers` shows `stash-backup.timer`;
 `systemctl --user start stash-backup.service` writes `stash-YYYYMMDD.db` on the NAS.
 
-## 10. The HTML library on the home network
-
-`stash serve` shows the library to the phone on the home Wi-Fi. It is its own systemd
-user service, separate from the gateway, and read-only. Anyone on the network who has
-the token can read the library, so the token is the only lock: use a long random one
-and open the port to the Private network profile only.
-
-1. **Mirrored networking** (Windows 11 22H2+): `deploy/windows/wslconfig.example`
-   already sets `networkingMode=mirrored` (section 1, step 4). With it, a server inside
-   WSL listens on the PC's own LAN address. Check from PowerShell after
-   `wsl --shutdown`: `ipconfig` shows the PC's address (`<pc-ip>`).
-2. **Windows Firewall**: allow inbound TCP 8765 on **Private** networks only (elevated
-   PowerShell). Leave Public and Domain closed, so a guest or café network cannot
-   reach it:
-   ```powershell
-   New-NetFirewallRule -DisplayName "stash library" -Direction Inbound -Protocol TCP `
-     -LocalPort 8765 -Action Allow -Profile Private
-   ```
-   Check in `Get-NetConnectionProfile` that the home Wi-Fi is **Private**.
-   **(unverified)** Mirrored mode puts WSL behind the Hyper-V firewall, which blocks inbound
-   connections by default, so this second rule is probably needed too (PowerShell as
-   Administrator; `{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}` is WSL's VM creator id):
-   ```powershell
-   New-NetFirewallHyperVRule -Name "stash-library" -DisplayName "stash library" `
-     -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' `
-     -Protocol TCP -LocalPorts 8765 -Action Allow
-   ```
-   Record in `docs/spike-m0.md` #28 whether the phone needed it, and whether adding
-   `-Profiles Private` is accepted (so the rule stays off public networks).
-3. **Token**: make a long random token and keep it in a file only you can read. The
-   service reads it from there, so it never appears in the unit file or on a command line:
-   ```bash
-   mkdir -p ~/.config/stash
-   ( umask 077; printf 'STASH_LIBRARY_TOKEN=%s\n' "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" \
-       > ~/.config/stash/serve.env )
-   ```
-   It must be at least 24 characters of `A-Z a-z 0-9 - . _ ~` (`token_urlsafe` fits). The bind
-   address and port come from the optional `[library]` table in `stash.toml`
-   (`deploy/stash.toml.example`; default `0.0.0.0:8765`).
-4. **Service**:
-   ```bash
-   cp deploy/systemd/stash-serve.service ~/.config/systemd/user/
-   systemctl --user daemon-reload && systemctl --user enable --now stash-serve.service
-   ```
-   The unit assumes the checkout is at `~/projects/stash` and the config at
-   `~/.config/stash/stash.toml`, like `stash-backup.service`; edit it if yours differ.
-5. **Bookmark**: on the phone, on the home Wi-Fi, open
-   `http://<pc-ip>:8765/?k=<token>` once and add it to the bookmarks or the home screen.
-   The first visit also sets a cookie, so the page keeps opening if you drop `?k=`.
-   The token is in that URL: do not share it or paste it into chats.
-
-**Check:** `curl http://localhost:8765/healthz` prints `ok` inside WSL;
-`stash doctor` shows `library server` ticked; the phone shows the library at the
-bookmarked URL, and a wrong `?k=` shows a plain "not found". `docs/spike-m0.md` #28
-covers the phone and the guest network.
-
-## 11. M0 spike
+## 10. M0 spike
 
 Work through `docs/spike-m0.md` and record the go/no-go decision.
+
+> **If you set up `stash serve` from an earlier version:** disable `stash-serve.service`, delete
+> `~/.config/stash/serve.env`, remove both firewall rules (Windows Firewall and Hyper-V, both with
+> the display name "stash library") and any `[library]` table in `stash.toml` (stash refuses
+> unknown config tables).

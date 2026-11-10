@@ -163,11 +163,10 @@ Android share sheet / Telegram desktop
 │          ├─ link enrichment (yt-dlp metadata/captions)   │
 │          ├─ job queue: enrichment, Whisper transcription │
 │          ├─ scheduler: due reminders, catch-up, backups  │
-│          └─ HTML library renderer + LAN web server       │
+│          └─ HTML library renderer                        │
 │  NAS SMB share mounted → nightly DB backup (30 days)     │
 └──────────────────────────────────────────────────────────┘
 Windows Task Scheduler: start WSL + services at logon, keep WSL from idling out.
-.wslconfig: networkingMode=mirrored (LAN reachability of the HTML page).
 ```
 
 The plugin's core (domain model, store, scheduling logic, rendering) is plain
@@ -347,8 +346,8 @@ model = "<chosen by eval>"     # key comes from env OPENROUTER_API_KEY
 - Chat: list/filter/search ("books I read this year", "kept recipes"), inline
   paging.
 - Read-only **HTML library**: single self-contained HTML file, sent via
-  Telegram on `/library` (and kept on the PC), **and** served on the home LAN
-  (always current). Nothing published to the internet.
+  Telegram on `/library` and kept on the PC. Nothing published to the
+  internet.
 
 ### Backups
 
@@ -380,7 +379,7 @@ Each is usable on its own.
 - **M4 — People** and key dates.
 - **M5 — Transcripts:** captions + Whisper queue, summaries, draft takeaways.
   Image reading (OCR or vision, per M1 eval).
-- **M6 — HTML library:** Telegram file + LAN server.
+- **M6 — HTML library:** Telegram file.
 - **Later:** Gmail / Google import via Hermes' google-workspace skill.
 
 ## Decisions left to the builder
@@ -390,7 +389,7 @@ Each is usable on its own.
 - Scheduler mechanism, subject to spike finding #2.
 - Local model and quantization, subject to the eval.
 - Tool names/schemas exposed to the agent and the system prompt/skill text.
-- HTML styling; LAN server port.
+- HTML styling.
 - Hermes version to pin and the upgrade procedure.
 - WSL service setup details (systemd units, Task Scheduler entry,
   `.wslconfig`, SMB mount).

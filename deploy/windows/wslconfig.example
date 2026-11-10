@@ -1,5 +1,4 @@
 # %USERPROFILE%\.wslconfig  (then run `wsl --shutdown` in PowerShell)
-# Mirrored networking (Windows 11 22H2+) makes the stash HTML library served
-# inside WSL reachable from the home network, and localhost work both ways.
+# Mirrored networking (Windows 11 22H2+) makes localhost work both ways between Windows and WSL.
 [wsl2]
 networkingMode=mirrored

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 MAX_DOCUMENT_BYTES = 45 * 1000 * 1000
 LIBRARY_CAPTION = "📚 Your stash library"
 LIBRARY_SENT = "Library sent."
-LIBRARY_TOO_BIG = "Library too big to send — open it on the home network."
+LIBRARY_TOO_BIG = "Library too big to send — the copy is kept on the PC."
 LIBRARY_NOT_SENT = "Could not send the library file."
 NO_CHAT_FOR_LIBRARY = "No owner chat is set, so there is nowhere to send the library file."
 

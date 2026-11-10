@@ -15,7 +15,6 @@ PASSING_REPORT = [
     "! deno — not found on PATH (yt-dlp needs a JavaScript runtime for some sites)",
     "! tesseract — not found on PATH (needed for the OCR eval arm)",
     "! backup — no backup recorded yet",
-    "✔ library server — answering on port 8765",
 ]
 
 
@@ -134,34 +133,3 @@ def test_a_backup_made_three_days_ago_shows_an_optional_line_naming_the_days(
 
     # Assert
     assert lines == ["! backup — last success 3 days ago"]
-
-
-def library_server_line(rig: CliRig) -> list[str]:
-    return [line for line in rig.run("doctor").lines() if " library server — " in line]
-
-
-def test_a_library_server_that_answers_ok_on_the_configured_port_passes(tmp_path: Path) -> None:
-    # Setup
-    rig = build_cli_rig(tmp_path)
-    rig.listening_on("0.0.0.0", 9000)
-
-    # Execute
-    lines = library_server_line(rig)
-
-    # Assert
-    assert lines == ["✔ library server — answering on port 9000"]
-
-
-def test_a_library_server_that_is_not_running_is_an_optional_line_and_the_exit_code_stays_0(
-    tmp_path: Path,
-) -> None:
-    # Setup
-    rig = build_cli_rig(tmp_path)
-    rig.providers.library_listening = False
-
-    # Execute
-    result = rig.run("doctor")
-
-    # Assert
-    line = [line for line in result.lines() if line.startswith("! library server")]
-    assert (result.exit_code, len(line)) == (0, 1)

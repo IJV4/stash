@@ -53,9 +53,3 @@ manual_off_hours = 4.0              # how long `stash gpu off` lasts before it e
 # Reminders go out at nudges.reminder_time. Each entry is 0 to 365 and none may repeat.
 # [people]
 # lead_days = [14, 2, 0]
-
-# The read-only HTML library served on the LAN by `stash serve`. The token is read from the environment
-# variable STASH_LIBRARY_TOKEN (24+ characters of A-Z a-z 0-9 - . _ ~), never from this file.
-# [library]
-# bind = "0.0.0.0"
-# port = 8765

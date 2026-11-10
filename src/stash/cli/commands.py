@@ -1,13 +1,10 @@
-import logging
 from collections.abc import Callable, Iterable
 from datetime import date, datetime, tzinfo
 from pathlib import Path
 from typing import TextIO
 
-from stash.app import LibraryTokenMissing, ServingLibrary
 from stash.capture import CaptureIntake, Reply
-from stash.cli.failure import FAILURE, USAGE_ERROR, CommandFailed
-from stash.config import LibraryConfig
+from stash.cli.failure import FAILURE, CommandFailed
 from stash.delivery import NudgeDelivery
 from stash.doctor import Doctor
 from stash.domain import ItemType, Stage
@@ -32,8 +29,6 @@ from stash.rendering import (
 from stash.store import BackupError, BackupWriter, ItemStore
 
 MESSAGE_SEPARATOR = "\n\n"
-TOKEN_PLACEHOLDER = "<STASH_LIBRARY_TOKEN>"
-SERVE_LOG_FORMAT = "%(levelname)s %(message)s"
 
 
 def _emit(lines: Iterable[str], out: TextIO) -> None:
@@ -132,28 +127,4 @@ def tick(delivery: NudgeDelivery, now: datetime, dry_run: bool, out: TextIO) -> 
         replies = tuple(sent)
     if replies:
         print(MESSAGE_SEPARATOR.join(reply.text for reply in replies), file=out)
-    return 0
-
-
-def serve(make_server: Callable[[], ServingLibrary], library: LibraryConfig, out: TextIO) -> int:
-    logging.basicConfig(level=logging.INFO, format=SERVE_LOG_FORMAT)
-    try:
-        server = make_server()
-    except LibraryTokenMissing as error:
-        raise CommandFailed(str(error), USAGE_ERROR) from error
-    except OSError as error:
-        raise CommandFailed(
-            f"cannot listen on {library.bind}:{library.port}: {error}", FAILURE
-        ) from error
-    try:
-        print(
-            f"Serving the library on http://{library.bind}:{library.port}/?k={TOKEN_PLACEHOLDER}",
-            file=out,
-            flush=True,
-        )
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.shutdown()
     return 0

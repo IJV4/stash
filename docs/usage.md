@@ -92,7 +92,7 @@ All of them answer JSON. Bad input answers `{"error": "..."}` and stores nothing
 
 | Command | Does |
 |---|---|
-| `doctor` | Checks the config, the database, the AI providers, the GPU reading, the optional tools (yt-dlp, tesseract, deno), the last backup (< 48 h) and, if configured, the library server. |
+| `doctor` | Checks the config, the database, the AI providers, the GPU reading, the optional tools (yt-dlp, tesseract, deno) and the last backup (< 48 h). |
 | `list [--stage S] [--type T] [--limit N]` | Saved items. |
 | `show ITEM_ID` | An item's history. |
 | `library [--type T] [--limit N] [--html PATH]` | Kept items, or the whole library written as an HTML page. |
@@ -101,7 +101,6 @@ All of them answer JSON. Bad input answers `{"error": "..."}` and stores nothing
 | `gpu status\|on\|off` | Shows or switches the GPU gate. |
 | `backup --to DIR` | Writes `stash-YYYYMMDD.db` (the systemd timer runs it daily). |
 | `tick [--dry-run]` | The cron fallback for reminders. It prints nothing when nothing is due, and `--dry-run` marks nothing sent. |
-| `serve` | The read-only HTML library on the home network. It needs `STASH_LIBRARY_TOKEN` (24+ characters); open `http://<pc>:8765/?k=<token>` once and the browser keeps a cookie. It answers one request at a time, so a stalled client can make a page wait up to 10 s. |
 | `eval [--providers …] [--thinking default,off] [--arms …] [--cases PATH] [--out PATH]` | Compares local and OpenRouter models on the fake cases in `evals/cases.jsonl`, with a per-case section. |
 
 ## Configuration (`stash.toml`)
@@ -115,11 +114,10 @@ See `deploy/stash.toml.example`; every key has its default there. Unknown keys a
 | `[gpu]` | `min_free_vram_mib`, `max_foreign_utilization_pct`, `manual_off_hours`: when the GPU counts as busy, and how long `gpu off` lasts. |
 | `[nudges]` | `digest_day`, `digest_time`, `reminder_time`, `followup_time`, `forgotten_after_days`, `stuck_doing_days`, `tick_seconds`. Changing a time can repeat that day's sends once. |
 | `[people]` | `lead_days`. |
-| `[library]` | `bind`, `port`. The token comes from the environment, never from the file. |
 
 ## Deploying and live checks
 
-- Install and run it on the PC (WSL2, Hermes profile, systemd units, NAS backup, firewall):
+- Install and run it on the PC (WSL2, Hermes profile, systemd units, NAS backup):
   `docs/deploy/wsl-setup.md`.
 - What still has to be verified against the live services: `docs/spike-m0.md`.
 - Decisions behind the setup: `docs/adr/`.

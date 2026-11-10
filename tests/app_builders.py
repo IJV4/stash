@@ -12,7 +12,6 @@ from fakes.close_counter import CloseCounter
 from fakes.fake_suggestion_picker import FakeSuggestionPicker
 from fakes.ocr import FakeOcr
 from fakes.pending_intake import PendingIntake
-from fakes.recording_library_servers import RecordingLibraryServers
 from fakes.recording_unloader import RecordingUnloader
 from fakes.store_factories import FreshStore
 from gate_rig import a_gate, a_sample
@@ -83,7 +82,6 @@ def an_app(**overrides: Any) -> StashApp:
         "eval_targets": EvalTargets((), Thinking.DEFAULT),
         "ocr": FakeOcr(),
         "backups": a_backups(FakeBackupSource()),
-        "library_servers": RecordingLibraryServers(),
         "resources": CloseCounter(),
     }
     return StashApp(**{**fields, **overrides})

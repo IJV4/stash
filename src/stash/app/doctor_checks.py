@@ -14,7 +14,6 @@ from stash.doctor_probes import (
     PackageProbe,
 )
 from stash.gpu import GpuProbe
-from stash.library_server_probe import LibraryServerProbe
 from stash.llm import ProviderProbe
 from stash.llm.probes import OllamaProbe, OpenRouterModelProbe, OpenRouterProbe
 from stash.store import Store
@@ -43,7 +42,6 @@ def build_doctor(
             DoctorCheck.optional("deno", ExecutableProbe("deno", which, DENO_HINT)),
             DoctorCheck.optional("tesseract", ExecutableProbe("tesseract", which, TESSERACT_HINT)),
             DoctorCheck.optional("backup", BackupProbe(store, clock)),
-            DoctorCheck.optional("library server", LibraryServerProbe(config.library, client)),
         ]
     )
 

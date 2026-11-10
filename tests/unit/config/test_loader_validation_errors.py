@@ -31,6 +31,16 @@ def test_api_key_in_the_openrouter_table_says_to_put_secrets_in_env(tmp_path: Pa
     assert "put secrets in env" in message
 
 
+def test_api_key_in_the_file_is_refused_naming_its_full_path(tmp_path: Path) -> None:
+    # Execute
+    message = load_message(tmp_path, a_toml(tables=OLLAMA_TABLE + 'api_key = "sk-in-file"\n'))
+
+    # Assert
+    assert (
+        message == "llm.ollama.api_key is not allowed: put secrets in env, not in the config file"
+    )
+
+
 def test_api_key_in_the_file_is_never_echoed_in_the_error(tmp_path: Path) -> None:
     # Execute
     message = load_message(tmp_path, a_toml(tables=OLLAMA_TABLE + 'api_key = "sk-in-file"\n'))

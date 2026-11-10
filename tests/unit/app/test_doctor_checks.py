@@ -62,7 +62,6 @@ def test_only_the_configured_providers_get_a_check() -> None:
         "deno",
         "tesseract",
         "backup",
-        "library server",
     ]
 
 

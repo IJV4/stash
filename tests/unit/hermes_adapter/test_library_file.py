@@ -24,7 +24,7 @@ def test_a_library_over_the_limit_is_refused_and_nothing_is_sent() -> None:
     reply = asyncio.run(file.send())
 
     # Assert
-    assert (reply, outbox.files) == (LIBRARY_TOO_BIG, [])
+    assert (reply, outbox.files) == ("Library too big to send — the copy is kept on the PC.", [])
 
 
 def test_the_limit_counts_utf8_bytes_not_characters() -> None:

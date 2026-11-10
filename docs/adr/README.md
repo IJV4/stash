@@ -10,3 +10,4 @@ order; a changed decision gets a new ADR that supersedes the old one.
 | 0003 | OCR is an optional extra, adopted only if it beats vision | Accepted |
 | 0004 | Local model: qwen3.5 as baseline, 64k context set server-wide | Accepted (provisional) |
 | 0005 | stash in its own Hermes profile, hardened user service | Accepted |
+| 0006 | No LAN library server: the library is a Telegram file | Accepted |

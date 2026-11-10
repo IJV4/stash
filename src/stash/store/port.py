@@ -239,10 +239,6 @@ class SettingsStore(Protocol):
     def put_setting(self, key: str, value: str) -> None: ...
 
 
-class ReadSnapshotStore(Protocol):
-    def read_snapshot(self) -> AbstractContextManager[None]: ...
-
-
 class Store(
     CaptureStore,
     ItemStore,
@@ -251,7 +247,6 @@ class Store(
     PeopleStore,
     NudgeLedger,
     SettingsStore,
-    ReadSnapshotStore,
     Protocol,
 ): ...
 

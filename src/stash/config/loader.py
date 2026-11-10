@@ -7,7 +7,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from stash.config._section import Section
 from stash.config.errors import ConfigError
-from stash.config.library import LIBRARY_TOKEN_VAR, LibraryConfig
 from stash.config.model import (
     BUSY_FALLBACKS,
     DEFAULT_BURST_WINDOW_SECONDS,
@@ -49,9 +48,8 @@ def load_config(path: Path, env: Mapping[str, str]) -> StashConfig:
     gpu = _gpu_config(root.take_table_or_empty("gpu"))
     nudges = _nudge_config(root.take_table_or_empty("nudges"))
     people = _people_config(root.take_table_or_empty("people"))
-    library = _library_config(root.take_table_or_empty("library"), env)
     root.finish()
-    return StashConfig(data_dir, timezone, llm, gpu, nudges, burst_window_seconds, people, library)
+    return StashConfig(data_dir, timezone, llm, gpu, nudges, burst_window_seconds, people)
 
 
 def _read_toml(path: Path) -> dict[str, object]:
@@ -132,18 +130,6 @@ def _people_config(section: Section) -> PeopleConfig:
     people = PeopleConfig(lead_days=section.take_integers("lead_days", PeopleConfig().lead_days))
     section.finish()
     return people
-
-
-def _library_config(section: Section, env: Mapping[str, str]) -> LibraryConfig:
-    section.forbid("token", SECRETS_IN_ENV)
-    defaults = LibraryConfig()
-    library = LibraryConfig(
-        bind=section.take_text("bind", defaults.bind),
-        port=section.take_integer("port", defaults.port),
-        token=env.get(LIBRARY_TOKEN_VAR, "").strip() or None,
-    )
-    section.finish()
-    return library
 
 
 def _llm_config(section: Section, env: Mapping[str, str]) -> LlmConfig:

@@ -31,7 +31,6 @@ class Command(StrEnum):
     SHOW = "show"
     TICK = "tick"
     PEOPLE = "people"
-    SERVE = "serve"
 
 
 class GpuAction(StrEnum):
@@ -116,9 +115,6 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument("item_id")
     tick = commands.add_parser(Command.TICK, parents=[shared], help="send the nudges that are due")
     tick.add_argument("--dry-run", action="store_true", help="print them without marking them sent")
-    commands.add_parser(
-        Command.SERVE, parents=[shared], help="serve the HTML library on the home network"
-    )
     _add_people(commands, shared)
     return parser
 
