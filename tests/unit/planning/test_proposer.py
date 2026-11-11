@@ -1,17 +1,11 @@
-import logging
-
 import pytest
 from builders import BASE, LOS_ANGELES, NAIVE
 from fakes.chat_model import FakeChatModel
 from fakes.model_source import FakeModelSource
-from log_records import recording_logs
 from planning_builders import a_date_night, a_proposer, steps_reply
 
 from stash.llm import LlmBadOutput, LlmDeferred, LlmUnavailable
 from stash.planning import StepProposer
-
-PROPOSER_LOGGER = "stash.planning.proposer"
-MODEL_OUTPUT = "sk-secret-model-output {not json"
 
 
 def test_the_proposer_clamps_what_the_model_answered() -> None:
@@ -22,29 +16,13 @@ def test_the_proposer_clamps_what_the_model_answered() -> None:
     assert len(steps) == 10
 
 
-def test_an_unusable_model_answer_proposes_nothing() -> None:
+def test_an_unusable_model_answer_propagates() -> None:
     # Setup
-    proposer = a_proposer(FakeChatModel(error=LlmBadOutput(MODEL_OUTPUT)))
+    proposer = a_proposer(FakeChatModel(error=LlmBadOutput("not json")))
 
-    # Execute
-    steps = proposer.propose(a_date_night())
-
-    # Assert
-    assert steps == ()
-
-
-def test_an_unusable_answer_is_logged_naming_only_the_error_class() -> None:
-    # Setup
-    proposer = a_proposer(FakeChatModel(error=LlmBadOutput(MODEL_OUTPUT)))
-
-    # Execute
-    with recording_logs(PROPOSER_LOGGER) as recorder:
+    # Execute / Assert
+    with pytest.raises(LlmBadOutput):
         proposer.propose(a_date_night())
-
-    # Assert
-    assert recorder.entries() == [
-        (logging.WARNING, "step model gave unusable output: LlmBadOutput")
-    ]
 
 
 @pytest.mark.parametrize("error", [LlmUnavailable("down"), LlmDeferred("busy")], ids=repr)

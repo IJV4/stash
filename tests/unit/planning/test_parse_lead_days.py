@@ -5,27 +5,33 @@ from stash.domain import MAX_LEAD_DAYS, MIN_LEAD_DAYS
 from stash.planning import parse_steps
 
 NOT_WHOLE_NUMBERS = [True, False, 3.5, 3.0, "-3 days", "in 400 days", "7", None, [7], {"days": 7}]
+SIBLING_LEAD_DAYS = 3
 
 
 def lead_days_of(value: object) -> list[int]:
     return [step.lead_days for step in parse_steps({"steps": [a_raw_step(lead_days=value)]})]
 
 
+def lead_days_beside_a_valid_entry(entry: object) -> list[int]:
+    sibling = a_raw_step(lead_days=SIBLING_LEAD_DAYS)
+    return [step.lead_days for step in parse_steps({"steps": [entry, sibling]})]
+
+
 @pytest.mark.parametrize("value", NOT_WHOLE_NUMBERS, ids=repr)
 def test_an_entry_whose_lead_days_is_not_a_whole_number_is_skipped(value: object) -> None:
     # Execute
-    lead_days = lead_days_of(value)
+    lead_days = lead_days_beside_a_valid_entry(a_raw_step(lead_days=value))
 
     # Assert
-    assert lead_days == []
+    assert lead_days == [SIBLING_LEAD_DAYS]
 
 
 def test_an_entry_without_lead_days_is_skipped() -> None:
     # Execute
-    steps = parse_steps({"steps": [{"text": "Book the table"}]})
+    lead_days = lead_days_beside_a_valid_entry({"text": "Book the table"})
 
     # Assert
-    assert steps == ()
+    assert lead_days == [SIBLING_LEAD_DAYS]
 
 
 def test_lead_days_within_the_range_are_kept() -> None:

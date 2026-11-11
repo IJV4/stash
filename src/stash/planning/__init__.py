@@ -3,6 +3,7 @@ from stash.planning.errors import (
     PlanningBusy,
     PlanningError,
     PlanningRefused,
+    ProposalUnusable,
     UnknownItem,
     UnknownStep,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "PlanningError",
     "PlanningRefused",
     "Proposal",
+    "ProposalUnusable",
     "ProposedStep",
     "StepProposals",
     "StepProposer",

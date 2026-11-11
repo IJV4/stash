@@ -1,4 +1,5 @@
 PLANNING_BUSY = "the stash is busy with another change; try again in a moment"
+PROPOSAL_UNUSABLE = "the step model gave no usable steps"
 
 
 class PlanningError(Exception):
@@ -24,3 +25,8 @@ class PlanningRefused(PlanningError):
 class PlanningBusy(PlanningError):
     def __init__(self) -> None:
         super().__init__(PLANNING_BUSY)
+
+
+class ProposalUnusable(PlanningRefused):
+    def __init__(self) -> None:
+        super().__init__(PROPOSAL_UNUSABLE)

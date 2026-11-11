@@ -2,6 +2,7 @@ import pytest
 from planning_builders import a_raw_step
 
 from stash.domain import STEP_TEXT_LIMIT
+from stash.llm import LlmBadOutput
 from stash.planning import parse_steps
 
 NOT_A_LIST = ["Book the table", {"text": "Book the table"}, None, 3]
@@ -13,21 +14,23 @@ def texts_of(*entries: object) -> list[str]:
     return [step.text for step in parse_steps({"steps": list(entries)})]
 
 
-def test_an_answer_without_steps_proposes_nothing() -> None:
-    # Execute
-    steps = parse_steps({})
-
-    # Assert
-    assert steps == ()
+def test_an_answer_without_steps_is_unusable() -> None:
+    # Execute / Assert
+    with pytest.raises(LlmBadOutput):
+        parse_steps({})
 
 
 @pytest.mark.parametrize("value", NOT_A_LIST, ids=repr)
-def test_an_answer_whose_steps_are_not_a_list_proposes_nothing(value: object) -> None:
-    # Execute
-    steps = parse_steps({"steps": value})
+def test_an_answer_whose_steps_are_not_a_list_is_unusable(value: object) -> None:
+    # Execute / Assert
+    with pytest.raises(LlmBadOutput):
+        parse_steps({"steps": value})
 
-    # Assert
-    assert steps == ()
+
+def test_an_answer_whose_every_entry_is_invalid_is_unusable() -> None:
+    # Execute / Assert
+    with pytest.raises(LlmBadOutput):
+        parse_steps({"steps": [a_raw_step(lead_days=True), "Book the table"]})
 
 
 def test_an_empty_list_of_steps_proposes_nothing() -> None:

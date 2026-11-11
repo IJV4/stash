@@ -1,16 +1,27 @@
+import logging
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from stash.domain import Item, Stage, Step
+from stash.llm import LlmBadOutput
 from stash.planning.declines import Declines
-from stash.planning.errors import PlanningBusy, PlanningRefused, UnknownItem, UnknownStep
+from stash.planning.errors import (
+    PlanningBusy,
+    PlanningRefused,
+    ProposalUnusable,
+    UnknownItem,
+    UnknownStep,
+)
 from stash.planning.ports import StepProposals
 from stash.planning.results import Proposal, ProposedStep
 from stash.store.port import Store, StoreBusyError, UnknownItemError
 
+logger = logging.getLogger(__name__)
+
 NOT_PROPOSABLE = "only a planned item with a date and no steps can get proposed steps"
+UNUSABLE_OUTPUT_LOG = "step model gave unusable output: %s"
 
 
 @contextmanager
@@ -65,10 +76,15 @@ class Planning:
         item = self._item(item_id)
         if not self.needs_proposal(item):
             raise PlanningRefused(NOT_PROPOSABLE)
-        proposals = self._proposer.propose(item)
+        try:
+            proposals = self._proposer.propose(item)
+        except LlmBadOutput as error:
+            logger.warning(UNUSABLE_OUTPUT_LOG, type(error).__name__)
+            self._decline_if_still_proposable(item)
+            raise ProposalUnusable from error
         with self._store.writing(), _translating_store_errors():
             current = self._item(item_id)
-            if current.date != item.date or not self.needs_proposal(current):
+            if not self._still_needs_proposal(item, current):
                 raise PlanningRefused(NOT_PROPOSABLE)
             steps = self._as_unconfirmed_steps(item_id, proposals)
             if steps:
@@ -139,6 +155,15 @@ class Planning:
             done = self._step(step_id).confirmed_now().marked_done()
             self._store.save_step(done)
         return done
+
+    def _decline_if_still_proposable(self, asked_about: Item) -> None:
+        with self._store.writing(), _translating_store_errors():
+            current = self._item(asked_about.id)
+            if self._still_needs_proposal(asked_about, current):
+                self._declines.record(current)
+
+    def _still_needs_proposal(self, asked_about: Item, current: Item) -> bool:
+        return current.date == asked_about.date and self.needs_proposal(current)
 
     @contextmanager
     def _locked_item(self, item_id: str) -> Iterator[None]:

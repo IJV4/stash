@@ -1,11 +1,12 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, time, timedelta
 
 import pytest
 from builders import stored
 from digest_builders import stored_every_section
 from digest_rig import a_digest_rig
+from fakes.chat_model import FakeChatModel
 from fakes.failing_nudge_sender import FailingNudgeSender
 from fakes.fake_step_proposals import FakeStepProposals
 from fakes.ledger_recording_store import LedgerCrashed, LedgerRecordingStore
@@ -30,9 +31,10 @@ from planning_builders import (
     DATE_NIGHT_ON,
     RESCHEDULED_ON,
     a_date_night,
+    a_raw_step,
     stored_date_night,
 )
-from planning_rig import planning_over
+from planning_rig import a_planning, planning_over
 from suggestion_builders import picks_reply
 
 from stash.capture import Reply, proposal_reply
@@ -40,7 +42,7 @@ from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.delivery.nudges import ALREADY_RECORDED_LOG, SEND_FAILED_LOG
 from stash.delivery.proposals import PROPOSAL_SEND_FAILED_LOG
 from stash.domain import STEP_TEXT_LIMIT, NudgeKind
-from stash.llm import LlmError, LlmUnavailable
+from stash.llm import LlmBadOutput, LlmError, LlmUnavailable
 from stash.nudges import Nudger
 from stash.planning import MAX_PROPOSED_STEPS, Planning, Proposal, ProposedStep
 from stash.store import StoreBusyError
@@ -243,6 +245,47 @@ def test_after_a_nothing_to_prep_message_the_item_is_not_proposed_again() -> Non
 
     # Assert
     assert len(proposals.asked_about) == 1
+
+
+def test_a_model_that_answers_with_an_empty_list_gets_nothing_to_prep_sent() -> None:
+    # Setup
+    store = FreshStore()
+    stored_date_night(store)
+    planning = a_planning(store, FakeChatModel({"steps": []}))
+    sent: list[Reply] = []
+
+    # Execute
+    ProposalDelivery(planning, store).deliver(sent.append)
+
+    # Assert
+    assert sent == [Reply("🗓 Nothing to prep for Date night (Fri Feb 12).")]
+
+
+@pytest.mark.parametrize(
+    ("reply", "error"),
+    [
+        pytest.param(None, LlmBadOutput("not json"), id="unparseable"),
+        pytest.param({"steps": [a_raw_step(lead_days=True)]}, None, id="every-step-invalid"),
+        pytest.param({"answer": "no steps here"}, None, id="no-steps-list"),
+    ],
+)
+def test_an_unusable_model_answer_sends_nothing_and_is_not_asked_again(
+    reply: Mapping[str, object] | None, error: LlmError | None
+) -> None:
+    # Setup
+    store = FreshStore()
+    stored_date_night(store)
+    model = FakeChatModel(reply, error)
+    delivery = ProposalDelivery(a_planning(store, model), store)
+    sent: list[Reply] = []
+
+    # Execute
+    with recording_logs(PROPOSAL_LOGGER) as logs:
+        delivery.deliver(sent.append)
+        delivery.deliver(sent.append)
+
+    # Assert
+    assert (sent, len(model.calls), logs.entries()) == ([], 1, [])
 
 
 def test_at_most_three_items_are_proposed_per_call() -> None:
