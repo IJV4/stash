@@ -50,6 +50,20 @@ def test_a_truncated_summary_keeps_the_total_in_its_header() -> None:
     assert reply.text.startswith("✅ Saved 200 items:\n")
 
 
+def test_a_truncated_summary_with_a_deferred_capture_names_stash_retry_in_its_header() -> None:
+    # Setup
+    results = [
+        *[a_filed("x" * 120) for _ in range(199)],
+        Deferred(a_capture(text="Ramen"), DeferralReason.GPU_BUSY),
+    ]
+
+    # Execute
+    first_line = summary(results).text.splitlines()[0]
+
+    # Assert
+    assert first_line == "✅ Saved 200 items (send /stash_retry to file the 📥 ones):"
+
+
 def test_a_truncated_summary_ends_by_counting_exactly_the_bullets_it_left_out() -> None:
     # Execute
     lines = summary([a_filed("x" * 120) for _ in range(200)]).text.splitlines()

@@ -14,7 +14,8 @@ CHANGED_TEXT = "That changed meanwhile — try again."
 BUSY_TEXT = "The stash is busy — try again in a moment."
 REFUSED_TEXT = "I can't do that: {message}"
 DONE_LABEL = "Done ✓"
-DEFERRED_TEXT = "📥 Saved, not filed yet. Send /stash_retry to file it."
+RETRY_COMMAND = "/stash_retry"
+DEFERRED_TEXT = f"📥 Saved, not filed yet. Send {RETRY_COMMAND} to file it."
 
 
 # Telegram counts UTF-16 code units, so an emoji outside the BMP counts as 2.
@@ -43,7 +44,7 @@ class Reply:
         if not self.text.strip():
             raise ValueError("reply text must not be blank")
         if telegram_length(self.text) > TELEGRAM_TEXT_LIMIT:
-            raise ValueError(f"reply text exceeds {TELEGRAM_TEXT_LIMIT} characters")
+            raise ValueError(f"reply text exceeds {TELEGRAM_TEXT_LIMIT} UTF-16 code units")
         object.__setattr__(self, "buttons", tuple(tuple(row) for row in self.buttons))
 
 
@@ -99,8 +100,14 @@ def reply_for(result: Filed | Deferred) -> Reply:
 
 
 def summary(results: Sequence[Filed | Deferred]) -> Reply:
-    header = f"✅ Saved {len(results)} items:"
-    return Reply(_within_limit(header, [_bullet(result) for result in results]))
+    return Reply(_within_limit(_header(results), [_bullet(result) for result in results]))
+
+
+def _header(results: Sequence[Filed | Deferred]) -> str:
+    saved = f"✅ Saved {len(results)} items"
+    if any(isinstance(result, Deferred) for result in results):
+        return f"{saved} (send {RETRY_COMMAND} to file the 📥 ones):"
+    return f"{saved}:"
 
 
 def _bullet(result: Filed | Deferred) -> str:

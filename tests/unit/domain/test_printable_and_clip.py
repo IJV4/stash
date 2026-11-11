@@ -57,3 +57,20 @@ def test_a_c1_control_character_is_replaced_by_a_space() -> None:
 def test_a_unicode_line_or_paragraph_separator_becomes_a_space(separator: str) -> None:
     # Execute / Assert
     assert printable_and_clip(f"one{separator}two", 50) == "one two"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("👩\u200d💻 Coding", id="emoji-sequence"),
+        pytest.param("\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645", id="persian-zwnj"),
+    ],
+)
+def test_a_zero_width_joiner_or_non_joiner_inside_a_word_is_kept(text: str) -> None:
+    # Execute / Assert
+    assert printable_and_clip(text, 50) == text
+
+
+def test_a_unicode_tag_character_is_still_replaced_by_a_space() -> None:
+    # Execute / Assert
+    assert printable_and_clip("a\U000e0041b", 50) == "a b"

@@ -5,6 +5,8 @@ from urllib.parse import SplitResult, urlsplit
 
 HTTP_SCHEMES = frozenset({"http", "https"})
 NON_PRINTABLE_PLACEHOLDER = " "
+# ZWNJ and ZWJ are Cf, so isprintable() is False, yet they join emoji and Persian/Indic letters.
+JOINERS = frozenset({"\u200c", "\u200d"})
 _HOST_NAME = re.compile(r"[a-z0-9_.-]+")
 _IPV6_LITERAL = re.compile(r"[0-9a-f:.]+")
 
@@ -85,9 +87,16 @@ def collapse_and_clip(text: str, limit: int) -> str:
 
 
 def replace_non_printable(text: str) -> str:
+    if not _has_visible_character(text):
+        return NON_PRINTABLE_PLACEHOLDER * len(text)
     return "".join(
-        character if character.isprintable() else NON_PRINTABLE_PLACEHOLDER for character in text
+        character if character.isprintable() or character in JOINERS else NON_PRINTABLE_PLACEHOLDER
+        for character in text
     )
+
+
+def _has_visible_character(text: str) -> bool:
+    return any(character.isprintable() and not character.isspace() for character in text)
 
 
 def printable_and_clip(text: str, limit: int) -> str:

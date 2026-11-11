@@ -64,7 +64,7 @@ def test_a_title_from_the_answer_is_used() -> None:
     assert parse_filing({"title": "Ichiran ramen"}, FALLBACK).title == "Ichiran ramen"
 
 
-@pytest.mark.parametrize("title", ["", "   \n\t", None])
+@pytest.mark.parametrize("title", ["", "   \n\t", "\x1b\x07", "\u200b", "\u200c\u200d", None])
 def test_a_missing_or_blank_title_is_taken_from_the_text(title: str | None) -> None:
     # Assert
     assert parse_filing({"title": title}, FALLBACK).title == FALLBACK_TITLE

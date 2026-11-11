@@ -19,3 +19,13 @@ def test_derive_title_truncates_only_the_first_non_empty_line() -> None:
 def test_derive_title_skips_a_first_line_of_only_control_characters() -> None:
     # Assert
     assert derive_title("\x1b\x07\nRamen in Shibuya") == "Ramen in Shibuya"
+
+
+def test_derive_title_keeps_a_zero_width_joiner_inside_an_emoji_sequence() -> None:
+    # Assert
+    assert derive_title("👩\u200d💻 Coding") == "👩\u200d💻 Coding"
+
+
+def test_derive_title_skips_a_first_line_of_only_joiners_and_spaces() -> None:
+    # Assert
+    assert derive_title("\u200d \u200c\nRamen in Shibuya") == "Ramen in Shibuya"

@@ -15,6 +15,7 @@ from stash.domain import (
     enum_member,
     lacks_required_date,
     printable_and_clip,
+    replace_non_printable,
 )
 from stash.filing.schema import DATE_PATTERN, FILEABLE_STAGES
 
@@ -57,7 +58,7 @@ def parse_filing(raw: Mapping[str, object], fallback_text: str) -> Filing:
 
 
 def _title(value: object) -> str | None:
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str) or not replace_non_printable(value).strip():
         return None
     return derive_title(value)
 

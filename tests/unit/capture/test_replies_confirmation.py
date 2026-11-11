@@ -34,5 +34,5 @@ def test_a_reply_over_the_telegram_text_limit_raises_value_error() -> None:
 
 def test_a_reply_over_the_telegram_text_limit_in_utf16_units_raises_value_error() -> None:
     # Execute / Assert
-    with pytest.raises(ValueError, match="4096"):
+    with pytest.raises(ValueError, match="4096 UTF-16 code units"):
         Reply("😀" * 2049, ())
