@@ -14,3 +14,8 @@ def test_derive_title_of_whitespace_only_text_is_untitled() -> None:
 def test_derive_title_truncates_only_the_first_non_empty_line() -> None:
     # Assert
     assert derive_title("\n" + "y" * 150 + "\nshort") == "y" * 119 + "…"
+
+
+def test_derive_title_skips_a_first_line_of_only_control_characters() -> None:
+    # Assert
+    assert derive_title("\x1b\x07\nRamen in Shibuya") == "Ramen in Shibuya"

@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 
 import pytest
+from eval_builders import HOSTILE_TEXTS, HostileText
 
 from stash.evaluation import EvalField, load_cases
 
+MAX_CASE_ID_CHARACTERS = 64
 TEXT_CASE = {
     "id": "t01",
     "arm": "text",
@@ -245,3 +247,28 @@ def test_a_deeply_nested_line_is_reported_as_a_bad_line(tmp_path: Path) -> None:
 
     # Assert
     assert message.startswith("line 2: ")
+
+
+@pytest.mark.parametrize("hostile", HOSTILE_TEXTS)
+def test_a_case_id_with_unprintable_characters_is_loaded_with_them_replaced_and_clipped(
+    tmp_path: Path, hostile: HostileText
+) -> None:
+    # Setup
+    padded = {**TEXT_CASE, "id": hostile.padded_beyond(MAX_CASE_ID_CHARACTERS)}
+
+    # Execute
+    case = load_cases(write_cases(tmp_path, padded))[0]
+
+    # Assert
+    assert case.id == hostile.sanitised_and_clipped_to(MAX_CASE_ID_CHARACTERS)
+
+
+def test_ids_that_differ_only_by_unprintable_characters_are_reported_as_a_repeated_id(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    first = {**TEXT_CASE, "id": "t\x1b01"}
+    second = {**TEXT_CASE, "id": "t\x0701"}
+
+    # Execute / Assert
+    assert load_message(tmp_path, first, second).startswith("line 2: duplicate id 't 01'")

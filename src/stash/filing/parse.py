@@ -14,6 +14,7 @@ from stash.domain import (
     derive_title,
     enum_member,
     lacks_required_date,
+    printable_and_clip,
 )
 from stash.filing.schema import DATE_PATTERN, FILEABLE_STAGES
 
@@ -74,7 +75,7 @@ def _details(value: object) -> dict[str, str]:
     if not isinstance(value, dict):
         return {}
     pairs = (
-        (collapse_and_clip(key, DETAIL_KEY_LIMIT), collapse_and_clip(text, DETAIL_VALUE_LIMIT))
+        (collapse_and_clip(key, DETAIL_KEY_LIMIT), printable_and_clip(text, DETAIL_VALUE_LIMIT))
         for key, text in value.items()
         if isinstance(key, str) and isinstance(text, str)
     )

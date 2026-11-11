@@ -3,7 +3,7 @@ from datetime import tzinfo
 from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult
 from stash.capture.occasions import occasion_noun
 from stash.capture.wording import short_day
-from stash.domain import Item, Outcome, PersonSummary, collapse_and_clip
+from stash.domain import Item, Outcome, PersonSummary, printable_and_clip, replace_non_printable
 from stash.gpu import GpuStatus
 from stash.gpu_switch import GpuSwitchResult
 from stash.lifecycle import ItemHistory
@@ -26,16 +26,12 @@ INDENT = "  "
 BULLET = "• "
 
 
-def _printable(text: str) -> str:
-    return "".join(character if character.isprintable() else " " for character in text)
-
-
 def _preview(text: str) -> str:
-    return collapse_and_clip(_printable(text), TEXT_PREVIEW_CHARS)
+    return printable_and_clip(text, TEXT_PREVIEW_CHARS)
 
 
 def _clean(text: str) -> str:
-    return " ".join(_printable(text).split())
+    return " ".join(replace_non_printable(text).split())
 
 
 def _stars(rating: int) -> str:

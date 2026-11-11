@@ -274,3 +274,23 @@ def test_a_redelivered_question_reaches_the_agent_only_once() -> None:
 
     # Assert
     assert verdicts == [ALLOW, SKIP]
+
+
+def test_control_characters_in_the_models_answer_never_reach_the_stored_item_or_the_reply() -> None:
+    # Setup
+    answer = a_filing_answer(
+        title="Ramen\x1b[2J\x07 spot",
+        details={"city": "To\x1b]52;c;ZmFrZQ==\x07kyo", "note": "\x1b\x07"},
+    )
+    rig = build_hermes_rig(answer=answer)
+
+    # Execute
+    asyncio.run(rig.deliver(an_event()))
+
+    # Assert
+    [item] = rig.capture.store.list_items()
+    assert (rig.outbox.sent_texts(), item.title, dict(item.details)) == (
+        ["✅ Places · To ]52;c;ZmFrZQ== kyo · Want to"],
+        "Ramen [2J spot",
+        {"city": "To ]52;c;ZmFrZQ== kyo"},
+    )

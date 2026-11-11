@@ -6,6 +6,7 @@ from types import MappingProxyType
 
 from stash.domain._validation import (
     frozen_strings,
+    replace_non_printable,
     require_aware,
     require_http_url,
     require_max_length,
@@ -282,7 +283,7 @@ class Item:
 
 def derive_title(text: str) -> str:
     for line in text.splitlines():
-        collapsed = " ".join(line.split())
+        collapsed = " ".join(replace_non_printable(line).split())
         if collapsed:
             return _clipped(collapsed)
     return UNTITLED

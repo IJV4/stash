@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from stash.domain import require_text
+from stash.domain import printable_and_clip, require_text
 from stash.enrich import LinkInfo
 from stash.evaluation.case_json import (
     Fields,
@@ -17,6 +17,7 @@ from stash.evaluation.case_json import (
 from stash.evaluation.expectation import Expectation
 from stash.llm import ImagePart
 
+CASE_ID_LIMIT = 64
 IMAGE_MEDIA_TYPES = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
@@ -90,7 +91,7 @@ def _decode(line: str) -> object:
 def _parse_case(line: str, directory: Path) -> EvalCase:
     fields = Fields(_decode(line), "case")
     case = EvalCase(
-        id=text_of(fields.required("id"), "id"),
+        id=printable_and_clip(text_of(fields.required("id"), "id"), CASE_ID_LIMIT),
         kind=member(CaseKind, fields.required("arm"), "arm"),
         text=text_of(fields.required("text"), "text"),
         link=parse_link(fields.optional("link")),

@@ -84,8 +84,11 @@ def collapse_and_clip(text: str, limit: int) -> str:
     return " ".join(text.split())[:limit].rstrip()
 
 
-def printable_and_clip(text: str, limit: int) -> str:
-    replaced = "".join(
+def replace_non_printable(text: str) -> str:
+    return "".join(
         character if character.isprintable() else NON_PRINTABLE_PLACEHOLDER for character in text
     )
-    return collapse_and_clip(replaced, limit)
+
+
+def printable_and_clip(text: str, limit: int) -> str:
+    return collapse_and_clip(replace_non_printable(text), limit)
