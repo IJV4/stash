@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from fakes.fake_step_proposals import FakeStepProposals
 from fakes.faulty_store import FaultyStore
@@ -7,8 +9,8 @@ from planning_rig import planning_over
 
 from stash.domain import Item, Stage
 from stash.llm import LlmBadOutput
-from stash.planning import ProposalUnusable, ProposedStep, UnknownItem
-from stash.store import UnknownItemError
+from stash.planning import Planning, PlanningRefused, ProposalUnusable, ProposedStep, UnknownItem
+from stash.store import Store, UnknownItemError
 
 PROPOSALS = (ProposedStep("Book the table", 14),)
 
@@ -59,3 +61,32 @@ def test_an_unusable_answer_does_not_decline_an_item_changed_while_the_model_tho
 
     # Assert
     assert planning.needs_proposal(a_date_night(date=changed.date)) is True
+
+
+@pytest.mark.parametrize(
+    ("change", "step_texts"),
+    [
+        (
+            lambda _, planning: planning.add_step(DATE_NIGHT_ID, "Buy flowers", lead_days=7),
+            ["Buy flowers"],
+        ),
+        (lambda store, _: store.save_item(a_date_night(date=RESCHEDULED_ON)), []),
+        (lambda store, _: store.save_item(a_date_night(stage=Stage.DOING)), []),
+    ],
+    ids=["owner-added-step", "rescheduled", "no-longer-planned"],
+)
+def test_a_proposal_is_refused_and_steps_are_left_alone_if_the_item_changed_while_the_model_thought(
+    change: Callable[[Store, Planning], object], step_texts: list[str]
+) -> None:
+    # Setup
+    store = FreshStore()
+    stored_date_night(store)
+    proposals = FakeStepProposals(PROPOSALS, while_thinking=lambda: change(store, planning))
+    planning = planning_over(store, proposals)
+
+    # Execute
+    with pytest.raises(PlanningRefused):
+        planning.propose_for(DATE_NIGHT_ID)
+
+    # Assert
+    assert [step.text for step in store.steps_for(DATE_NIGHT_ID)] == step_texts

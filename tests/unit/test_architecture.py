@@ -39,7 +39,6 @@ ROWS_IMPORTERS = (
 )
 SQLITE_STORE_IMPORTERS = ("stash.store.sqlite",)
 TRANSACTION_IMPORTERS = (
-    "stash.store.sqlite",
     "stash.store._item_writes",
     "stash.store._migrate",
     "stash.store._steps",
