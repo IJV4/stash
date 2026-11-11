@@ -26,7 +26,7 @@ from stash.capture.replies import (
     telegram_length,
 )
 from stash.capture.results import (
-    UNEXPECTED_FAILURE_REASON,
+    DeferralReason,
     Deferred,
     Duplicate,
     Filed,
@@ -38,7 +38,6 @@ from stash.capture.serial import SerializedPipeline
 
 __all__ = [
     "QUESTION_PREFIX",
-    "UNEXPECTED_FAILURE_REASON",
     "AgentCapture",
     "AgentIntake",
     "BurstCoalescer",
@@ -46,6 +45,7 @@ __all__ = [
     "CaptureFiler",
     "CaptureIntake",
     "CapturePipeline",
+    "DeferralReason",
     "Deferred",
     "Duplicate",
     "Filed",

@@ -22,6 +22,7 @@ from stash.store import Store
 RAMEN_URL = "https://example.com/ramen-tokyo"
 SAMPLE_TEXT = "Ramen in Shibuya"
 QUESTION = "what can I do Saturday afternoon?"
+DEFERRED_REPLY = "📥 Saved, not filed yet. Send /stash_retry to file it."
 FORCED_QUESTION = "? what can I do"
 LINK_WITH_A_QUERY = "https://x.test/a?b=1"
 BARE_QUESTION_MARK = "?"

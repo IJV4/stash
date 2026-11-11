@@ -286,8 +286,8 @@ stash must stay out of the way when the GPU is busy:
   for free VRAM / utilization caused by others. Below threshold → busy mode.
 - **Manual switch:** `/gpu off` / `/gpu on` (also auto-expires after a few
   hours) for when I know I'm about to game.
-- **Busy mode:** captures are still saved raw and acknowledged ("saved, will
-  file it later"); AI filing and the Whisper queue wait until the GPU is free.
+- **Busy mode:** captures are still saved raw and acknowledged ("saved, not
+  filed yet; `/stash_retry` files it"); AI filing and the Whisper queue wait until the GPU is free.
   Optional config `busy_fallback = openrouter` sends filing to OpenRouter
   instead of waiting (default: wait — builder call, keeps it free and
   private). See *LLM providers* below.
@@ -337,7 +337,7 @@ model = "<chosen by eval>"     # key comes from env OPENROUTER_API_KEY
   config, so the whole bot switches together. A `stash doctor` command checks
   the active provider is reachable and the key and model are valid.
 - If the active provider fails (Ollama down, OpenRouter error), captures are
-  still saved raw and filing is retried later. Nothing is lost.
+  still saved raw and stay saved; `/stash_retry` files them. Nothing is lost.
 - The eval runs the same cases against both providers, so the switch is an
   informed one.
 

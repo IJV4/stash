@@ -5,7 +5,7 @@ from datetime import datetime
 from stash.capture.message import IncomingMessage
 from stash.capture.ports import AgentIntake
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
-from stash.capture.results import UNEXPECTED_FAILURE_REASON, Deferred, Filed
+from stash.capture.results import DeferralReason, Deferred, Filed
 from stash.domain import RawCapture, SourceRef
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class AgentCapture:
             return self._intake.process_agent(capture)
         except Exception:
             logger.exception(PROCESSING_FAILED_LOG, capture.id)
-            return Deferred(capture, UNEXPECTED_FAILURE_REASON)
+            return Deferred(capture, DeferralReason.UNEXPECTED)
 
     def _message(self, text: str, note: str | None) -> str:
         if not text.strip():

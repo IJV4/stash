@@ -4,6 +4,7 @@ import logging
 import pytest
 from capture_builders import (
     BARE_QUESTION_MARK,
+    DEFERRED_REPLY,
     FORCED_QUESTION,
     INDENTED_FORCED_QUESTION,
     LINK_WITH_A_QUERY,
@@ -88,7 +89,7 @@ def test_a_forced_question_whose_processing_raises_is_allowed_and_retried_as_a_r
     } == {
         "verdict": ALLOW,
         "logs": [(logging.ERROR, f"processing capture {1:032x} failed")],
-        "sent": ["📥 Saved — I'll file it once the AI is reachable."],
+        "sent": [DEFERRED_REPLY],
         "pending": 1,
         "retried": [IsRequest],
         "items": [],

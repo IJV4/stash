@@ -1,11 +1,11 @@
 from datetime import timedelta
 
 from builders import BASE
-from capture_builders import a_filing_answer, a_message
+from capture_builders import DEFERRED_REPLY, a_filing_answer, a_message
 from capture_narrowing import handle_deferred, handle_filed
 from capture_rig import BURST_WINDOW_SECONDS, build_rig
 
-from stash.capture import Filed, reply_for
+from stash.capture import DeferralReason, Filed, reply_for
 from stash.llm import LlmError, LlmUnavailable
 
 WINDOW = timedelta(seconds=BURST_WINDOW_SECONDS)
@@ -23,7 +23,7 @@ def test_a_busy_gpu_saves_the_capture_and_a_later_retry_files_it_without_a_secon
     retried = rig.pipeline.retry_pending()
 
     # Assert
-    assert reply_for(result).text == "📥 Saved — I'll file it when the GPU is free."
+    assert (result.reason, reply_for(result).text) == (DeferralReason.GPU_BUSY, DEFERRED_REPLY)
     assert pending_while_busy == 1
     assert [type(each) for each in retried] == [Filed]
     assert len(rig.store.list_items()) == 1
@@ -40,7 +40,10 @@ def test_an_unreachable_ai_saves_the_capture_and_a_later_retry_files_it() -> Non
     retried = rig.pipeline.retry_pending()
 
     # Assert
-    assert reply_for(result).text == "📥 Saved — I'll file it once the AI is reachable."
+    assert (result.reason, reply_for(result).text) == (
+        DeferralReason.AI_UNAVAILABLE,
+        DEFERRED_REPLY,
+    )
     assert pending_while_down == 1
     assert [type(each) for each in retried] == [Filed]
 
@@ -56,7 +59,10 @@ def test_a_rejected_key_is_treated_like_an_unreachable_ai_and_loses_nothing() ->
     rig.pipeline.retry_pending()
 
     # Assert
-    assert reply_for(result).text == "📥 Saved — I'll file it once the AI is reachable."
+    assert (result.reason, reply_for(result).text) == (
+        DeferralReason.AI_UNAVAILABLE,
+        DEFERRED_REPLY,
+    )
     assert pending_with_bad_key == 1
     assert len(rig.store.list_items()) == 1
 

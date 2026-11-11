@@ -1,6 +1,6 @@
 from builders import a_capture, an_item
 
-from stash.capture import Deferred, Filed
+from stash.capture import DeferralReason, Deferred, Filed
 
 
 class RecordingAgentCapturer:
@@ -16,4 +16,4 @@ class RecordingAgentCapturer:
         return self.result
 
     def defers(self) -> None:
-        self.result = Deferred(a_capture(), "ai_unavailable")
+        self.result = Deferred(a_capture(), DeferralReason.AI_UNAVAILABLE)

@@ -2,7 +2,6 @@ import pytest
 
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT
 from stash.capture.replies import (
-    DEFERRED_TEXT,
     TELEGRAM_TEXT_LIMIT,
     Button,
     Reply,
@@ -37,9 +36,3 @@ def test_a_reply_over_the_telegram_text_limit_in_utf16_units_raises_value_error(
     # Execute / Assert
     with pytest.raises(ValueError, match="4096"):
         Reply("😀" * 2049, ())
-
-
-def test_the_deferred_notices_cannot_be_changed_at_runtime() -> None:
-    # Execute / Assert
-    with pytest.raises(TypeError):
-        DEFERRED_TEXT["gpu_busy"] = "changed"  # type: ignore[index]

@@ -6,7 +6,7 @@ from fakes.pausing_scheduler import PausingScheduler
 from fakes.scripted_sender import ScriptedSender
 from log_records import recording_logs
 
-from stash.capture import BurstCoalescer, Deferred, Filed, reply_for, summary
+from stash.capture import BurstCoalescer, DeferralReason, Deferred, Filed, reply_for, summary
 from stash.hermes_adapter.bursts import RECHECK_SECONDS, ChatBurst
 
 LOGGER = "stash.hermes_adapter.bursts"
@@ -19,7 +19,7 @@ def a_filed(item_id: str = "i1") -> Filed:
 
 
 def a_deferred(capture_id: str = "c1") -> Deferred:
-    return Deferred(a_capture(id=capture_id), "gpu_busy")
+    return Deferred(a_capture(id=capture_id), DeferralReason.GPU_BUSY)
 
 
 def a_burst(

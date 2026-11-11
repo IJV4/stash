@@ -9,7 +9,7 @@ from stash.capture.replies import (
     summary,
     telegram_length,
 )
-from stash.capture.results import Deferred, Duplicate, Filed
+from stash.capture.results import DeferralReason, Deferred, Duplicate, Filed
 from stash.domain import ItemType
 
 
@@ -21,7 +21,7 @@ def test_a_summary_lists_a_deferred_capture_by_its_derived_title_as_not_filed_ye
     # Setup
     results = [
         a_filed("Dune", ItemType.BOOK),
-        Deferred(a_capture(text="Ramen\nnext line"), "gpu_busy"),
+        Deferred(a_capture(text="Ramen\nnext line"), DeferralReason.GPU_BUSY),
     ]
 
     # Execute

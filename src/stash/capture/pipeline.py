@@ -6,6 +6,7 @@ from datetime import datetime
 from stash.capture.message import IncomingMessage
 from stash.capture.ports import CaptureFiler, ItemLinker
 from stash.capture.results import (
+    DeferralReason,
     Deferred,
     Duplicate,
     Filed,
@@ -112,13 +113,13 @@ class CapturePipeline:
             logger.warning(
                 "capture %s deferred: ai_unavailable (%s)", capture.id, type(error).__name__
             )
-            return Deferred(capture, "ai_unavailable")
+            return Deferred(capture, DeferralReason.AI_UNAVAILABLE)
         facts = {} if link is None else link.facts()
         return _Classified(filing.with_facts(facts), first_url)
 
     def _gpu_busy(self, capture: RawCapture) -> Deferred:
         logger.info("capture %s deferred: gpu_busy", capture.id)
-        return Deferred(capture, "gpu_busy")
+        return Deferred(capture, DeferralReason.GPU_BUSY)
 
     def _resumed(self, capture: RawCapture, existing: Item) -> Filed:
         self._store.set_capture_status(capture.id, CaptureStatus.FILED)

@@ -4,7 +4,7 @@ from collections.abc import Coroutine
 from typing import assert_never
 
 from stash.capture import (
-    UNEXPECTED_FAILURE_REASON,
+    DeferralReason,
     Deferred,
     Duplicate,
     Filed,
@@ -104,7 +104,7 @@ class MessageIntake:
 
     def _queue_deferred_reply(self, capture: RawCapture, chat: Chat) -> None:
         try:
-            self._bursts.add(chat.chat_id, Deferred(capture, UNEXPECTED_FAILURE_REASON))
+            self._bursts.add(chat.chat_id, Deferred(capture, DeferralReason.UNEXPECTED))
         except Exception:
             logger.exception(QUEUE_FAILED_LOG, capture.id)
 

@@ -15,9 +15,8 @@ tests are named after the behaviour they pin.
   make sure it is treated as a question.
 - **Several messages at once.** They get one combined confirmation.
 
-When the GPU is busy or the AI is down, the reply says the message is saved and will be filed
-when the GPU is free or the AI is reachable. `/retry` (or `stash retry`) files
-what is pending.
+When the GPU is busy or the AI is down, the reply says the message is saved but not filed yet.
+Nothing retries on its own: `/stash_retry` (or `stash retry`) files what is pending.
 
 ## Buttons
 
@@ -72,7 +71,7 @@ again."; nothing is changed.
 | `/people` | One line per person with their next key date (the first 20, then "…and N more"). |
 | `/suggest [context]` | Up to 3 Want-to items that fit the moment. |
 | `/gpu status\|on\|off` | Show or switch the GPU gate (when off, stash uses OpenRouter or defers). |
-| `/retry` | File every pending capture. A capture that turns out to be a question says to send it again starting with `?`. |
+| `/stash_retry` | File every pending capture (Hermes keeps `/retry` for itself). A capture that turns out to be a question says to send it again starting with `?`. |
 
 **Agent tools**, used by the assistant:
 - `stash_search`, `stash_list`, `stash_get`, `stash_library` read items;

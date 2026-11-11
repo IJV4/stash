@@ -1,10 +1,9 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import assert_never
 
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT, FixAction, FixKind
-from stash.capture.results import DeferralReason, Deferred, Filed
+from stash.capture.results import Deferred, Filed
 from stash.domain import Item, derive_title
 
 TELEGRAM_TEXT_LIMIT = 4096
@@ -15,12 +14,7 @@ CHANGED_TEXT = "That changed meanwhile — try again."
 BUSY_TEXT = "The stash is busy — try again in a moment."
 REFUSED_TEXT = "I can't do that: {message}"
 DONE_LABEL = "Done ✓"
-DEFERRED_TEXT = MappingProxyType[DeferralReason, str](
-    {
-        "gpu_busy": "📥 Saved — I'll file it when the GPU is free.",
-        "ai_unavailable": "📥 Saved — I'll file it once the AI is reachable.",
-    }
-)
+DEFERRED_TEXT = "📥 Saved, not filed yet. Send /stash_retry to file it."
 
 
 # Telegram counts UTF-16 code units, so an emoji outside the BMP counts as 2.
@@ -74,8 +68,8 @@ def done_rows(item: Item) -> tuple[tuple[Button, ...], ...]:
     return ((Button(DONE_LABEL, FixAction(FixKind.DONE, item.id).encode()),),)
 
 
-def deferred(reason: DeferralReason) -> Reply:
-    return Reply(DEFERRED_TEXT[reason])
+def deferred() -> Reply:
+    return Reply(DEFERRED_TEXT)
 
 
 def gone() -> Reply:
@@ -99,7 +93,7 @@ def reply_for(result: Filed | Deferred) -> Reply:
         case Filed():
             return confirmation(result.item, result.unsure)
         case Deferred():
-            return deferred(result.reason)
+            return deferred()
         case _:
             assert_never(result)
 

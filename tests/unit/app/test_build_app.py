@@ -8,7 +8,7 @@ from fakes.search_path import FakeSearchPath
 from llm_rig import llm_toml
 
 from stash.app import StashApp, build_app
-from stash.capture import Deferred
+from stash.capture import DeferralReason, Deferred
 from stash.config import StashConfig
 from stash.config.loader import load_config
 from stash.evaluation.tesseract import TesseractOcr
@@ -43,7 +43,7 @@ def test_the_burst_coalescer_waits_for_the_configured_window(tmp_path: Path) -> 
     rig = CliRig(tmp_path, FIVE_SECOND_WINDOW + llm_toml("ollama"))
     app = built(rig)
     bursts = app.burst_factory()
-    bursts.add(Deferred(a_capture(), "gpu_busy"), NOON)
+    bursts.add(Deferred(a_capture(), DeferralReason.GPU_BUSY), NOON)
 
     # Execute
     early = bursts.due(NOON + timedelta(seconds=4))

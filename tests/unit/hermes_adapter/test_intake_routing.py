@@ -6,7 +6,7 @@ from hermes_events import ALLOW, SKIP
 from intake_harness import IntakeHarness
 from log_records import recording_logs
 
-from stash.capture import Deferred, Duplicate, Filed, IsRequest, ProcessResult
+from stash.capture import DeferralReason, Deferred, Duplicate, Filed, IsRequest, ProcessResult
 
 LOGGER = "stash.hermes_adapter.intake"
 
@@ -16,8 +16,8 @@ LOGGER = "stash.hermes_adapter.intake"
     [
         (Filed(an_item(), unsure=False), SKIP),
         (Filed(an_item(), unsure=True), SKIP),
-        (Deferred(a_capture(), "ai_unavailable"), SKIP),
-        (Deferred(a_capture(), "gpu_busy"), SKIP),
+        (Deferred(a_capture(), DeferralReason.AI_UNAVAILABLE), SKIP),
+        (Deferred(a_capture(), DeferralReason.GPU_BUSY), SKIP),
         (Duplicate(), SKIP),
         (IsRequest(a_capture()), ALLOW),
     ],

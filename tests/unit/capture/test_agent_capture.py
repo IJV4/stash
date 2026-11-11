@@ -4,6 +4,7 @@ from capture_builders import SAMPLE_TEXT
 from fakes.capture_filer import FakeCaptureFiler
 from fakes.recording_intake import RecordingIntake
 
+from stash.capture import DeferralReason, Deferred
 from stash.capture.agent import AgentCaptureError
 from stash.capture.replies import TELEGRAM_TEXT_LIMIT
 
@@ -73,6 +74,17 @@ def test_an_unexpected_filing_failure_leaves_the_raw_capture_pending() -> None:
 
     # Assert
     assert [capture.text for capture in rig.store.pending_captures()] == [SAMPLE_TEXT]
+
+
+def test_an_unexpected_filing_failure_is_deferred_with_the_unexpected_reason() -> None:
+    # Setup
+    rig = build_agent_rig(FakeCaptureFiler(error=RuntimeError("boom")))
+
+    # Execute
+    result = rig.agent.file(SAMPLE_TEXT)
+
+    # Assert
+    assert result == Deferred(rig.store.pending_captures()[0], DeferralReason.UNEXPECTED)
 
 
 def test_a_failure_saving_the_raw_capture_is_raised() -> None:

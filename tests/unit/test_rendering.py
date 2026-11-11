@@ -6,7 +6,7 @@ import pytest
 from builders import a_capture, an_item, an_outcome
 from people_builders import a_key_date, a_person
 
-from stash.capture import Deferred, Duplicate
+from stash.capture import DeferralReason, Deferred, Duplicate
 from stash.domain import Item, ItemType, KeyDateKind, NextKeyDate, Outcome, PersonSummary, Stage
 from stash.lifecycle import ItemHistory
 from stash.rendering import (
@@ -48,10 +48,18 @@ def test_terminal_control_characters_in_a_title_never_reach_the_line() -> None:
 
 def test_a_deferred_text_line_never_carries_control_characters() -> None:
     # Execute
-    line = result_line(Deferred(a_capture(text="Ramen\x1b[2J now"), "gpu_busy"))
+    line = result_line(Deferred(a_capture(text="Ramen\x1b[2J now"), DeferralReason.GPU_BUSY))
 
     # Assert
     assert line == "deferred (gpu_busy) — Ramen [2J now"
+
+
+def test_a_deferred_line_names_an_unreachable_ai_as_the_reason() -> None:
+    # Execute
+    line = result_line(Deferred(a_capture(text="Ramen"), DeferralReason.AI_UNAVAILABLE))
+
+    # Assert
+    assert line == "deferred (ai_unavailable) — Ramen"
 
 
 def test_a_duplicate_result_line_says_it_was_already_saved() -> None:

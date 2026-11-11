@@ -1,9 +1,13 @@
 import asyncio
+from collections.abc import Callable
 
-from capture_builders import QUESTION, a_filing_answer, a_request_answer
+import pytest
+from capture_builders import DEFERRED_REPLY, QUESTION, a_filing_answer, a_request_answer
 from fakes.raising_intake import RaisingIntake
+from hermes_ctx_builders import a_hermes_context
 from hermes_events import ALLOW, SKIP, STRANGER_ID, an_event
-from hermes_rig import build_hermes_rig
+from hermes_registration_rig import register_stash
+from hermes_rig import HermesRig, app_over, build_hermes_rig, called
 
 from stash.llm import LlmUnavailable
 
@@ -118,7 +122,7 @@ def test_when_the_ai_is_down_the_owner_is_told_it_is_saved_and_the_capture_stays
 
     # Assert
     assert (rig.outbox.sent_texts(), len(rig.capture.store.pending_captures())) == (
-        ["📥 Saved — I'll file it once the AI is reachable."],
+        [DEFERRED_REPLY],
         1,
     )
 
@@ -158,8 +162,47 @@ def test_when_filing_raises_the_owner_is_told_it_is_saved_and_the_capture_stays_
     # Assert
     assert (verdict, rig.outbox.sent_texts(), len(rig.capture.store.pending_captures())) == (
         SKIP,
-        ["📥 Saved — I'll file it once the AI is reachable."],
+        [DEFERRED_REPLY],
         1,
+    )
+
+
+@pytest.mark.parametrize(
+    ("build", "gpu_busy_while_capturing"),
+    [
+        pytest.param(lambda: build_hermes_rig(answer=a_filing_answer()), True, id="gpu-busy"),
+        pytest.param(
+            lambda: build_hermes_rig(outcomes=[LlmUnavailable("down"), a_filing_answer()]),
+            False,
+            id="ai-down",
+        ),
+        pytest.param(
+            lambda: build_hermes_rig(
+                answer=a_filing_answer(),
+                wrap=lambda inner: RaisingIntake(inner, on_process=FilingExploded("boom")),
+            ),
+            False,
+            id="filing-raises",
+        ),
+    ],
+)
+def test_a_deferred_capture_gets_the_one_reply_and_stash_retry_then_files_it(
+    build: Callable[[], HermesRig], gpu_busy_while_capturing: bool
+) -> None:
+    # Setup
+    rig = build()
+    rig.capture.busy.busy = gpu_busy_while_capturing
+
+    # Execute
+    asyncio.run(rig.deliver(an_event()))
+    rig.capture.busy.busy = False
+    plugin = register_stash(app_over(rig.capture), a_hermes_context(reserved={"retry"}))
+    answer = asyncio.run(called(plugin.ctx.commands["stash-retry"], ""))
+
+    # Assert
+    assert (rig.outbox.sent_texts(), answer) == (
+        [DEFERRED_REPLY],
+        "filed — Places · Ichiran ramen · Want to",
     )
 
 

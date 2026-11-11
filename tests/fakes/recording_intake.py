@@ -1,6 +1,6 @@
 from builders import a_capture
 
-from stash.capture import Deferred, Duplicate, Filed, IncomingMessage, ProcessResult
+from stash.capture import DeferralReason, Deferred, Duplicate, Filed, IncomingMessage, ProcessResult
 from stash.domain import RawCapture
 
 
@@ -10,7 +10,7 @@ class RecordingIntake:
         self.messages: list[IncomingMessage] = []
         self.capture = a_capture()
         self.result: ProcessResult = Duplicate()
-        self.agent_result: Filed | Deferred = Deferred(self.capture, "ai_unavailable")
+        self.agent_result: Filed | Deferred = Deferred(self.capture, DeferralReason.AI_UNAVAILABLE)
         self.fail_next: Exception | None = None
         self.receive_error: Exception | None = None
         self.duplicate = False

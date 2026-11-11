@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 from builders import BASE, NAIVE, a_capture, an_item
 
-from stash.capture import BurstCoalescer, Deferred, Filed, reply_for, summary
+from stash.capture import BurstCoalescer, DeferralReason, Deferred, Filed, reply_for, summary
 
 WINDOW_SECONDS = 5.0
 WINDOW = timedelta(seconds=WINDOW_SECONDS)
@@ -14,7 +14,7 @@ def a_filed(title: str = "Ramen") -> Filed:
 
 
 def a_deferred(capture_id: str = "c1") -> Deferred:
-    return Deferred(a_capture(id=capture_id), "ai_unavailable")
+    return Deferred(a_capture(id=capture_id), DeferralReason.AI_UNAVAILABLE)
 
 
 def test_a_negative_window_raises_value_error() -> None:
@@ -26,7 +26,7 @@ def test_a_negative_window_raises_value_error() -> None:
 def test_filed_and_deferred_results_are_summarised_together() -> None:
     # Setup
     bursts = BurstCoalescer(WINDOW_SECONDS)
-    results = [a_filed(), Deferred(a_capture(), "ai_unavailable")]
+    results = [a_filed(), Deferred(a_capture(), DeferralReason.AI_UNAVAILABLE)]
     for result in results:
         bursts.add(result, BASE)
 

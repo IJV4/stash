@@ -1,10 +1,13 @@
 from dataclasses import dataclass
-from typing import Final, Literal
+from enum import StrEnum
 
 from stash.domain import Item, RawCapture
 
-DeferralReason = Literal["gpu_busy", "ai_unavailable"]
-UNEXPECTED_FAILURE_REASON: Final[DeferralReason] = "ai_unavailable"
+
+class DeferralReason(StrEnum):
+    GPU_BUSY = "gpu_busy"
+    AI_UNAVAILABLE = "ai_unavailable"
+    UNEXPECTED = "unexpected"
 
 
 @dataclass(frozen=True, slots=True)
