@@ -13,7 +13,8 @@ tests are named after the behaviour they pin.
 - **An image.** It is read by the vision model, and filed like a thought.
 - **A question.** It goes to the assistant instead of being filed. Start a message with `?` to
   make sure it is treated as a question.
-- **Several messages at once.** They get one combined confirmation.
+- **Several messages at once.** They get one combined confirmation. If some of them could not be
+  filed yet, its first line says so and names `/stash_retry`.
 
 When the GPU is busy or the AI is down, the reply says the message is saved but not filed yet.
 Nothing retries on its own: `/stash_retry` (or `stash retry`) files what is pending.
@@ -67,7 +68,7 @@ again."; nothing is changed.
 |---|---|
 | `/list [stage]` | Newest items, one per line. |
 | `/library [type]` | Kept items. |
-| `/library html` | The whole library as one HTML file (also saved as `data_dir/library/latest.html`). Over 45 MB it is refused. |
+| `/library html` | The whole library as one HTML file (also saved as `data_dir/library/latest.html`). Over 45 MB it is not sent; the copy is still saved. |
 | `/people` | One line per person with their next key date (the first 20, then "…and N more"). |
 | `/suggest [context]` | Up to 3 Want-to items that fit the moment. |
 | `/gpu status\|on\|off` | Show or switch the GPU gate (when off, stash uses OpenRouter or defers). |
@@ -87,7 +88,8 @@ All of them answer JSON. Bad input answers `{"error": "..."}` and stores nothing
 
 ## Command line
 
-`stash <command> [--config PATH]`. The config defaults to `$STASH_CONFIG`.
+`stash <command> [--config PATH]`. The config is `--config`, else `$STASH_CONFIG`, else
+`~/.config/stash/stash.toml`.
 
 | Command | Does |
 |---|---|

@@ -267,7 +267,8 @@ The eval set covers routing.
    recorded as an ADR.
 8. **Bursts (builder call):** several messages arriving within a short window
    (e.g. forwarding a backlog) get one combined confirmation instead of one
-   reply each; filing and enrichment are queued.
+   reply each; filing and enrichment are queued. If any of them is deferred
+   (see *Busy mode* below), the confirmation's first line names `/stash_retry`.
 
 ### Tool scope (builder call)
 
@@ -287,7 +288,8 @@ stash must stay out of the way when the GPU is busy:
 - **Manual switch:** `/gpu off` / `/gpu on` (also auto-expires after a few
   hours) for when I know I'm about to game.
 - **Busy mode:** captures are still saved raw and acknowledged ("saved, not
-  filed yet; `/stash_retry` files it"); AI filing and the Whisper queue wait until the GPU is free.
+  filed yet; `/stash_retry` files it"); AI filing does not run while the GPU is busy, and the
+  Whisper queue likewise.
   Optional config `busy_fallback = openrouter` sends filing to OpenRouter
   instead of waiting (default: wait — builder call, keeps it free and
   private). See *LLM providers* below.
