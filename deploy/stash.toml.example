@@ -11,12 +11,13 @@ busy_fallback = "wait"              # "wait" defers filing while the GPU is busy
 
 [llm.ollama]
 base_url = "http://localhost:11434/v1"
-model = "hermes3:8b"                # replace with the model the stash eval picks
+model = "qwen3.5:latest"           # replace with the model the stash eval picks
 # vision_model = "qwen2.5vl:7b"     # optional, used by the image eval arm
 
 [llm.openrouter]
 # base_url = "https://openrouter.ai/api/v1"
-model = "nousresearch/hermes-4-70b" # example id, unverified — use one from the eval report
+# placeholder (no spaces allowed): an id OpenRouter does not offer makes `stash doctor` fail the `openrouter model` check
+model = "<id-from-the-eval-report>"
 # vision_model = "..."              # optional
 # The key comes from the environment: export OPENROUTER_API_KEY=...
 
@@ -28,8 +29,9 @@ model = "nousresearch/hermes-4-70b" # example id, unverified — use one from th
 # Model thinking per task. "default" (unlisted tasks) sends no thinking field; "off" asks the provider to skip thinking.
 # [llm.thinking]
 # filing = "off"   # stash's own calls only; Hermes agent turns are configured in Hermes
-# Today only filing has a production LLM call, so vision and suggestions have no effect yet outside
-# the eval; the eval's runs follow --thinking (default: the filing setting).
+# Tasks: filing, suggestions, vision. `suggestions` also covers step proposals (planning/proposer.py
+# asks for LlmTask.SUGGESTIONS); `vision` has no production call until Plan 5.
+# The eval's runs follow --thinking (default: the filing setting).
 
 [gpu]
 min_free_vram_mib = 9000            # below this much VRAM free for stash => busy

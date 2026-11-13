@@ -9,6 +9,6 @@ behaves from the owner's side is in `docs/usage.md`.
 ## Development
 
     make install   # uv sync
-    make check     # ruff format --check, ruff check, mypy --strict src, pytest
+    make check     # ruff format --check, ruff check, mypy --strict src tests/fakes, pytest
 
 Only fake data belongs in this repo; the test suite never touches the network.

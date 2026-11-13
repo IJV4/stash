@@ -204,6 +204,8 @@ the unit summarizer and worker tests, `tests/acceptance/test_transcripts.py`.
 
 ### Task 5: Image reading for captures
 
+Plan 8 notes: (a) `media_root` is `data_dir/media` (T12), not the Hermes cache. (b) An image with an empty caption must reach the reader (today `Filer.file` returns an Inbox filing when text is blank and there is no link, and `Filer.file_image` is called only from `evaluation/arms.py`), so the pipeline calls the reader when `capture.media_paths` is non-empty even if `text` is blank. (c) Production stays blind until the owner sets `[images] reader` after the eval (G4); the item reaches its image through the capture row (`capture.item_id` is the item's id), nothing displays images, so no item-side reference is planned. (d) Restrict sources to the Hermes media cache root before any image goes to a cloud model: `DirectoryMediaKeeper` copies any owner-readable absolute path Hermes puts in `media_urls` (Plan 8 T12 review).
+
 **Files:** Create `src/stash/images/{__init__,reader,loader}.py`. Move
 `src/stash/evaluation/tesseract.py` → `src/stash/images/tesseract.py`, and the
 `Ocr` port → `stash.images`, with the evaluation imports updated. Modify

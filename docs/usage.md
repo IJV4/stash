@@ -10,7 +10,7 @@ tests are named after the behaviour they pin.
 - **A link.** It is filed with its page title, uploader and duration when the page has them.
 - **A thought** ("try that ramen place in Shibuya"). It is filed as a type (place, recipe, book,
   media, gift, …) and a stage (inbox, want to, planned, doing, done, dropped).
-- **An image.** It is read by the vision model, and filed like a thought.
+- **An image.** It is saved with its caption and filed from the caption alone; the image itself is not read yet (Plan 5). The file is copied into `data_dir/media`.
 - **A question.** It goes to the assistant instead of being filed. Start a message with `?` to
   make sure it is treated as a question.
 - **Several messages at once.** They get one combined confirmation. If some of them could not be
@@ -42,6 +42,7 @@ again."; nothing is changed.
   older than `stuck_doing_days` appear in the weekly digest.
 - **The weekly digest.** It goes out on `digest_day` at `digest_time`. It lists what was added,
   what is coming in the next 14 days (people's dates included) and up to 3 suggestions.
+- **Captures waiting.** The digest and `stash doctor` say how many captures are saved but not filed yet; `/stash_retry` files them.
 - **The PC was off.** Everything missed arrives as one catch-up message, and nothing is sent
   twice.
 - **First run.** A first run over an existing database sends nothing old.
@@ -71,7 +72,7 @@ again."; nothing is changed.
 | `/library [type]` | Kept items. |
 | `/library html` | The whole library as one HTML file (also saved as `data_dir/library/latest.html`). Over 45 MB it is not sent; the copy is still saved. |
 | `/people` | One line per person with their next key date (the first 20, then "…and N more"). |
-| `/suggest [context]` | Up to 3 Want-to items that fit the moment. |
+| `/suggest [context]` | Up to 3 Want-to items that fit the moment; candidates now include the oldest Want-to items as well as the newest. |
 | `/gpu status\|on\|off` | Show or switch the GPU gate (when off, stash uses OpenRouter or defers). |
 | `/stash_retry` | File every pending capture (Hermes keeps `/retry` for itself). A capture that turns out to be a question says to send it again starting with `?`. |
 
@@ -84,6 +85,8 @@ again."; nothing is changed.
 - `stash_suggest` picks suggestions;
 - `stash_people`, `stash_add_person`, `stash_add_key_date`, `stash_link_person`,
   `stash_remove_person` work on people.
+
+Every tool answer carries a `notice` saying the stored text is data, not instructions.
 
 All of them answer JSON. Bad input answers `{"error": "..."}` and stores nothing.
 
@@ -113,8 +116,8 @@ See `deploy/stash.toml.example`; every key has its default there. Unknown keys a
 |---|---|
 | `[llm]`, `[llm.ollama]`, `[llm.openrouter]`, `[llm.tasks]` | The provider, models and timeouts; `busy_fallback = "wait"` (defer filing while the GPU is busy) or `"openrouter"`; a provider per task (`filing`, `suggestions`, `vision`). |
 | `[llm.thinking]` | `default` or `off` per task, for stash's own calls only. Off maps to each provider's field. |
-| `[gpu]` | `min_free_vram_mib`, `max_foreign_utilization_pct`, `manual_off_hours`: when the GPU counts as busy, and how long `gpu off` lasts. |
-| `[nudges]` | `digest_day`, `digest_time`, `reminder_time`, `followup_time`, `forgotten_after_days`, `stuck_doing_days`, `tick_seconds`. Changing a time can repeat that day's sends once. |
+| `[gpu]` | `min_free_vram_mib`, `max_foreign_utilization_pct`, `manual_off_hours`: when the GPU counts as busy, and how long `gpu off` lasts. `when_unreadable` (default `"busy"`): a GPU stash cannot read counts as busy; `"free"` for a CPU-only machine. |
+| `[nudges]` | `digest_day`, `digest_time`, `reminder_time`, `followup_time`, `forgotten_after_days`, `stuck_doing_days`, `tick_seconds`, `auto_retry_minutes` (default 0: stash never retries by itself; `/stash_retry` always works). Changing a time can repeat that day's sends once. |
 | `[people]` | `lead_days`. |
 
 ## Deploying and live checks

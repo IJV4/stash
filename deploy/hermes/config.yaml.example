@@ -5,14 +5,14 @@
 # --- Model: local Ollama (default) ---------------------------------------
 model:
   provider: custom
-  default: hermes3:8b            # replace with the model the stash eval picks
+  default: qwen3.5:latest       # replace with the model the stash eval picks
   base_url: http://localhost:11434/v1
   context_length: 65536          # Hermes needs >= 64k; Ollama must match (OLLAMA_CONTEXT_LENGTH)
 
 # --- Model: OpenRouter (swap in instead of the block above) --------------
 # model:
 #   provider: openrouter
-#   default: nousresearch/hermes-4-70b   # example id, unverified — use one from the eval report
+#   default: "<id from stash doctor / the eval report>"   # an id OpenRouter does not offer makes `stash doctor` fail the `openrouter model` check
 # Put OPENROUTER_API_KEY=... in ~/.hermes/.env (and in stash's environment).
 
 # --- Tool scope: stash tools + read-only web only ------------------------

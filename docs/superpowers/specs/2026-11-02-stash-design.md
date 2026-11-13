@@ -1,6 +1,6 @@
 # stash — design
 
-Date: 2026-11-02 · Status: draft for approval
+Date: 2026-11-02 · Status: approved; implemented through Plan 7
 
 ## Intent
 
@@ -56,7 +56,7 @@ recipes I liked leave a trail of takeaways and favorites I can browse.
   only on the PC. Only fake data on the Mac.
 - **Code flow:** private repo on the owner's personal GitHub; Mac → push
   (always ask before pushing) → pull on the PC.
-- **Python:** 3.12 on the Mac (`python3`), per-project `.venv`. Hermes Agent
+- **Python:** >= 3.11 (3.12 on the Mac, `python3`), per-project `.venv`. Hermes Agent
   accepts Python 3.11–3.14.
 - **Language:** bot speaks English. **Timezone:** America/Los_Angeles.
 - **Access:** only the owner's Telegram user ID (`TELEGRAM_ALLOWED_USERS`).
@@ -155,7 +155,7 @@ Android share sheet / Telegram desktop
 ┌─ WSL2 Ubuntu on Windows PC ─────────────────────────────┐
 │  Hermes gateway (systemd service, pinned version)        │
 │     ├─ LLM provider → Ollama (CUDA, local)  | OpenRouter │
-│     ├─ cron → weekly digest (agent run)                  │
+│     ├─ in-process ticker → reminders, digest, follow-ups, proposals │
 │     └─ stash plugin (our code)                           │
 │          ├─ tools: capture, update, list, search,        │
 │          │   plan/steps, outcome, people, library, …     │

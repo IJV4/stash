@@ -191,6 +191,21 @@ systemctl --user daemon-reload && systemctl --user enable --now stash-backup.tim
 **Check:** `systemctl --user list-timers` shows `stash-backup.timer`;
 `systemctl --user start stash-backup.service` writes `stash-YYYYMMDD.db` on the NAS.
 
+Interim backup until the NAS is mounted (optional, Plan 8 T2; follow it only if you want it; this
+file does not record that the PC has done it). The packaged unit needs the NAS mount, so point it at
+a folder with a drop-in `~/.config/systemd/user/stash-backup.service.d/10-interim.conf`:
+```ini
+[Unit]
+RequiresMountsFor=
+[Service]
+ExecStart=
+ExecStart=%h/projects/stash/.venv/bin/stash backup --to <folder>
+```
+Plan 8 suggests a Windows-side folder (`/mnt/c/Users/<you>/stash-backups`), which survives
+`wsl --unregister`; it is the same physical disk, so it is a stopgap. Then `systemctl --user
+daemon-reload && systemctl --user enable --now stash-backup.timer`. **Remove the drop-in once the NAS
+is mounted** and run `daemon-reload` again.
+
 ## 10. M0 spike
 
 Work through `docs/spike-m0.md` and record the go/no-go decision.
