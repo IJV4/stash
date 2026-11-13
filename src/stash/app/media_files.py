@@ -21,6 +21,8 @@ MISSING = "the file is missing"
 NOT_REGULAR = "not a regular file (a symlink or another kind of file)"
 TOO_LARGE = "the file is over the size limit"
 UNREADABLE = "the file cannot be read"
+NOT_WRITABLE = "the copy could not be written"
+READ_CHUNK_BYTES = 1024 * 1024
 
 
 class _Skipped(Exception):
@@ -41,9 +43,12 @@ class DirectoryMediaKeeper:
         try:
             data = self._read(path)
             target = self._root / f"{capture_id}-{number}{_suffix_of(path)}"
-            self._root.mkdir(mode=DIRECTORY_MODE, parents=True, exist_ok=True)
-            write_atomically(target, data)
-            target.chmod(FILE_MODE)
+            try:
+                self._root.mkdir(mode=DIRECTORY_MODE, parents=True, exist_ok=True)
+                write_atomically(target, data)
+                target.chmod(FILE_MODE)
+            except OSError:
+                raise _Skipped(NOT_WRITABLE) from None
         except _Skipped as skipped:
             logger.warning(
                 "capture %s: media %d not copied: %s", capture_id, number, skipped.reason
@@ -69,16 +74,30 @@ class DirectoryMediaKeeper:
             if error.errno == errno.ELOOP:
                 raise _Skipped(NOT_REGULAR) from None
             raise
-        with os.fdopen(descriptor, "rb") as file:
-            status = os.fstat(file.fileno())
+        try:
+            status = os.fstat(descriptor)
             if not stat.S_ISREG(status.st_mode):
                 raise _Skipped(NOT_REGULAR)
             if status.st_size > self._max_bytes:
                 raise _Skipped(TOO_LARGE)
-            data = file.read(self._max_bytes + 1)
+            data = _read_up_to(descriptor, self._max_bytes + 1)
+        finally:
+            os.close(descriptor)
         if len(data) > self._max_bytes:
             raise _Skipped(TOO_LARGE)
         return data
+
+
+def _read_up_to(descriptor: int, limit: int) -> bytes:
+    chunks: list[bytes] = []
+    remaining = limit
+    while remaining > 0:
+        chunk = os.read(descriptor, min(remaining, READ_CHUNK_BYTES))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
 
 
 def _suffix_of(path: str) -> str:

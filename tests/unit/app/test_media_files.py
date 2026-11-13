@@ -56,3 +56,26 @@ def test_copies_are_private_to_the_owner(tmp_path: Path) -> None:
     # Assert
     assert stat.S_IMODE(os.stat(kept).st_mode) == 0o600
     assert stat.S_IMODE(os.stat(tmp_path / "media").st_mode) == 0o700
+
+
+def test_a_directory_is_skipped_as_not_a_regular_file_and_leaks_no_descriptor(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    folder = tmp_path / "folder.png"
+    folder.mkdir()
+    keeper = DirectoryMediaKeeper(tmp_path / "media")
+    before = open_descriptors()
+
+    # Execute
+    with recording_logs("stash.app.media_files") as recorder:
+        kept = keeper.keep(CAPTURE_ID, (str(folder),))
+
+    # Assert
+    assert kept == (str(folder),)
+    assert "not a regular file" in recorder.entries()[0][1]
+    assert open_descriptors() == before
+
+
+def open_descriptors() -> int:
+    return len(os.listdir("/proc/self/fd")) if Path("/proc/self/fd").exists() else 0
