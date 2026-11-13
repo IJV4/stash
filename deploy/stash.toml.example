@@ -45,7 +45,7 @@ manual_off_hours = 4.0              # how long `stash gpu off` lasts before it e
 # Changing followup_time re-asks the unanswered follow-ups of the last 14 days once (one message);
 # changing reminder_time or digest_time can repeat that day's sends once.
 # auto_retry_minutes (0 to 1440) retries captures saved while the AI was unavailable, at most 3 per
-# run and only when the GPU is free; you hear only when something was filed. 0 (the default) never
+# run and only when the GPU is free; you hear only when something was filed or turned out to be a question. 0 (the default) never
 # retries by itself (set 30 to retry every 30 minutes); /stash_retry and `stash retry` always work.
 # Uncomment to change a value; the rest keep these defaults.
 # [nudges]

@@ -5,7 +5,7 @@ from datetime import date, datetime, tzinfo
 from typing import assert_never
 
 from stash.capture import (
-    QUESTION_PREFIX,
+    ASK_AGAIN,
     CaptureIntake,
     Deferred,
     Duplicate,
@@ -36,7 +36,6 @@ from stash.store.port import Store
 GPU_USAGE = "Usage: /gpu on|off|status"
 HTML_ARGUMENT = "html"
 LINE_CAP = 20
-ASK_AGAIN = f" — send it again starting with {QUESTION_PREFIX} to ask"
 
 
 def _footer(hidden: int, exact: bool) -> str:

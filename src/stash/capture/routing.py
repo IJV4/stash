@@ -1,6 +1,7 @@
 from stash.domain import RawCapture
 
 QUESTION_PREFIX = "?"
+ASK_AGAIN = f" — send it again starting with {QUESTION_PREFIX} to ask"
 
 
 def forces_request(text: str) -> bool:

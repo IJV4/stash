@@ -4,7 +4,7 @@ from datetime import UTC, datetime, time, timedelta
 
 import pytest
 from builders import BASE, stored
-from capture_builders import a_filing_answer, a_message
+from capture_builders import a_filing_answer, a_message, a_request_answer
 from capture_rig import CaptureRig, build_rig
 from digest_builders import stored_every_section
 from digest_rig import a_digest_rig
@@ -39,7 +39,7 @@ from planning_builders import (
 from planning_rig import a_planning, planning_over
 from suggestion_builders import picks_reply
 
-from stash.capture import CapturePipeline, Filed, ProcessResult, Reply, proposal_reply
+from stash.capture import ASK_AGAIN, CapturePipeline, Filed, ProcessResult, Reply, proposal_reply
 from stash.config import NudgeConfig
 from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.delivery.nudges import ALREADY_RECORDED_LOG, SEND_FAILED_LOG
@@ -461,6 +461,39 @@ def test_a_free_gpu_files_a_pending_capture_and_sends_one_summary() -> None:
 
     # Assert
     assert (len(rig.store.list_items()), len(sent), rig.store.pending_captures()) == (1, 1, [])
+
+
+def test_an_auto_retried_capture_that_is_a_question_tells_the_owner_to_ask_it_again() -> None:
+    # Setup
+    rig = build_rig(answer=a_request_answer())
+    pending_captures(rig)
+    sent: list[Reply] = []
+
+    # Execute
+    a_retry_delivery(rig).deliver(BASE, sent.append)
+
+    # Assert
+    assert rig.store.pending_captures() == []
+    assert len(sent) == 1
+    assert "Ramen 0" in sent[0].text
+    assert ASK_AGAIN in sent[0].text
+
+
+def test_a_run_that_files_one_and_finds_a_question_sends_one_message_with_both() -> None:
+    # Setup
+    rig = build_rig(
+        outcomes=[a_filing_answer(), a_request_answer()],
+    )
+    pending_captures(rig, 2)
+    sent: list[Reply] = []
+
+    # Execute
+    a_retry_delivery(rig).deliver(BASE, sent.append)
+
+    # Assert
+    assert len(sent) == 1
+    assert "Filed 1 waiting capture(s)" in sent[0].text
+    assert ASK_AGAIN in sent[0].text
 
 
 def test_a_busy_gpu_attempts_nothing_and_sends_nothing() -> None:

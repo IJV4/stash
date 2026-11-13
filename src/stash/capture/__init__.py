@@ -33,10 +33,11 @@ from stash.capture.results import (
     IsRequest,
     ProcessResult,
 )
-from stash.capture.routing import QUESTION_PREFIX, forces_request, is_forced_request
+from stash.capture.routing import ASK_AGAIN, QUESTION_PREFIX, forces_request, is_forced_request
 from stash.capture.serial import SerializedPipeline
 
 __all__ = [
+    "ASK_AGAIN",
     "QUESTION_PREFIX",
     "AgentCapture",
     "AgentIntake",
