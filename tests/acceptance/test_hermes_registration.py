@@ -1,21 +1,26 @@
 import asyncio
+import logging
 from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from capture_builders import QUESTION, a_filing_answer, a_request_answer, an_unsure_answer
 from capture_rig import build_rig
+from gate_rig import a_gate, a_sample
 from hermes_ctx_builders import a_hermes_context
 from hermes_events import ALLOW, OWNER_ID, SKIP, an_event
 from hermes_registration_rig import OpenedApps, register_stash, register_stash_over
 from hermes_rig import CONFIRMATION_MESSAGE_ID, app_over, called, instant_bursts, until
+from log_records import recording_logs
 from telegram import InlineKeyboardMarkup
 
 from stash.app import StashApp
 from stash.capture import confirmation
 from stash.config import ConfigError, StashConfig
+from stash.gpu.gate import NO_GPU_READING
 from stash.hermes_adapter.assistant import APOLOGY
 
+PLUGIN_LOGGER = "stash.hermes_adapter.plugin"
 QUESTION_BUTTON = "That was a question →"
 
 
@@ -301,3 +306,33 @@ def test_after_a_second_register_one_app_stays_open() -> None:
 
     # Assert
     assert (open_before_exit, len(plugin.exits), apps.still_open()) == (1, 1, 0)
+
+
+def test_registration_logs_the_gpu_reading_the_service_gets() -> None:
+    # Setup
+    app = app_over(build_rig(), gpu=a_gate(a_sample()))
+
+    # Execute
+    with recording_logs(PLUGIN_LOGGER) as recorder:
+        register_stash(app, a_hermes_context())
+
+    # Assert
+    assert (logging.INFO, "stash GPU gate at start: busy=False (GPU is free)") in recorder.entries()
+
+
+def test_registration_warns_when_the_gpu_cannot_be_read() -> None:
+    # Setup
+    app = app_over(build_rig(), gpu=a_gate(None))
+
+    # Execute
+    with recording_logs(PLUGIN_LOGGER) as recorder:
+        register_stash(app, a_hermes_context())
+
+    # Assert
+    assert [(level, message) for level, message in recorder.entries() if "GPU" in message] == [
+        (logging.INFO, f"stash GPU gate at start: busy=True ({NO_GPU_READING})"),
+        (
+            logging.WARNING,
+            "stash cannot read the GPU from this service (is nvidia-smi on the service PATH?)",
+        ),
+    ]

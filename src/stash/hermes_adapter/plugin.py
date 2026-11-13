@@ -14,6 +14,7 @@ from stash.hermes_adapter.assistant import GatewayAssistant
 from stash.hermes_adapter.events import DISPATCH_HOOK
 from stash.hermes_adapter.host import hermes_secret, resolved_environment
 from stash.hermes_adapter.owners import Owners
+from stash.hermes_adapter.startup_report import log_gpu_reading
 from stash.hermes_adapter.telegram_link import TelegramLink
 from stash.hermes_adapter.ticker import TickerLauncher
 from stash.hermes_adapter.tool_spec import TOOLSET, ToolSpec
@@ -148,6 +149,7 @@ def register(
     )
     path = expand_home(str(ctx.get_config("config_path", DEFAULT_CONFIG_PATH)), environment)
     app = state.app.open_once(lambda: build(load(path, environment)), at_exit)
+    log_gpu_reading(app.gpu.status, app.clock(), logger)
     owners = Owners.parse(environment.get("TELEGRAM_ALLOWED_USERS"))
     if owners.admits_nobody():
         logger.warning("TELEGRAM_ALLOWED_USERS is empty: stash will ignore every message")
