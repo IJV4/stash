@@ -2,7 +2,7 @@ import shutil
 import uuid
 from collections.abc import Callable, Mapping
 from contextlib import ExitStack
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from importlib.util import find_spec as importable_spec
 
 import httpx
@@ -28,7 +28,12 @@ from stash.capture import (
     SerializedPipeline,
 )
 from stash.config import StashConfig
-from stash.delivery import NudgeDelivery, ProposalDelivery
+from stash.delivery import (
+    AUTO_RETRY_BATCH,
+    NudgeDelivery,
+    PendingRetryDelivery,
+    ProposalDelivery,
+)
 from stash.enrich.ytdlp import default_ytdlp_extract
 from stash.filing import Filer
 from stash.gpu import GpuGate
@@ -107,6 +112,13 @@ def build_app(
             suggestions=suggestions,
             nudge_delivery=NudgeDelivery(Nudger(sqlite, schedule, person_dates), digests),
             proposal_delivery=ProposalDelivery(planning, sqlite),
+            retry_delivery=PendingRetryDelivery(
+                pipeline,
+                gate.is_busy,
+                sqlite,
+                timedelta(minutes=config.nudges.auto_retry_minutes),
+                AUTO_RETRY_BATCH,
+            ),
             gpu=gate,
             gpu_switch=GpuSwitch(gate, model_unloader(config.llm, http)),
             router=router,

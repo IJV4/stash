@@ -38,7 +38,7 @@ class RecordingIntake:
         self._fail_once()
         return self.result
 
-    def retry_pending(self) -> list[ProcessResult]:
+    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
         self.calls.append("retry_pending")
         self._fail_once()
         return [self.result]

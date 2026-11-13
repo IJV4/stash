@@ -5,7 +5,7 @@ from typing import Any
 
 from fakes.fake_step_proposals import FakeStepProposals
 from fakes.pausing_scheduler import PausingScheduler
-from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals
+from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals, ScriptedRetries
 from fakes.scripted_sender import ScriptedSender
 from fakes.store_factories import FreshStore
 from hermes_events import OWNER_ID
@@ -15,7 +15,7 @@ from nudge_rig import a_nudge_rig
 from planning_rig import planning_over
 from threads import OverlapGate, await_signal
 
-from stash.delivery import NudgeDelivery, ProposalDelivery
+from stash.delivery import NudgeDelivery, PendingRetryDelivery, ProposalDelivery
 from stash.hermes_adapter.outbox import ReplySender
 from stash.hermes_adapter.scheduler import Scheduler
 from stash.hermes_adapter.ticker import Ticker
@@ -31,11 +31,13 @@ def a_ticker(
     proposals: ProposalDelivery | None = None,
     sender: ReplySender | None = None,
     scheduler: Scheduler | None = None,
+    retries: ScriptedRetries | PendingRetryDelivery | None = None,
     **options: Any,
 ) -> Ticker:
     return Ticker(
         nudges or ScriptedNudges(),
         proposals or ScriptedProposals(),
+        retries or ScriptedRetries(),
         sender or ScriptedSender(),
         OWNER_CHAT,
         scheduler or PausingScheduler(),

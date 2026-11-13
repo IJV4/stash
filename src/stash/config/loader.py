@@ -122,6 +122,7 @@ def _nudge_config(section: Section) -> NudgeConfig:
         ),
         stuck_doing_days=section.take_integer("stuck_doing_days", defaults.stuck_doing_days),
         tick_seconds=section.take_integer("tick_seconds", defaults.tick_seconds),
+        auto_retry_minutes=section.take_integer("auto_retry_minutes", defaults.auto_retry_minutes),
     )
     section.finish()
     return nudges

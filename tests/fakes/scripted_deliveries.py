@@ -26,6 +26,18 @@ class ScriptedNudges:
             send(reply)
 
 
+class ScriptedRetries:
+    def __init__(self, action: Callable[[], None] = _nothing) -> None:
+        self._action = action
+        self.nows: list[datetime] = []
+        self.threads: list[int] = []
+
+    def deliver(self, now: datetime, send: Callable[[Reply], None]) -> None:
+        self.nows.append(now)
+        self.threads.append(threading.get_ident())
+        self._action()
+
+
 class ScriptedProposals:
     def __init__(self, action: Callable[[], None] = _nothing) -> None:
         self._action = action

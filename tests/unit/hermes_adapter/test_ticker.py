@@ -4,7 +4,7 @@ from collections.abc import Coroutine
 from typing import Any
 
 import pytest
-from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals
+from fakes.scripted_deliveries import ScriptedNudges, ScriptedProposals, ScriptedRetries
 from fakes.scripted_sender import ScriptedSender
 from log_records import recording_logs
 from ticker_rig import (
@@ -16,6 +16,7 @@ from stash.capture import Reply
 from stash.hermes_adapter.ticker import (
     NUDGE_DELIVERY_FAILED_LOG,
     PROPOSAL_DELIVERY_FAILED_LOG,
+    RETRY_DELIVERY_FAILED_LOG,
     TickerLauncher,
 )
 
@@ -31,7 +32,11 @@ def store_is_locked() -> None:
 
 def test_a_delivery_that_fails_is_logged_and_does_not_stop_the_next_delivery_or_the_tick() -> None:
     # Setup
-    ticker = a_ticker(ScriptedNudges(store_is_locked), ScriptedProposals(store_is_locked))
+    ticker = a_ticker(
+        ScriptedNudges(store_is_locked),
+        ScriptedProposals(store_is_locked),
+        retries=ScriptedRetries(store_is_locked),
+    )
 
     # Execute
     with recording_logs(TICKER_LOGGER) as logs:
@@ -41,6 +46,7 @@ def test_a_delivery_that_fails_is_logged_and_does_not_stop_the_next_delivery_or_
     assert logs.entries() == [
         (logging.ERROR, NUDGE_DELIVERY_FAILED_LOG),
         (logging.ERROR, PROPOSAL_DELIVERY_FAILED_LOG),
+        (logging.ERROR, RETRY_DELIVERY_FAILED_LOG),
     ]
 
 

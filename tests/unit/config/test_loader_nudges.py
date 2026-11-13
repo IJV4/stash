@@ -6,11 +6,17 @@ from pathlib import Path
 import pytest
 from config_toml import a_toml, load, load_message, with_key, with_nudges
 
-from stash.config import MAX_NUDGE_DAYS, MAX_TICK_SECONDS, NudgeConfig, Weekday
+from stash.config import (
+    MAX_AUTO_RETRY_MINUTES,
+    MAX_NUDGE_DAYS,
+    MAX_TICK_SECONDS,
+    NudgeConfig,
+    Weekday,
+)
 from stash.config.loader import load_config
 
 EXAMPLE_FILE = Path(__file__).resolve().parents[3] / "deploy" / "stash.toml.example"
-NUDGES_BLOCK_LINE_COUNT = 8
+NUDGES_BLOCK_LINE_COUNT = 9
 
 TIME_KEYS = ("digest_time", "reminder_time", "followup_time")
 COUNT_BOUNDS = (
@@ -45,13 +51,20 @@ SINGLE_KEY_OVERRIDES = [
     pytest.param("forgotten_after_days", "14", 14, id="forgotten_after_days"),
     pytest.param("stuck_doing_days", "10", 10, id="stuck_doing_days"),
     pytest.param("tick_seconds", "5", 5, id="tick_seconds"),
+    pytest.param("auto_retry_minutes", "45", 45, id="auto_retry_minutes"),
 ]
 OUT_OF_RANGE_COUNTS = [
+    pytest.param("auto_retry_minutes", literal, id=f"auto_retry_minutes={literal}")
+    for literal in ("-1", str(MAX_AUTO_RETRY_MINUTES + 1))
+] + [
     pytest.param(key, literal, id=f"{key}={literal}")
     for key, upper in COUNT_BOUNDS
     for literal in ("0", "-1", str(upper + 1))
 ]
 COUNT_BOUNDARIES = [
+    pytest.param("auto_retry_minutes", bound, id=f"auto_retry_minutes={bound}")
+    for bound in (0, MAX_AUTO_RETRY_MINUTES)
+] + [
     pytest.param(key, bound, id=f"{key}={bound}")
     for key, upper in COUNT_BOUNDS
     for bound in (1, upper)
@@ -89,6 +102,7 @@ def test_the_defaults_are_a_sunday_ten_oclock_digest_nine_oclock_reminders_and_a
         30,
         21,
         60,
+        0,
     )
 
 
@@ -97,7 +111,7 @@ def test_a_full_nudges_table_overrides_every_key(tmp_path: Path) -> None:
     table = (
         'digest_day = "friday"\ndigest_time = "18:30"\nreminder_time = "07:15"\n'
         'followup_time = "08:45"\nforgotten_after_days = 14\nstuck_doing_days = 10\n'
-        "tick_seconds = 5"
+        "tick_seconds = 5\nauto_retry_minutes = 45"
     )
 
     # Execute
@@ -112,6 +126,7 @@ def test_a_full_nudges_table_overrides_every_key(tmp_path: Path) -> None:
         14,
         10,
         5,
+        45,
     )
 
 
@@ -245,4 +260,4 @@ def test_the_example_files_nudges_block_works_once_uncommented(tmp_path: Path) -
     config = load(tmp_path, "\n".join(lines), with_key())
 
     # Assert
-    assert config.nudges == NudgeConfig()
+    assert config.nudges == NudgeConfig(auto_retry_minutes=30)

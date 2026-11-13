@@ -18,5 +18,5 @@ class RacingRetryIntake:
     def handle(self, message: IncomingMessage) -> ProcessResult:
         return self._inner.handle(message)
 
-    def retry_pending(self) -> list[ProcessResult]:
-        return self._inner.retry_pending()
+    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
+        return self._inner.retry_pending(limit)

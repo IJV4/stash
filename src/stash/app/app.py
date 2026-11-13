@@ -6,7 +6,7 @@ from stash.app.atomic_write import write_atomically
 from stash.app.library import library_copy_path
 from stash.capture import AgentCapture, BurstCoalescer, CaptureIntake, FixHandler
 from stash.config import StashConfig
-from stash.delivery import NudgeDelivery, ProposalDelivery
+from stash.delivery import NudgeDelivery, PendingRetryDelivery, ProposalDelivery
 from stash.doctor import Doctor
 from stash.evaluation import EvalTargets, Ocr
 from stash.gpu import GpuGate
@@ -33,6 +33,7 @@ class StashApp:
     suggestions: SuggestionDesk
     nudge_delivery: NudgeDelivery
     proposal_delivery: ProposalDelivery
+    retry_delivery: PendingRetryDelivery
     gpu: GpuGate
     gpu_switch: GpuSwitch
     router: ModelRouter

@@ -40,6 +40,7 @@ def build_ticker(
     return Ticker(
         app.nudge_delivery,
         app.proposal_delivery,
+        app.retry_delivery,
         sender,
         owner_chat,
         scheduler or build_scheduler(app),

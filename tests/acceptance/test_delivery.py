@@ -3,7 +3,9 @@ from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, time, timedelta
 
 import pytest
-from builders import stored
+from builders import BASE, stored
+from capture_builders import a_filing_answer, a_message
+from capture_rig import CaptureRig, build_rig
 from digest_builders import stored_every_section
 from digest_rig import a_digest_rig
 from fakes.chat_model import FakeChatModel
@@ -37,10 +39,12 @@ from planning_builders import (
 from planning_rig import a_planning, planning_over
 from suggestion_builders import picks_reply
 
-from stash.capture import Reply, proposal_reply
+from stash.capture import CapturePipeline, Filed, ProcessResult, Reply, proposal_reply
+from stash.config import NudgeConfig
 from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.delivery.nudges import ALREADY_RECORDED_LOG, SEND_FAILED_LOG
 from stash.delivery.proposals import PROPOSAL_SEND_FAILED_LOG
+from stash.delivery.retry import AUTO_RETRY_BATCH, PendingRetryDelivery
 from stash.domain import STEP_TEXT_LIMIT, NudgeKind
 from stash.llm import LlmBadOutput, LlmError, LlmUnavailable
 from stash.nudges import Nudger
@@ -407,3 +411,111 @@ def test_an_item_whose_date_changed_while_the_model_thought_is_skipped_without_a
 
     # Assert
     assert logs.entries() == []
+
+
+RETRY_INTERVAL = timedelta(minutes=30)
+FIVE_CAPTURES = 5
+
+
+def pending_captures(rig: CaptureRig, count: int = 1) -> None:
+    rig.busy.busy = True
+    for number in range(count):
+        rig.pipeline.handle(
+            a_message(f"Ramen {number}", f"m{number}", received_at=BASE + timedelta(minutes=number))
+        )
+    rig.busy.busy = False
+
+
+class RecordingRetrier:
+    def __init__(self, inner: CapturePipeline) -> None:
+        self._inner = inner
+        self.results: list[ProcessResult] = []
+
+    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
+        self.results = self._inner.retry_pending(limit)
+        return self.results
+
+
+def a_retry_delivery(rig: CaptureRig, interval: timedelta = RETRY_INTERVAL) -> PendingRetryDelivery:
+    return PendingRetryDelivery(
+        rig.pipeline, rig.busy.is_busy, rig.store, interval, AUTO_RETRY_BATCH
+    )
+
+
+def test_a_free_gpu_files_a_pending_capture_and_sends_one_summary() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    pending_captures(rig)
+    sent: list[Reply] = []
+
+    # Execute
+    a_retry_delivery(rig).deliver(BASE, sent.append)
+
+    # Assert
+    assert (len(rig.store.list_items()), len(sent), rig.store.pending_captures()) == (1, 1, [])
+
+
+def test_a_busy_gpu_attempts_nothing_and_sends_nothing() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    pending_captures(rig)
+    rig.busy.busy = True
+    sent: list[Reply] = []
+
+    # Execute
+    a_retry_delivery(rig).deliver(BASE, sent.append)
+
+    # Assert
+    assert (sent, rig.model.calls, len(rig.store.pending_captures())) == ([], [], 1)
+
+
+def test_a_model_that_stays_down_is_tried_once_per_interval_and_never_messages() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer(), error=LlmUnavailable("connection refused"))
+    pending_captures(rig)
+    calls_before = len(rig.model.calls)
+    delivery = a_retry_delivery(rig)
+    sent: list[Reply] = []
+
+    # Execute
+    delivery.deliver(BASE, sent.append)
+    delivery.deliver(BASE + RETRY_INTERVAL / 2, sent.append)
+    calls_inside_the_interval = len(rig.model.calls) - calls_before
+    delivery.deliver(BASE + RETRY_INTERVAL, sent.append)
+
+    # Assert
+    assert (calls_inside_the_interval, len(rig.model.calls) - calls_before, sent) == (1, 2, [])
+
+
+def test_at_most_the_batch_size_is_retried_per_run_oldest_first() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    pending_captures(rig, FIVE_CAPTURES)
+    retrier = RecordingRetrier(rig.pipeline)
+
+    # Execute
+    PendingRetryDelivery(
+        retrier, rig.busy.is_busy, rig.store, RETRY_INTERVAL, AUTO_RETRY_BATCH
+    ).deliver(BASE, lambda reply: None)
+
+    # Assert
+    assert [r.item.note for r in retrier.results if isinstance(r, Filed)] == [
+        "Ramen 0",
+        "Ramen 1",
+        "Ramen 2",
+    ]
+    assert len(rig.store.pending_captures()) == FIVE_CAPTURES - AUTO_RETRY_BATCH
+
+
+def test_the_default_retries_nothing_by_itself() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    pending_captures(rig)
+    never = timedelta(minutes=NudgeConfig().auto_retry_minutes)
+    sent: list[Reply] = []
+
+    # Execute
+    a_retry_delivery(rig, never).deliver(BASE + timedelta(days=1), sent.append)
+
+    # Assert
+    assert (sent, rig.model.calls, len(rig.store.pending_captures())) == ([], [], 1)

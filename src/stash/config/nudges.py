@@ -7,6 +7,7 @@ from stash.config.errors import ConfigError
 
 MAX_NUDGE_DAYS = 365
 MAX_TICK_SECONDS = 3600
+MAX_AUTO_RETRY_MINUTES = 1440
 MIN_NUDGE_VALUE = 1
 
 
@@ -43,6 +44,7 @@ DEFAULT_FOLLOWUP_TIME = dt.time(9, 0)
 DEFAULT_FORGOTTEN_AFTER_DAYS = 30
 DEFAULT_STUCK_DOING_DAYS = 21
 DEFAULT_TICK_SECONDS = 60
+DEFAULT_AUTO_RETRY_MINUTES = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,7 @@ class NudgeConfig:
     forgotten_after_days: int = DEFAULT_FORGOTTEN_AFTER_DAYS
     stuck_doing_days: int = DEFAULT_STUCK_DOING_DAYS
     tick_seconds: int = DEFAULT_TICK_SECONDS
+    auto_retry_minutes: int = DEFAULT_AUTO_RETRY_MINUTES
 
     def __post_init__(self) -> None:
         self._require_whole_minute("digest_time", self.digest_time)
@@ -62,6 +65,10 @@ class NudgeConfig:
         self._require_within("forgotten_after_days", self.forgotten_after_days, MAX_NUDGE_DAYS)
         self._require_within("stuck_doing_days", self.stuck_doing_days, MAX_NUDGE_DAYS)
         self._require_within("tick_seconds", self.tick_seconds, MAX_TICK_SECONDS)
+        if not 0 <= self.auto_retry_minutes <= MAX_AUTO_RETRY_MINUTES:
+            raise ConfigError(
+                f"nudges.auto_retry_minutes must be between 0 and {MAX_AUTO_RETRY_MINUTES}"
+            )
 
     @staticmethod
     def _require_whole_minute(key: str, value: dt.time) -> None:

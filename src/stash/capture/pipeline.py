@@ -92,9 +92,9 @@ class CapturePipeline:
         capture = self.receive(message)
         return Duplicate() if capture is None else self.process(capture)
 
-    def retry_pending(self) -> list[ProcessResult]:
+    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
         results: list[ProcessResult] = []
-        for capture in self._store.pending_captures():
+        for capture in self._store.pending_captures()[:limit]:
             try:
                 results.append(self.process(capture))
             except Exception:

@@ -12,10 +12,17 @@ from stash.config.model import (
     StashConfig,
     Thinking,
 )
-from stash.config.nudges import MAX_NUDGE_DAYS, MAX_TICK_SECONDS, NudgeConfig, Weekday
+from stash.config.nudges import (
+    MAX_AUTO_RETRY_MINUTES,
+    MAX_NUDGE_DAYS,
+    MAX_TICK_SECONDS,
+    NudgeConfig,
+    Weekday,
+)
 from stash.config.people import PeopleConfig
 
 __all__ = [
+    "MAX_AUTO_RETRY_MINUTES",
     "MAX_NUDGE_DAYS",
     "MAX_TICK_SECONDS",
     "OPENROUTER_API_KEY_VAR",

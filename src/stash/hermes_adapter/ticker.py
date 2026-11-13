@@ -4,7 +4,7 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 from stash.capture import Reply
-from stash.delivery import NudgeDelivery, ProposalDelivery
+from stash.delivery import NudgeDelivery, PendingRetryDelivery, ProposalDelivery
 from stash.hermes_adapter.outbox import ReplySender
 from stash.hermes_adapter.scheduler import Scheduler
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 SEND_TIMEOUT_S = 30.0
 NUDGE_DELIVERY_FAILED_LOG = "nudge delivery failed; the next tick tries again"
 PROPOSAL_DELIVERY_FAILED_LOG = "proposal delivery failed; the next tick tries again"
+RETRY_DELIVERY_FAILED_LOG = "pending-capture retry failed; the next tick tries again"
 TICKER_ALREADY_RUNNING_LOG = "the ticker is already running; reusing it"
 TICKER_STOPPED_LOG = "the ticker stopped; no reminders or proposals will be sent"
 
@@ -25,6 +26,7 @@ class Ticker:
         self,
         nudges: NudgeDelivery,
         proposals: ProposalDelivery,
+        retries: PendingRetryDelivery,
         sender: ReplySender,
         owner_chat: str,
         scheduler: Scheduler,
@@ -33,6 +35,7 @@ class Ticker:
     ) -> None:
         self._nudges = nudges
         self._proposals = proposals
+        self._retries = retries
         self._sender = sender
         self._owner_chat = owner_chat
         self._scheduler = scheduler
@@ -47,6 +50,9 @@ class Ticker:
                 NUDGE_DELIVERY_FAILED_LOG, self._nudges.deliver, self._scheduler.now(), send
             )
             await self._deliver(PROPOSAL_DELIVERY_FAILED_LOG, self._proposals.deliver, send)
+            await self._deliver(
+                RETRY_DELIVERY_FAILED_LOG, self._retries.deliver, self._scheduler.now(), send
+            )
 
     async def run_forever(self) -> None:
         while True:

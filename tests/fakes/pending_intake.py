@@ -10,6 +10,6 @@ class PendingIntake(RecordingIntake):
         super().__init__()
         self.results = list(results)
 
-    def retry_pending(self) -> list[ProcessResult]:
+    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
         self.calls.append("retry_pending")
         return list(self.results)

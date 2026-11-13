@@ -30,6 +30,6 @@ class SerializedPipeline:
         with self._turn:
             return self._inner.handle(message)
 
-    def retry_pending(self) -> list[ProcessResult]:
+    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
         with self._turn:
-            return self._inner.retry_pending()
+            return self._inner.retry_pending(limit)

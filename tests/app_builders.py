@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from backup_builders import a_backups
@@ -24,7 +24,7 @@ from router_builders import default_thinking_models
 from stash.app import StashApp
 from stash.capture import AgentCapture, BurstCoalescer, FixHandler
 from stash.config import ProviderName, Thinking
-from stash.delivery import NudgeDelivery, ProposalDelivery
+from stash.delivery import AUTO_RETRY_BATCH, NudgeDelivery, PendingRetryDelivery, ProposalDelivery
 from stash.doctor import Doctor
 from stash.domain import Item
 from stash.evaluation import EvalTargets
@@ -69,6 +69,9 @@ def an_app(**overrides: Any) -> StashApp:
             DigestBuilder(store, QuietPicks(suggestions), schedule),
         ),
         "proposal_delivery": ProposalDelivery(planning, store),
+        "retry_delivery": PendingRetryDelivery(
+            pipeline, gate.is_busy, store, timedelta(0), AUTO_RETRY_BATCH
+        ),
         "gpu": gate,
         "gpu_switch": GpuSwitch(gate, RecordingUnloader()),
         "router": ModelRouter(
