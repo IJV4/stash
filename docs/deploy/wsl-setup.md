@@ -83,6 +83,15 @@ local Ollama traffic must not go through a proxy.
 > as a drop-in under `~/.config/systemd/user/hermes-gateway-stash.service.d/`. Sections 6-7 below
 > describe the original default-profile setup.
 >
+> **PATH and `%h` drop-ins (Plan 8 T20).** Install `deploy/systemd/hermes-gateway-stash.path.conf` as
+> `20-path.conf` in the same drop-in directory, next to `hardening.conf`. It puts `/usr/lib/wsl/lib`
+> first on the service's `PATH` so `nvidia-smi` is found; without it the GPU gate cannot read the GPU
+> from inside the sandbox. The hardening drop-in in the repo now writes `%h` instead of `/home/ismael`
+> (checked: `systemctl --user show` on a throwaway unit prints the paths expanded in
+> `BindReadOnlyPaths=` and `BindPaths=`). The copy already installed on the PC still has the
+> hardcoded paths and keeps working; re-copy it at your convenience. It takes effect at the next
+> gateway start.
+>
 > **Restart the stash gateway after any `hermes -p stash plugins enable/disable`** (for example
 > `systemctl --user restart hermes-gateway-stash`). A plugin hot-reload leaves stash unable to
 > send replies until a restart (ADR 0001, "stash breaks after a plugin hot-reload"). Drop this
@@ -152,6 +161,17 @@ export STASH_CONFIG=~/.config/stash/stash.toml
 .venv/bin/stash doctor
 .venv/bin/stash eval --providers ollama            # add openrouter once a key is set
 ```
+To run the doctor inside the gateway's sandbox (same `PATH`, `ProtectHome`, bind mounts), install the
+one-shot unit and give it the gateway's drop-ins by symlinking the directory:
+```bash
+cp deploy/systemd/stash-doctor.service ~/.config/systemd/user/
+ln -s ~/.config/systemd/user/hermes-gateway-stash.service.d ~/.config/systemd/user/stash-doctor.service.d
+systemctl --user daemon-reload
+systemctl --user start stash-doctor.service; journalctl --user -u stash-doctor -n 30 --no-pager
+```
+This probes Ollama and can load a model, so run it only when the GPU is free. **Check:** the
+`nvidia-smi` line reads "... MiB in use" (without `20-path.conf` it reads "no NVIDIA GPU found").
+
 To enable OpenRouter: put `OPENROUTER_API_KEY=...` in `~/.hermes/.env` **and** in
 the environment stash runs with, set `[llm] provider = "openrouter"` (or a
 `[llm.tasks]` override) in `stash.toml`, switch the Hermes `model:` block, run

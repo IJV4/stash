@@ -1,0 +1,6 @@
+[Unit]
+Description=stash doctor, run inside the gateway's sandbox (symlink its drop-in directory, see docs/deploy/wsl-setup.md)
+
+[Service]
+Type=oneshot
+ExecStart=%h/projects/stash/.venv/bin/stash doctor --config %h/.config/stash/stash.toml
