@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from stash.domain import KeyDate, NextKeyDate, Person, PersonSummary
-from stash.hermes_adapter.tool_json import dump
+from stash.hermes_adapter.tool_json import dump, labelled
 
 
 def _person_payload(person: Person) -> dict[str, Any]:
@@ -34,7 +34,7 @@ def _next_payload(next_date: NextKeyDate | None) -> dict[str, Any] | None:
 
 
 def people_answer(summaries: Iterable[PersonSummary]) -> str:
-    return dump(
+    return labelled(
         {
             "people": [
                 {
@@ -48,11 +48,11 @@ def people_answer(summaries: Iterable[PersonSummary]) -> str:
 
 
 def person_answer(person: Person) -> str:
-    return dump({"person": _person_payload(person)})
+    return labelled({"person": _person_payload(person)})
 
 
 def key_date_answer(key_date: KeyDate) -> str:
-    return dump({"key_date": _key_date_payload(key_date)})
+    return labelled({"key_date": _key_date_payload(key_date)})
 
 
 def linked_answer(item_id: str, person_id: str) -> str:

@@ -5,7 +5,7 @@ from typing import Any, assert_never
 from stash.domain import Pick
 from stash.hermes_adapter.ports import Suggester
 from stash.hermes_adapter.tool_arguments import ToolArguments
-from stash.hermes_adapter.tool_json import UNREADABLE, answering, dump, error
+from stash.hermes_adapter.tool_json import UNREADABLE, answering, error, labelled
 from stash.hermes_adapter.tool_schema import tool_schema
 from stash.hermes_adapter.tool_spec import ToolSpec
 from stash.rendering import SUGGESTIONS_UNAVAILABLE
@@ -33,7 +33,7 @@ SUGGEST_SCHEMA: dict[str, Any] = tool_schema(
 
 
 def suggestions_answer(picks: Sequence[Pick]) -> str:
-    return dump(
+    return labelled(
         {
             "suggestions": [
                 {"item_id": pick.item.id, "title": pick.item.title, "reason": pick.reason}

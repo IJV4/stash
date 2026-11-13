@@ -6,6 +6,7 @@ from hermes_rig import app_over
 from tool_rig import calling
 
 from stash.domain import Stage
+from stash.hermes_adapter.tool_json import DATA_NOTICE
 from stash.llm import LlmUnavailable
 
 BOOK = "Tidewater Notes, a novel"
@@ -20,7 +21,10 @@ def test_an_unsaved_book_the_owner_finished_is_captured_then_completed_through_t
     # Setup
     rig = build_rig(answer=a_book_answer())
     tools = register_stash(app_over(rig)).ctx.tools
-    assert calling(tools, "stash_search", {"query": "tidewater"}) == {"items": []}
+    assert calling(tools, "stash_search", {"query": "tidewater"}) == {
+        "notice": DATA_NOTICE,
+        "items": [],
+    }
 
     # Execute
     captured = calling(tools, "stash_capture", {"text": BOOK})

@@ -13,6 +13,7 @@ from people_builders import a_person
 from tool_rig import calling
 
 from stash.domain import Person, Stage
+from stash.hermes_adapter.tool_json import DATA_NOTICE
 
 ITEM_ID = "i1"
 LONG_TEXT = "x" * 2048
@@ -83,6 +84,7 @@ def test_the_people_tool_lists_each_person_with_the_id_and_the_next_key_date() -
 
     # Assert
     assert listed == {
+        "notice": DATA_NOTICE,
         "people": [
             {
                 "id": ana,
@@ -91,7 +93,7 @@ def test_the_people_tool_lists_each_person_with_the_id_and_the_next_key_date() -
                 "aliases": [],
                 "next_key_date": {"kind": "birthday", "label": "", "on": "2027-03-06"},
             }
-        ]
+        ],
     }
 
 
@@ -118,7 +120,8 @@ def test_adding_a_person_answers_the_saved_person() -> None:
 
     # Assert
     assert answer == {
-        "person": {"id": FIRST_ID, "name": "Ana", "relation": "wife", "aliases": ["Anita"]}
+        "notice": DATA_NOTICE,
+        "person": {"id": FIRST_ID, "name": "Ana", "relation": "wife", "aliases": ["Anita"]},
     }
 
 
@@ -142,6 +145,7 @@ def test_adding_a_key_date_answers_the_saved_key_date() -> None:
 
     # Assert
     assert answer == {
+        "notice": DATA_NOTICE,
         "key_date": {
             "id": SECOND_ID,
             "person_id": ana,
@@ -150,7 +154,7 @@ def test_adding_a_key_date_answers_the_saved_key_date() -> None:
             "month": 9,
             "day": 1,
             "year": 2020,
-        }
+        },
     }
 
 
