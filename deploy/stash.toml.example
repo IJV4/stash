@@ -46,7 +46,7 @@ manual_off_hours = 4.0              # how long `stash gpu off` lasts before it e
 # changing reminder_time or digest_time can repeat that day's sends once.
 # auto_retry_minutes (0 to 1440) retries captures saved while the AI was unavailable, at most 3 per
 # run and only when the GPU is free; you hear only when something was filed. 0 (the default) never
-# retries by itself; /stash_retry and `stash retry` always work.
+# retries by itself (set 30 to retry every 30 minutes); /stash_retry and `stash retry` always work.
 # Uncomment to change a value; the rest keep these defaults.
 # [nudges]
 # digest_day = "sunday"
@@ -56,7 +56,7 @@ manual_off_hours = 4.0              # how long `stash gpu off` lasts before it e
 # forgotten_after_days = 30
 # stuck_doing_days = 21
 # tick_seconds = 60
-# auto_retry_minutes = 30
+# auto_retry_minutes = 0
 
 # How many days before a birthday, anniversary or other key date to be reminded; 0 is the day itself.
 # Reminders go out at nudges.reminder_time. Each entry is 0 to 365 and none may repeat.

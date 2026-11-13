@@ -260,4 +260,4 @@ def test_the_example_files_nudges_block_works_once_uncommented(tmp_path: Path) -
     config = load(tmp_path, "\n".join(lines), with_key())
 
     # Assert
-    assert config.nudges == NudgeConfig(auto_retry_minutes=30)
+    assert config.nudges == NudgeConfig()
