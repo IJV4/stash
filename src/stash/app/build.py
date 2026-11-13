@@ -10,7 +10,7 @@ import httpx
 from stash.app.app import StashApp
 from stash.app.database import open_database
 from stash.app.doctor_checks import build_doctor
-from stash.app.inspection import INSPECTION_DEADLINE_SECONDS, build_inspector
+from stash.app.inspection import INSPECTION_DEADLINE_SECONDS, build_inspector, system_resolver
 from stash.app.media_files import MEDIA_DIRECTORY, DirectoryMediaKeeper
 from stash.app.ocr import make_ocr
 from stash.app.providers import (
@@ -35,6 +35,7 @@ from stash.delivery import (
     PendingRetryDelivery,
     ProposalDelivery,
 )
+from stash.enrich.html_meta import Resolver
 from stash.enrich.ytdlp import default_ytdlp_extract
 from stash.filing import Filer
 from stash.gpu import GpuGate
@@ -67,6 +68,7 @@ def build_app(
     clock: Callable[[], datetime] = _utc_now,
     extract: Callable[[str], Mapping[str, object]] = default_ytdlp_extract,
     inspection_deadline_seconds: float = INSPECTION_DEADLINE_SECONDS,
+    resolve: Resolver = system_resolver,
     find_spec: Callable[[str], object | None] = importable_spec,
 ) -> StashApp:
     resources = ExitStack()
@@ -81,7 +83,7 @@ def build_app(
         pipeline = SerializedPipeline(
             CapturePipeline(
                 sqlite,
-                build_inspector(http, extract, inspection_deadline_seconds),
+                build_inspector(http, extract, resolve, inspection_deadline_seconds),
                 Filer(router, clock, config.timezone),
                 _new_id,
                 clock,

@@ -2,7 +2,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 import httpx
-from html_rig import Handler, not_found
+from html_rig import FakeResolver, Handler, not_found, requested_url
 from yt_dlp.utils import DownloadError
 
 from stash.enrich.html_meta import HtmlMetaInspector
@@ -21,7 +21,7 @@ class LinkRig:
     extracted: list[str] = field(default_factory=list)
 
     def requested_hosts(self) -> list[str]:
-        return [request.url.host for request in self.requests]
+        return [httpx.URL(requested_url(request)).host for request in self.requests]
 
 
 def build_link_rig(
@@ -40,5 +40,7 @@ def build_link_rig(
         return handler(request)
 
     client = httpx.Client(transport=httpx.MockTransport(recording))
-    inspector = FallbackInspector(YtDlpInspector(recording_extract), HtmlMetaInspector(client))
+    inspector = FallbackInspector(
+        YtDlpInspector(recording_extract), HtmlMetaInspector(client, resolve=FakeResolver())
+    )
     return LinkRig(inspector, requests, extracted)

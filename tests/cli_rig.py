@@ -11,6 +11,7 @@ from fakes.installed_modules import InstalledModules
 from fakes.nvidia_smi import SwitchableSmi
 from fakes.ocr import FakeOcr
 from fakes.search_path import FakeSearchPath
+from html_rig import FakeResolver
 from llm_rig import llm_toml
 
 from stash.app import StashApp, build_app
@@ -59,6 +60,7 @@ class CliRig:
             which=self.search_path,
             clock=lambda: self.now,
             find_spec=self.modules,
+            resolve=FakeResolver(),
         )
         return replace(app, ocr=self.ocr)
 

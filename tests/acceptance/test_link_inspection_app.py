@@ -4,6 +4,7 @@ from capture_builders import a_filing_answer, a_message
 from cli_rig import CliRig, build_cli_rig
 from fakes.hanging_extract import HangingExtract
 from fakes.recording_extract import RecordingExtract
+from html_rig import FakeResolver
 
 from stash.app import StashApp, build_app
 from stash.capture import Filed
@@ -24,6 +25,7 @@ def app_with(rig: CliRig, **overrides: object) -> StashApp:
             "run": rig.smi,
             "which": rig.search_path,
             "clock": lambda: rig.now,
+            "resolve": FakeResolver(),
             **overrides,
         },  # type: ignore[arg-type]
     )

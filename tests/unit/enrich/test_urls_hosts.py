@@ -1,6 +1,7 @@
 import pytest
 
 from stash.enrich import extract_urls, is_public_http_url
+from stash.enrich.urls import is_public_address
 
 BACKSLASH_URLS = [
     "http://127.0.0.1\\.example.com/x",
@@ -80,3 +81,23 @@ def test_a_local_alias_or_cluster_service_host_is_not_public(url: str) -> None:
 def test_a_url_written_with_ideographic_full_stops_is_judged_by_the_address_it_spells() -> None:
     # Execute / Assert
     assert is_public_http_url("http://127\u30020\u30020\u30021/") is False
+
+
+@pytest.mark.parametrize(
+    ("address", "public"),
+    [
+        ("93.184.216.34", True),
+        ("2606:2800:220:1::1", True),
+        ("127.0.0.1", False),
+        ("::1", False),
+        ("::ffff:10.0.0.5", False),
+        ("64:ff9b::a00:5", False),
+        ("224.0.0.1", False),
+        ("example.com", False),
+    ],
+)
+def test_an_address_is_public_only_when_it_is_a_global_unicast_address(
+    address: str, public: bool
+) -> None:
+    # Execute / Assert
+    assert is_public_address(address) is public

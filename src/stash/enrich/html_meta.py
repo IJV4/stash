@@ -1,6 +1,8 @@
+import ipaddress
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from types import MappingProxyType
 
@@ -8,7 +10,7 @@ import httpx
 
 from stash.domain import http_url_host
 from stash.enrich.links import LinkInfo
-from stash.enrich.urls import is_public_http_url
+from stash.enrich.urls import is_public_address, is_public_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +27,34 @@ REQUEST_HEADERS = MappingProxyType(
     }
 )
 DEFAULT_CHARSET = "utf-8"
+DEFAULT_PORTS = MappingProxyType({"http": 80, "https": 443})
+HOST_HEADER = "Host"
+CONNECTION_HEADER = "Connection"
+CLOSE_CONNECTION = "close"
+SNI_EXTENSION = "sni_hostname"
+
+Resolver = Callable[[str, int], Sequence[str]]
+
+
+@dataclass(frozen=True, slots=True)
+class _Pinned:
+    url: httpx.URL
+    headers: dict[str, str]
+    extensions: dict[str, str]
 
 
 class HtmlMetaInspector:
     def __init__(
-        self, client: httpx.Client, *, monotonic: Callable[[], float] = time.monotonic
+        self,
+        client: httpx.Client,
+        *,
+        resolve: Resolver,
+        is_public: Callable[[str], bool] = is_public_address,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._client = client
+        self._resolve = resolve
+        self._is_public = is_public
         self._monotonic = monotonic
 
     def inspect(self, url: str) -> LinkInfo:
@@ -54,10 +77,14 @@ class HtmlMetaInspector:
         for _ in range(MAX_REDIRECTS + 1):
             if expired():
                 return None
+            pinned = self._pinned(current)
+            if pinned is None:
+                return None
             with self._client.stream(
                 "GET",
-                current,
-                headers=REQUEST_HEADERS,
+                pinned.url,
+                headers={**REQUEST_HEADERS, **pinned.headers},
+                extensions=pinned.extensions,
                 follow_redirects=False,
                 timeout=REQUEST_TIMEOUT_SECONDS,
             ) as response:
@@ -71,6 +98,34 @@ class HtmlMetaInspector:
                 )
                 return None
         return None
+
+    def _pinned(self, url: str) -> _Pinned | None:
+        target = httpx.URL(url)
+        if _is_literal_address(target.host):
+            return _Pinned(target, {}, {}) if self._is_public(target.host) else None
+        name = target.raw_host.decode("ascii")
+        port = target.port or DEFAULT_PORTS[target.scheme]
+        try:
+            addresses = self._resolve(name, port)
+        except OSError as error:
+            logger.info("page fetch could not resolve host %s: %s", name, type(error).__name__)
+            return None
+        if not addresses or not all(self._is_public(address) for address in addresses):
+            logger.info("page fetch refused host %s: it resolves to a non-public address", name)
+            return None
+        return _Pinned(
+            target.copy_with(host=addresses[0]),
+            {HOST_HEADER: target.netloc.decode("ascii"), CONNECTION_HEADER: CLOSE_CONNECTION},
+            {SNI_EXTENSION: name},
+        )
+
+
+def _is_literal_address(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return True
 
 
 class _Deadline:

@@ -68,11 +68,17 @@ def is_public_http_url(url: str) -> bool:
     host = host.rstrip(".")
     if not host or host == "localhost" or host.endswith(_PRIVATE_SUFFIXES):
         return False
-    address = _literal_address(host)
-    if address is not None:
-        unicast = _embedded_ipv4(address)
-        return unicast.is_global and not unicast.is_multicast
+    if _literal_address(host) is not None:
+        return is_public_address(host)
     return "." in host and _LEGACY_NUMERIC_LABEL.fullmatch(host.rsplit(".", 1)[-1]) is None
+
+
+def is_public_address(address: str) -> bool:
+    parsed = _literal_address(address)
+    if parsed is None:
+        return False
+    unicast = _embedded_ipv4(parsed)
+    return unicast.is_global and not unicast.is_multicast
 
 
 def _literal_address(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:

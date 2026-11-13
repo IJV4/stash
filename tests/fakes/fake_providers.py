@@ -52,8 +52,9 @@ class FakeProviders:
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
-        if str(request.url) in self.pages:
-            return httpx.Response(200, headers=HTML, content=self.pages[str(request.url)].encode())
+        logical = str(request.url.copy_with(netloc=request.headers["host"].encode()))
+        if logical in self.pages:
+            return httpx.Response(200, headers=HTML, content=self.pages[logical].encode())
         if request.url.host == OLLAMA_HOST:
             return self._ollama(request)
         if request.url.host == OPENROUTER_HOST:

@@ -1,6 +1,6 @@
 import httpx
 import pytest
-from html_rig import build_html_rig, page_with_title, redirect_to
+from html_rig import PUBLIC_ADDRESS, FakeResolver, build_html_rig, page_with_title, redirect_to
 
 from stash.enrich.links import LinkInfo
 
@@ -281,3 +281,79 @@ def test_a_redirect_to_a_dotless_or_home_network_host_is_never_requested(target:
 
     # Assert
     assert rig.requested_urls() == [PAGE_URL]
+
+
+@pytest.mark.parametrize(
+    "answers", [["127.0.0.1"], [PUBLIC_ADDRESS, "::1"], []], ids=["loopback", "mixed", "none"]
+)
+def test_a_name_that_does_not_resolve_only_to_public_addresses_is_not_fetched(
+    answers: list[str],
+) -> None:
+    # Setup
+    rig = build_html_rig(
+        lambda request: page_with_title("Private"), resolve=FakeResolver({"example.com": answers})
+    )
+
+    # Execute
+    info = rig.inspector.inspect(PAGE_URL)
+
+    # Assert
+    assert (rig.requests, info) == ([], LinkInfo.unknown(PAGE_URL))
+
+
+def test_the_request_goes_to_the_checked_address_with_the_original_name_for_host_and_tls() -> None:
+    # Setup
+    rig = build_html_rig(lambda request: page_with_title("Ramen"))
+
+    # Execute
+    rig.inspector.inspect("https://example.com:8443/ramen")
+
+    # Assert
+    request = rig.requests[0]
+    assert (request.url.host, request.url.port, request.headers["host"]) == (
+        PUBLIC_ADDRESS,
+        8443,
+        "example.com:8443",
+    )
+    assert request.extensions["sni_hostname"] == "example.com"
+
+
+def test_each_redirect_hop_is_resolved_and_checked_again() -> None:
+    # Setup
+    resolver = FakeResolver({"other.example.org": ["10.0.0.5"]})
+    rig = build_html_rig(
+        lambda request: redirect_to("https://other.example.org/x"), resolve=resolver
+    )
+
+    # Execute
+    info = rig.inspector.inspect(PAGE_URL)
+
+    # Assert
+    assert (info, resolver.calls, len(rig.requests)) == (
+        LinkInfo.unknown(PAGE_URL),
+        [("example.com", 443), ("other.example.org", 443)],
+        1,
+    )
+
+
+def test_a_resolver_failure_gives_unknown_not_an_exception() -> None:
+    # Setup
+    rig = build_html_rig(
+        lambda request: page_with_title("Ramen"), resolve=FakeResolver(error=OSError("no dns"))
+    )
+
+    # Execute / Assert
+    assert rig.inspector.inspect(PAGE_URL) == LinkInfo.unknown(PAGE_URL)
+
+
+@pytest.mark.parametrize("url", ["http://93.184.216.34/a", "https://[2606:2800:220:1::1]:8443/a"])
+def test_a_public_address_link_is_fetched_without_asking_the_resolver(url: str) -> None:
+    # Setup
+    resolver = FakeResolver(error=OSError("must not be asked"))
+    rig = build_html_rig(lambda request: page_with_title("Ramen"), resolve=resolver)
+
+    # Execute
+    info = rig.inspector.inspect(url)
+
+    # Assert
+    assert (info.title, resolver.calls) == ("Ramen", [])
