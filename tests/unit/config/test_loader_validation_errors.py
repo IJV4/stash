@@ -119,3 +119,15 @@ def test_value_of_the_wrong_type_names_its_key_path(tmp_path: Path, text: str, p
 
     # Assert
     assert path in message
+
+
+def test_a_gpu_when_unreadable_other_than_busy_or_free_is_refused_naming_the_key(
+    tmp_path: Path,
+) -> None:
+    # Execute
+    message = load_message(
+        tmp_path, a_toml(tables=OLLAMA_TABLE + '[gpu]\nwhen_unreadable = "sometimes"\n')
+    )
+
+    # Assert
+    assert "gpu.when_unreadable" in message

@@ -126,3 +126,12 @@ def test_unknown_timezone_names_the_key(tmp_path: Path) -> None:
 
     # Assert
     assert "timezone" in message
+
+
+def test_gpu_when_unreadable_defaults_to_busy_and_reads_free(tmp_path: Path) -> None:
+    # Execute
+    default = load(tmp_path, a_toml(tables=OLLAMA_TABLE))
+    free = load(tmp_path, a_toml(tables=OLLAMA_TABLE + '[gpu]\nwhen_unreadable = "free"\n'))
+
+    # Assert
+    assert (default.gpu.when_unreadable, free.gpu.when_unreadable) == ("busy", "free")

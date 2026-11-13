@@ -1,6 +1,7 @@
 from stash.config.errors import ConfigError
 from stash.config.model import (
     OPENROUTER_API_KEY_VAR,
+    WHEN_UNREADABLE_BUSY,
     BusyFallback,
     GpuConfig,
     LlmConfig,
@@ -18,6 +19,7 @@ __all__ = [
     "MAX_NUDGE_DAYS",
     "MAX_TICK_SECONDS",
     "OPENROUTER_API_KEY_VAR",
+    "WHEN_UNREADABLE_BUSY",
     "BusyFallback",
     "ConfigError",
     "GpuConfig",

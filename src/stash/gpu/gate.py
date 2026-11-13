@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from stash.config import GpuConfig
+from stash.config import WHEN_UNREADABLE_BUSY, GpuConfig
 from stash.gpu.override import ManualOverride
 from stash.gpu.port import GpuProbe, GpuSample, OwnVramUsage
 from stash.store.port import SettingsStore
 
 EXPIRY_FORMAT = "%H:%M"
 NO_GPU_INFO = "no GPU info"
+NO_GPU_READING = "no GPU reading (nvidia-smi unavailable or unreadable); treated as busy"
 GPU_IS_FREE = "GPU is free"
 
 
@@ -54,6 +55,8 @@ class GpuGate:
             return _switched_off(expiry, now)
         sample = self._probe.sample()
         if sample is None:
+            if self._config.when_unreadable == WHEN_UNREADABLE_BUSY:
+                return GpuStatus(True, NO_GPU_READING)
             return GpuStatus(False, NO_GPU_INFO)
         return self._judge(sample)
 

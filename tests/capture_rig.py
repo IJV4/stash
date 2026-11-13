@@ -17,7 +17,7 @@ from planning_rig import a_planning
 
 from stash.capture import BurstCoalescer, CapturePipeline, FixHandler
 from stash.enrich.links import LinkInfo
-from stash.llm import LlmError
+from stash.llm import BusyCheck, LlmError
 from stash.people import PeopleDirectory, PeopleLinker
 from stash.planning import Planning
 
@@ -76,6 +76,7 @@ def build_rig(
     clock: Callable[[], datetime] = lambda: BASE,
     store: FreshStore | None = None,
     model: RecordingChatModel | None = None,
+    gate: BusyCheck | None = None,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
@@ -90,6 +91,7 @@ def build_rig(
             else ScriptedChatModel(outcomes)
         )
     busy = FakeBusy()
+    checked = busy if gate is None else gate
     return CaptureRig(
         store=store,
         inspector=inspector,
@@ -98,7 +100,7 @@ def build_rig(
         pipeline=CapturePipeline(
             store,
             inspector,
-            build_filer(model, busy, clock),
+            build_filer(model, checked, clock),
             ids,
             clock,
             PeopleLinker(people, store),

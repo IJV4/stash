@@ -10,6 +10,7 @@ from stash.config.model import (
     BUSY_FALLBACKS,
     DEFAULT_BURST_WINDOW_SECONDS,
     OPENROUTER_API_KEY_VAR,
+    WHEN_UNREADABLE_CHOICES,
     GpuConfig,
     LlmConfig,
     LlmTask,
@@ -101,6 +102,9 @@ def _gpu_config(section: Section) -> GpuConfig:
             "max_foreign_utilization_pct", defaults.max_foreign_utilization_pct
         ),
         manual_off_hours=section.take_number("manual_off_hours", defaults.manual_off_hours),
+        when_unreadable=section.take_choice(
+            "when_unreadable", WHEN_UNREADABLE_CHOICES, defaults.when_unreadable
+        ),
     )
     section.finish()
     return gpu

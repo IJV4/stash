@@ -14,6 +14,9 @@ from stash.config.people import PeopleConfig
 OPENROUTER_API_KEY_VAR = "OPENROUTER_API_KEY"
 BusyFallback = Literal["wait", "openrouter"]
 BUSY_FALLBACKS: tuple[BusyFallback, ...] = get_args(BusyFallback)
+WhenUnreadable = Literal["busy", "free"]
+WHEN_UNREADABLE_CHOICES: tuple[WhenUnreadable, ...] = get_args(WhenUnreadable)
+WHEN_UNREADABLE_BUSY: WhenUnreadable = "busy"
 OPENAI_V1_SUFFIX = "/v1"
 HTTP_SCHEMES = ("http", "https")
 DEFAULT_BURST_WINDOW_SECONDS = 8.0
@@ -163,6 +166,7 @@ class GpuConfig:
     min_free_vram_mib: int = 9000
     max_foreign_utilization_pct: int = 30
     manual_off_hours: float = 4.0
+    when_unreadable: WhenUnreadable = WHEN_UNREADABLE_BUSY
 
     def __post_init__(self) -> None:
         if self.min_free_vram_mib < 0:
@@ -171,6 +175,8 @@ class GpuConfig:
             raise ConfigError("gpu.max_foreign_utilization_pct must be between 0 and 100")
         if not self.manual_off_hours > 0:
             raise ConfigError("gpu.manual_off_hours must be > 0")
+        if self.when_unreadable not in WHEN_UNREADABLE_CHOICES:
+            raise ConfigError('gpu.when_unreadable must be "busy" or "free"')
 
 
 @dataclass(frozen=True, slots=True)
