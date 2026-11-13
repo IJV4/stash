@@ -100,7 +100,9 @@ def build_app(
             clock,
             config.timezone,
         )
-        suggestions = SuggestionDesk(sqlite, SuggestionEngine(router, clock, config.timezone))
+        suggestions = SuggestionDesk(
+            sqlite, SuggestionEngine(router, clock, config.timezone), clock
+        )
         schedule = Schedule(config.nudges, config.timezone)
         person_dates = PersonDates(sqlite, schedule, config.people.lead_days)
         digests = DigestBuilder(sqlite, QuietPicks(suggestions), schedule)

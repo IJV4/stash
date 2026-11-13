@@ -1,5 +1,6 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from datetime import datetime
 from typing import assert_never
 
 from stash.domain import Item, Pick, Stage
@@ -14,27 +15,38 @@ from stash.suggestions.results import (
     Unavailable,
 )
 
-CANDIDATE_LIMIT = 40
+NEWEST_CANDIDATES = 20
+OLDEST_CANDIDATES = 20
+CANDIDATE_LIMIT = NEWEST_CANDIDATES + OLDEST_CANDIDATES
 
 logger = logging.getLogger(__name__)
 
 
 class SuggestionDesk:
-    def __init__(self, store: Store, engine: SuggestionPicker) -> None:
+    def __init__(
+        self, store: Store, engine: SuggestionPicker, clock: Callable[[], datetime]
+    ) -> None:
         self._store = store
         self._engine = engine
+        self._clock = clock
 
     def suggest(self, context: str, limit: int) -> Picked | Unavailable:
         trimmed = context.strip()
         if len(trimmed) > CONTEXT_LIMIT:
             raise ContextTooLong
-        candidates = self._store.list_items(stage=Stage.WANT_TO, limit=CANDIDATE_LIMIT)
+        candidates = self._candidates()
         try:
             suggestions = self._engine.pick(candidates, trimmed, limit)
         except LlmUnavailable as error:
             logger.warning("suggestions unavailable: %s", error)
             return Unavailable()
         return Picked(_picks(suggestions, candidates))
+
+    def _candidates(self) -> list[Item]:
+        newest = self._store.list_items(stage=Stage.WANT_TO, limit=NEWEST_CANDIDATES)
+        oldest = self._store.want_to_older_than(self._clock(), OLDEST_CANDIDATES)
+        by_id = {item.id: item for item in [*newest, *oldest]}
+        return list(by_id.values())
 
 
 class QuietPicks:

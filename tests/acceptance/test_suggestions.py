@@ -33,7 +33,7 @@ def want_to_store() -> FreshStore:
 
 
 def stash_over(store: FreshStore, model: ScriptedChatModel) -> RegisteredStash:
-    desk = SuggestionDesk(store, an_engine(model, lambda: BASE))
+    desk = SuggestionDesk(store, an_engine(model, lambda: BASE), lambda: BASE)
     return register_stash(an_app(store=store, suggestions=desk))
 
 

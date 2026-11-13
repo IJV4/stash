@@ -52,7 +52,7 @@ def an_app(**overrides: Any) -> StashApp:
     gate = a_gate(a_sample(), store=store)
     planning = overrides.get("planning", a_planning(store, FakeChatModel(), clock))
     pipeline = overrides.get("pipeline", PendingIntake())
-    suggestions = overrides.get("suggestions", SuggestionDesk(store, FakeSuggestionPicker()))
+    suggestions = overrides.get("suggestions", SuggestionDesk(store, FakeSuggestionPicker(), clock))
     schedule = a_nudge_schedule()
     fields: dict[str, Any] = {
         "config": config,

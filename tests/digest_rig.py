@@ -2,6 +2,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from builders import BASE
 from fakes.scripted_chat_model import ScriptedChatModel
 from fakes.store_factories import FreshStore
 from nudge_builders import LONG_AGO, a_nudge_schedule, a_person_dates
@@ -38,7 +39,9 @@ def a_digest_rig(
     store = store or FreshStore()
     model = ScriptedChatModel(model_outcomes)
     schedule = a_nudge_schedule()
-    builder = DigestBuilder(store, QuietPicks(SuggestionDesk(store, an_engine(model))), schedule)
+    builder = DigestBuilder(
+        store, QuietPicks(SuggestionDesk(store, an_engine(model), lambda: BASE)), schedule
+    )
     nudger = Nudger(store, schedule, a_person_dates(store, schedule))
     rig = DigestRig(
         store, schedule, nudger, send, NudgeDelivery(nudger, builder), model=model, builder=builder
