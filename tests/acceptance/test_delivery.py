@@ -44,7 +44,14 @@ from stash.config import NudgeConfig
 from stash.delivery import NudgeDelivery, ProposalDelivery
 from stash.delivery.nudges import ALREADY_RECORDED_LOG, SEND_FAILED_LOG
 from stash.delivery.proposals import PROPOSAL_SEND_FAILED_LOG
-from stash.delivery.retry import AUTO_RETRY_BATCH, PendingRetryDelivery
+from stash.delivery.retry import (
+    AUTO_RETRY_BATCH,
+    AUTO_RETRY_LAST_KEY,
+    PendingRetryDelivery,
+)
+from stash.delivery.retry import (
+    SEND_FAILED_LOG as RETRY_SEND_FAILED_LOG,
+)
 from stash.domain import STEP_TEXT_LIMIT, NudgeKind
 from stash.llm import LlmBadOutput, LlmError, LlmUnavailable
 from stash.nudges import Nudger
@@ -53,6 +60,7 @@ from stash.store import StoreBusyError
 
 NUDGE_LOGGER = "stash.delivery.nudges"
 PROPOSAL_LOGGER = "stash.delivery.proposals"
+RETRY_LOGGER = "stash.delivery.retry"
 DIGEST_TIME = time(10, 0)
 JUST_AFTER_THE_DIGEST = SUNDAY_DIGEST_TIME + 5 * MINUTE
 A_WEEK_LATER = SUNDAY_NOON + timedelta(days=7)
@@ -417,9 +425,9 @@ RETRY_INTERVAL = timedelta(minutes=30)
 FIVE_CAPTURES = 5
 
 
-def pending_captures(rig: CaptureRig, count: int = 1) -> None:
+def pending_captures(rig: CaptureRig, count: int = 1, first: int = 0) -> None:
     rig.busy.busy = True
-    for number in range(count):
+    for number in range(first, first + count):
         rig.pipeline.handle(
             a_message(f"Ramen {number}", f"m{number}", received_at=BASE + timedelta(minutes=number))
         )
@@ -519,3 +527,56 @@ def test_the_default_retries_nothing_by_itself() -> None:
 
     # Assert
     assert (sent, rig.model.calls, len(rig.store.pending_captures())) == ([], [], 1)
+
+
+def test_an_empty_queue_never_consults_the_gpu_or_records_an_attempt() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    gate_calls: list[datetime] = []
+
+    def counting_gate(now: datetime) -> bool:
+        gate_calls.append(now)
+        return True
+
+    delivery = PendingRetryDelivery(
+        rig.pipeline, counting_gate, rig.store, RETRY_INTERVAL, AUTO_RETRY_BATCH
+    )
+
+    # Execute
+    delivery.deliver(BASE, lambda reply: None)
+
+    # Assert
+    assert (gate_calls, rig.store.get_setting(AUTO_RETRY_LAST_KEY)) == ([], None)
+
+
+def test_an_empty_tick_does_not_use_up_the_interval_for_a_capture_that_arrives_next() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    delivery = a_retry_delivery(rig)
+    sent: list[Reply] = []
+    delivery.deliver(BASE, sent.append)
+    pending_captures(rig)
+
+    # Execute
+    delivery.deliver(BASE + MINUTE, sent.append)
+
+    # Assert
+    assert (len(rig.store.list_items()), len(sent)) == (1, 1)
+
+
+def test_a_failed_summary_send_is_logged_and_the_next_run_still_retries() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    pending_captures(rig)
+    delivery = a_retry_delivery(rig)
+    sent: list[Reply] = []
+
+    # Execute
+    with recording_logs(RETRY_LOGGER) as logs:
+        delivery.deliver(BASE, telegram_is_down)
+    pending_captures(rig, 2, first=1)
+    delivery.deliver(BASE + RETRY_INTERVAL, sent.append)
+
+    # Assert
+    assert logs.entries() == [(logging.WARNING, RETRY_SEND_FAILED_LOG % "SendFailed")]
+    assert (len(rig.store.list_items()), len(sent)) == (3, 1)

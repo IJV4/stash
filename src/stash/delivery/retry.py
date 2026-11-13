@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from stash.capture import Filed, ProcessResult, Reply
-from stash.store.port import SettingsStore
+from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +23,24 @@ class PendingRetryDelivery:
         self,
         pipeline: PendingRetrier,
         gate_busy: Callable[[dt.datetime], bool],
-        settings: SettingsStore,
+        store: Store,
         interval: dt.timedelta,
         batch: int,
     ) -> None:
         self._pipeline = pipeline
         self._gate_busy = gate_busy
-        self._settings = settings
+        self._store = store
         self._interval = interval
         self._batch = batch
 
     def deliver(self, now: dt.datetime, send: Callable[[Reply], None]) -> None:
-        if self._interval <= NEVER or self._attempted_within_interval(now):
+        if self._interval <= NEVER or not self._store.pending_captures():
+            return
+        if self._attempted_within_interval(now):
             return
         if self._gate_busy(now):
             return
-        self._settings.put_setting(AUTO_RETRY_LAST_KEY, now.isoformat())
+        self._store.put_setting(AUTO_RETRY_LAST_KEY, now.isoformat())
         filed = [r for r in self._pipeline.retry_pending(self._batch) if isinstance(r, Filed)]
         if not filed:
             return
@@ -48,7 +50,7 @@ class PendingRetryDelivery:
             logger.warning(SEND_FAILED_LOG, type(error).__name__)
 
     def _attempted_within_interval(self, now: dt.datetime) -> bool:
-        last = self._settings.get_setting(AUTO_RETRY_LAST_KEY)
+        last = self._store.get_setting(AUTO_RETRY_LAST_KEY)
         return last is not None and now - dt.datetime.fromisoformat(last) < self._interval
 
 
