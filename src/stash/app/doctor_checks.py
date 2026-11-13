@@ -12,6 +12,7 @@ from stash.doctor_probes import (
     ExecutableProbe,
     GpuReadingProbe,
     PackageProbe,
+    PendingCapturesProbe,
 )
 from stash.gpu import GpuProbe
 from stash.llm import ProviderProbe
@@ -42,6 +43,7 @@ def build_doctor(
             DoctorCheck.optional("deno", ExecutableProbe("deno", which, DENO_HINT)),
             DoctorCheck.optional("tesseract", ExecutableProbe("tesseract", which, TESSERACT_HINT)),
             DoctorCheck.optional("backup", BackupProbe(store, clock)),
+            DoctorCheck.optional("pending captures", PendingCapturesProbe(store)),
         ]
     )
 

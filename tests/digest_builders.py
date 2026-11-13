@@ -95,8 +95,11 @@ def a_digest_with(
     upcoming: Sequence[UpcomingEntry] = (),
     picks: Sequence[Pick] = (),
     stuck: Sequence[Item] = (),
+    waiting_captures: int = 0,
 ) -> WeeklyDigest:
-    sections = DigestSections(tuple(new_items), tuple(forgotten), tuple(upcoming), tuple(picks))
+    sections = DigestSections(
+        tuple(new_items), tuple(forgotten), tuple(upcoming), tuple(picks), waiting_captures
+    )
     return WeeklyDigest(DIGEST_AT, tuple(StuckItem(item, DIGEST_AT) for item in stuck), sections)
 
 

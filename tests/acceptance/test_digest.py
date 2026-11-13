@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 import pytest
-from builders import stored
+from builders import a_capture, a_source, stored
 from digest_builders import (
     DIGEST_AT,
     SAIL_ID,
@@ -24,7 +24,7 @@ from nudge_builders import (
 from nudge_rig import MINUTE
 from suggestion_builders import a_raw_pick, picks_reply
 
-from stash.capture.digest_replies import DIGEST_HEADER
+from stash.capture.digest_replies import DIGEST_HEADER, WAITING_LINE
 from stash.domain import NudgeKind
 from stash.llm import LlmDeferred, LlmUnavailable
 
@@ -181,3 +181,18 @@ def test_a_digest_that_does_not_fit_beside_the_reminders_leaves_only_the_reminde
 
     # Assert
     assert store.recorded == [NudgeKind.ITEM_DATE] * REMINDERS_FILLING_THE_MESSAGE
+
+
+def test_the_digest_says_how_many_captures_are_waiting() -> None:
+    # Setup
+    store = FreshStore()
+    store.add_capture(a_capture(id="c1"))
+    store.add_capture(a_capture(id="c2", source=a_source("m2")))
+    rig = a_digest_rig(store, [NO_SUGGESTIONS])
+
+    # Execute
+    rig.tick(DIGEST_AT)
+
+    # Assert
+    [(_, text)] = rig.sent_texts()
+    assert text.splitlines()[:2] == [DIGEST_HEADER, WAITING_LINE.format(count=2)]

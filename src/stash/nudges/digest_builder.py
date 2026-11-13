@@ -41,6 +41,7 @@ class DigestBuilder:
             forgotten=self._forgotten.items(due.due_at),
             upcoming=self._upcoming.entries(now),
             picks=self._picks.picks(DIGEST_CONTEXT, PICK_LIMIT),
+            waiting_captures=len(self._store.pending_captures()),
         )
         return replace(due, sections=sections)
 

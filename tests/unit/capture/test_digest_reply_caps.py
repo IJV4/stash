@@ -1,7 +1,8 @@
 import pytest
 from digest_builders import a_digest_with, some_item_entries, some_picks, some_stuck, some_want_tos
 
-from stash.capture.digest_replies import render_digest
+from stash.capture.digest_replies import WAITING_LINE, render_digest
+from stash.capture.replies import TELEGRAM_TEXT_LIMIT, telegram_length
 
 AFTER_HEADER_AND_HEADING = 2
 AFTER_HEADER = 1
@@ -81,3 +82,23 @@ def test_the_suggestions_section_lists_all_three_picks_without_a_count() -> None
 
     # Assert
     assert len(body_after(AFTER_HEADER_AND_HEADING, reply.text)) == 3
+
+
+def test_the_waiting_line_survives_a_digest_trimmed_to_fit() -> None:
+    # Setup
+    long_title = "T" * 300
+    digest = a_digest_with(
+        new_items=some_want_tos(5, "new", long_title),
+        upcoming=some_item_entries(8, long_title),
+        picks=some_picks(3, long_title),
+        waiting_captures=4,
+    )
+
+    # Execute
+    text = render_digest(digest).text
+
+    # Assert
+    assert (WAITING_LINE.format(count=4) in text, telegram_length(text) <= TELEGRAM_TEXT_LIMIT) == (
+        True,
+        True,
+    )

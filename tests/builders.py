@@ -160,7 +160,7 @@ HEX_ID = "0123456789abcdef0123456789abcdef"
 
 
 def stored(store: Store, item: Item) -> Item:
-    store.add_capture(a_capture())
+    store.add_capture(a_capture(status=CaptureStatus.FILED))
     store.save_item(item)
     return item
 

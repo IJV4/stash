@@ -20,6 +20,7 @@ BULLET_LINE = "• {title}"
 UPCOMING_ITEM_LINE = "• {day} — {title}"
 UPCOMING_STEP_LINE = "• {day} — {text} ({title})"
 UPCOMING_PERSON_DATE_LINE = "• {day} — {emoji} {occasion}"
+WAITING_LINE = "📥 {count} saved, not filed yet. Send /stash_retry to file them."
 STUCK_LINE = "📖 How is {title} going?"
 MORE_LINE = "…and {count} more"
 NEW_CAP = 5
@@ -28,6 +29,7 @@ STUCK_CAP = 10
 
 
 class _Part(StrEnum):
+    WAITING = "waiting"
     NEW = "new"
     FORGOTTEN = "forgotten"
     UPCOMING = "upcoming"
@@ -35,7 +37,14 @@ class _Part(StrEnum):
     PICKS = "picks"
 
 
-_RENDER_ORDER = (_Part.NEW, _Part.FORGOTTEN, _Part.UPCOMING, _Part.STUCK, _Part.PICKS)
+_RENDER_ORDER = (
+    _Part.WAITING,
+    _Part.NEW,
+    _Part.FORGOTTEN,
+    _Part.UPCOMING,
+    _Part.STUCK,
+    _Part.PICKS,
+)
 _SHRINKING_ORDER = (_Part.PICKS, _Part.NEW, _Part.UPCOMING)
 
 
@@ -77,7 +86,9 @@ def _fitted(sections: Mapping[_Part, _Section]) -> Mapping[_Part, _Section]:
 
 def _sections(digest: WeeklyDigest) -> Mapping[_Part, _Section]:
     found = digest.sections
+    waiting = (WAITING_LINE.format(count=found.waiting_captures),) if found.waiting_captures else ()
     return {
+        _Part.WAITING: _Section.of(None, waiting),
         _Part.NEW: _Section.of(
             NEW_HEADING, (BULLET_LINE.format(title=item.title) for item in found.new_items), NEW_CAP
         ),

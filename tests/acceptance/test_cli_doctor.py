@@ -1,8 +1,11 @@
 from datetime import timedelta
 from pathlib import Path
 
+from builders import a_capture
 from cli_rig import CliRig, build_cli_rig
 from fakes.installed_modules import InstalledModules
+
+from stash.config.loader import load_config
 
 PASSING_REPORT = [
     "✔ config — provider ollama, data directory {data}",
@@ -15,6 +18,7 @@ PASSING_REPORT = [
     "! deno — not found on PATH (yt-dlp needs a JavaScript runtime for some sites)",
     "! tesseract — not found on PATH (needed for the OCR eval arm)",
     "! backup — no backup recorded yet",
+    "✔ pending captures — none",
 ]
 
 
@@ -133,3 +137,24 @@ def test_a_backup_made_three_days_ago_shows_an_optional_line_naming_the_days(
 
     # Assert
     assert lines == ["! backup — last success 3 days ago"]
+
+
+def test_doctor_reports_the_pending_count_and_the_oldest_day_and_still_exits_0(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    rig = build_cli_rig(tmp_path)
+    rig.smi.installed = False
+    app = rig.build(load_config(rig.config_file, rig.env))
+    app.store.add_capture(a_capture(id="c1", text="private words"))
+    app.close()
+
+    # Execute
+    result = rig.run("doctor")
+
+    # Assert
+    line = [line for line in result.lines() if "pending captures" in line]
+    assert (result.exit_code, line) == (
+        0,
+        ["! pending captures — 1 saved but not filed, oldest 2026-11-02; run: stash retry"],
+    )

@@ -56,8 +56,11 @@ class DigestSections:
     forgotten: tuple[Item, ...]
     upcoming: tuple[UpcomingEntry, ...]
     picks: tuple[Pick, ...]
+    waiting_captures: int = 0
 
     def __post_init__(self) -> None:
+        if self.waiting_captures < 0:
+            raise ValueError("waiting captures cannot be negative")
         if len(self.forgotten) > FORGOTTEN_LIMIT:
             raise ValueError(f"a digest shows at most {FORGOTTEN_LIMIT} forgotten items")
         if len(self.picks) > PICK_LIMIT:

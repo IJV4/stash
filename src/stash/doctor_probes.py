@@ -7,7 +7,7 @@ from stash.config import StashConfig
 from stash.gpu import GpuProbe
 from stash.llm import ProbeResult
 from stash.store import BACKUP_LAST_SUCCESS_KEY, ItemStore
-from stash.store.port import SettingsStore
+from stash.store.port import SettingsStore, Store
 
 STALE_BACKUP_AFTER = timedelta(hours=48)
 NO_BACKUP_RECORDED = "no backup recorded yet"
@@ -90,3 +90,17 @@ class BackupProbe:
 def _hours(age: timedelta) -> str:
     hours = int(age.total_seconds() // SECONDS_PER_HOUR)
     return f"{hours} hour" if hours == 1 else f"{hours} hours"
+
+
+@dataclass(frozen=True, slots=True)
+class PendingCapturesProbe:
+    store: Store
+
+    def check(self) -> ProbeResult:
+        pending = self.store.pending_captures()
+        if not pending:
+            return ProbeResult(True, "none")
+        oldest = min(capture.received_at for capture in pending).date().isoformat()
+        return ProbeResult(
+            False, f"{len(pending)} saved but not filed, oldest {oldest}; run: stash retry"
+        )
