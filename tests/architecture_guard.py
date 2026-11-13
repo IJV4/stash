@@ -14,6 +14,7 @@ ADAPTER_MODULES = (
     "stash.enrich.ytdlp",
     "stash.enrich.html_meta",
     "stash.evaluation.tesseract",
+    "stash.app.media_files",
 )
 HERMES_MODULES = (
     "gateway",

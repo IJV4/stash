@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from stash.capture.message import IncomingMessage
-from stash.capture.ports import CaptureFiler, ItemLinker
+from stash.capture.ports import CaptureFiler, ItemLinker, MediaKeeper
 from stash.capture.results import (
     DeferralReason,
     Deferred,
@@ -15,6 +15,7 @@ from stash.capture.results import (
 )
 from stash.capture.routing import is_forced_request
 from stash.domain import CaptureStatus, Filing, Item, RawCapture, Route
+from stash.domain.media import safe_media_paths
 from stash.enrich.links import LinkInspector
 from stash.enrich.urls import extract_urls
 from stash.llm.errors import LlmDeferred, LlmError
@@ -43,6 +44,7 @@ class CapturePipeline:
         new_id: Callable[[], str],
         clock: Callable[[], datetime],
         linker: ItemLinker,
+        keeper: MediaKeeper | None = None,
     ) -> None:
         self._store = store
         self._inspector = inspector
@@ -50,17 +52,30 @@ class CapturePipeline:
         self._new_id = new_id
         self._clock = clock
         self._linker = linker
+        self._keeper = keeper
 
     def receive(self, message: IncomingMessage) -> RawCapture | None:
+        capture_id = self._new_id()
         capture = RawCapture(
-            id=self._new_id(),
+            id=capture_id,
             source=message.source,
             received_at=message.received_at,
             text=message.text,
-            media_paths=message.media_paths,
+            media_paths=self._owned(capture_id, message.media_paths),
             status=CaptureStatus.PENDING,
         )
         return capture if self._store.add_capture(capture) else None
+
+    def _owned(self, capture_id: str, paths: tuple[str, ...]) -> tuple[str, ...]:
+        if self._keeper is None or not paths:
+            return paths
+        try:
+            return safe_media_paths("media_paths", self._keeper.keep(capture_id, paths))
+        except Exception:
+            logger.exception(
+                "capture %s: keeping media failed; the original paths stay", capture_id
+            )
+            return paths
 
     def process(self, capture: RawCapture) -> ProcessResult:
         if capture.source.is_agent:

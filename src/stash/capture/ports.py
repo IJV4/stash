@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import date
 from typing import Protocol
 
@@ -34,6 +35,10 @@ class PlanningActions(Protocol):
 
 class ItemLinker(Protocol):
     def link(self, item: Item) -> None: ...
+
+
+class MediaKeeper(Protocol):
+    def keep(self, capture_id: str, paths: Sequence[str]) -> tuple[str, ...]: ...
 
 
 class CaptureFiler(Protocol):

@@ -11,6 +11,7 @@ from stash.app.app import StashApp
 from stash.app.database import open_database
 from stash.app.doctor_checks import build_doctor
 from stash.app.inspection import INSPECTION_DEADLINE_SECONDS, build_inspector
+from stash.app.media_files import MEDIA_DIRECTORY, DirectoryMediaKeeper
 from stash.app.ocr import make_ocr
 from stash.app.providers import (
     chat_models,
@@ -85,6 +86,7 @@ def build_app(
                 _new_id,
                 clock,
                 PeopleLinker(people, sqlite),
+                DirectoryMediaKeeper(config.data_dir / MEDIA_DIRECTORY),
             )
         )
         lifecycle = Lifecycle(sqlite, _new_id, clock, config.timezone)

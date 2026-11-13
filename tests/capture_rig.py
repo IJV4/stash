@@ -16,6 +16,7 @@ from log_records import recording_logs
 from planning_rig import a_planning
 
 from stash.capture import BurstCoalescer, CapturePipeline, FixHandler
+from stash.capture.ports import MediaKeeper
 from stash.enrich.links import LinkInfo
 from stash.llm import BusyCheck, LlmError
 from stash.people import PeopleDirectory, PeopleLinker
@@ -77,6 +78,7 @@ def build_rig(
     store: FreshStore | None = None,
     model: RecordingChatModel | None = None,
     gate: BusyCheck | None = None,
+    keeper: MediaKeeper | None = None,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
@@ -104,6 +106,7 @@ def build_rig(
             ids,
             clock,
             PeopleLinker(people, store),
+            keeper,
         ),
         people=people,
         fixes=a_fix_handler(store, clock),
