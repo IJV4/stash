@@ -48,7 +48,7 @@ def test_register_adds_the_hook_the_telegram_handler_the_commands_and_the_tools(
     } == {
         "hooks": ["pre_gateway_dispatch"],
         "platforms": ["telegram"],
-        "commands": ["gpu", "library", "list", "people", "retry", "suggest"],
+        "commands": ["find", "gpu", "library", "list", "people", "retry", "suggest"],
         "tools": {
             "stash_add_key_date": ("stash", "stash_add_key_date"),
             "stash_add_person": ("stash", "stash_add_person"),
@@ -82,7 +82,15 @@ def test_a_command_name_that_hermes_refuses_is_registered_with_a_stash_prefix_in
     register_stash(a_plain_app(), ctx)
 
     # Assert
-    assert sorted(ctx.commands) == ["gpu", "library", "list", "people", "stash-retry", "suggest"]
+    assert sorted(ctx.commands) == [
+        "find",
+        "gpu",
+        "library",
+        "list",
+        "people",
+        "stash-retry",
+        "suggest",
+    ]
 
 
 def test_an_invalid_configuration_makes_register_raise_the_config_error() -> None:

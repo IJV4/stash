@@ -36,6 +36,7 @@ OWNER_CHAT_SETTING = "owner_chat_id"
 NO_OWNER_CHAT_LOG = "no owner chat: reminders are off"
 COMMAND_DESCRIPTIONS = {
     "list": ("List saved items, newest first", "[stage]"),
+    "find": ("Search saved items by title or note", "<words>"),
     "gpu": ("Switch stash's use of the GPU", "on|off|status"),
     "retry": ("Retry captures that are still pending", ""),
     "library": ("List kept items, most recently finished first", "[type|html]"),

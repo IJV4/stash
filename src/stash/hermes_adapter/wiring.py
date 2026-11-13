@@ -6,6 +6,7 @@ from stash.hermes_adapter.bursts import Bursts
 from stash.hermes_adapter.callbacks import FixCallbacks
 from stash.hermes_adapter.capture_tools import CaptureTools
 from stash.hermes_adapter.commands import (
+    FindCommand,
     GpuCommand,
     LibraryCommand,
     ListCommand,
@@ -27,7 +28,15 @@ from stash.hermes_adapter.ticker import Ticker
 from stash.hermes_adapter.tool_spec import ToolSpec
 from stash.hermes_adapter.tools import StashTools
 
-Command = ListCommand | GpuCommand | RetryCommand | LibraryCommand | SuggestCommand | PeopleCommand
+Command = (
+    FindCommand
+    | ListCommand
+    | GpuCommand
+    | RetryCommand
+    | LibraryCommand
+    | SuggestCommand
+    | PeopleCommand
+)
 
 
 def build_scheduler(app: StashApp) -> LoopScheduler:
@@ -84,6 +93,7 @@ def build_commands(app: StashApp, outbox: Outbox, owner_chat: str | None) -> dic
     library_file = LibraryFile(app, outbox, owner_chat)
     return {
         "list": ListCommand(app.store),
+        "find": FindCommand(app.store),
         "gpu": GpuCommand(app.gpu_switch, app.local_now),
         "retry": RetryCommand(app.pipeline),
         "library": LibraryCommand(app.lifecycle, library_file.send),

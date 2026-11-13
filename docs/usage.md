@@ -67,6 +67,7 @@ again."; nothing is changed.
 | Command | Answer |
 |---|---|
 | `/list [stage]` | Newest items, one per line. |
+| `/find <words>` | Items whose title or note contain the words, one per line. |
 | `/library [type]` | Kept items. |
 | `/library html` | The whole library as one HTML file (also saved as `data_dir/library/latest.html`). Over 45 MB it is not sent; the copy is still saved. |
 | `/people` | One line per person with their next key date (the first 20, then "…and N more"). |

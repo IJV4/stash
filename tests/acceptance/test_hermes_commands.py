@@ -146,3 +146,41 @@ def test_library_with_a_plural_label_lists_only_the_kept_items_of_that_type() ->
 
     # Assert
     assert text == "📚 Recipes: Miso soup · ⭐4"
+
+
+def test_find_lists_items_whose_title_or_note_match() -> None:
+    # Setup
+    by_title = an_item(id="i1", capture_id="c1", title="Ichiran ramen", created_at=BASE)
+    by_note = an_item(
+        id="i2", capture_id="c2", title="Soup", note="try the ramen place", created_at=BASE
+    )
+    other = an_item(id="i3", capture_id="c3", title="Tax forms", created_at=BASE)
+    plugin = register_stash(an_app(store=stored(by_title, by_note, other)))
+
+    # Execute
+    text = asyncio.run(called(plugin.ctx.commands["find"], "ramen"))
+
+    # Assert
+    assert sorted(line.split(" · ")[1] for line in text.splitlines()) == ["Ichiran ramen", "Soup"]
+
+
+def test_find_with_no_words_shows_the_usage_line() -> None:
+    # Setup
+    plugin = register_stash(an_app())
+
+    # Execute
+    text = asyncio.run(called(plugin.ctx.commands["find"], "  "))
+
+    # Assert
+    assert text == "Usage: /find <words>"
+
+
+def test_find_with_no_match_says_so() -> None:
+    # Setup
+    plugin = register_stash(an_app(store=stored(an_item(id="i1", capture_id="c1"))))
+
+    # Execute
+    text = asyncio.run(called(plugin.ctx.commands["find"], "zzzz"))
+
+    # Assert
+    assert text == "No items."

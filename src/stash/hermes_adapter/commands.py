@@ -56,6 +56,9 @@ def _bounded(lines: Sequence[str], exact: bool = True) -> str:
     return _text(shown, hidden, exact)
 
 
+FIND_USAGE = "Usage: /find <words>"
+
+
 def _listing(lines: Sequence[str], cap: int) -> str:
     return _bounded(lines, exact=len(lines) < cap) if lines else NO_ITEMS
 
@@ -88,6 +91,17 @@ class ListCommand:
         items = await asyncio.to_thread(query.fetch, self._reader)
         lines = [listing_line(item) for item in items]
         return _listing(lines, MAX_LIMIT)
+
+
+class FindCommand:
+    def __init__(self, reader: Store) -> None:
+        self._reader = reader
+
+    async def run(self, raw_args: str) -> str:
+        if not raw_args.strip():
+            return FIND_USAGE
+        items = await asyncio.to_thread(self._reader.search_items, raw_args, MAX_LIMIT)
+        return _listing([listing_line(item) for item in items], MAX_LIMIT)
 
 
 class LibraryCommand:
