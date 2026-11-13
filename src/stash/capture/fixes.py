@@ -12,10 +12,10 @@ from stash.capture.completion_buttons import CompletionButtons, answering
 from stash.capture.menus import stage_menu, type_menu
 from stash.capture.planning_buttons import PlanningButtons
 from stash.capture.ports import LifecycleActions, PlanningActions
-from stash.capture.replies import Reply, confirmation, gone
+from stash.capture.replies import Reply, busy, confirmation, gone
 from stash.capture.routing import QUESTION_PREFIX
 from stash.domain import CaptureStatus, Item, ItemType, Stage, enum_member
-from stash.store.port import Store
+from stash.store.port import Store, StoreBusyError
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,12 @@ class FixHandler:
         self._planning = PlanningButtons(store, planning, self._log)
 
     def apply(self, data: str) -> Reply | Reroute:
-        with self._store.writing():
-            return self._apply(data)
+        try:
+            with self._store.writing():
+                return self._apply(data)
+        except StoreBusyError:
+            self._log.busy()
+            return busy()
 
     def _apply(self, data: str) -> Reply | Reroute:
         action = FixAction.parse(data)

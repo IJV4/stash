@@ -44,7 +44,7 @@ class Lifecycle:
         keep: bool | None = None,
         on: date | None = None,
     ) -> Completion:
-        with self._store.writing():
+        with translating_store_errors(), self._store.writing():
             item = self._item(item_id)
             outcome_id = self._new_id()
             now = self._clock()
@@ -75,7 +75,7 @@ class Lifecycle:
         return self._changed(item_id, lambda item, now: item.retyped(item_type, now))
 
     def didnt_happen(self, item_id: str, on: date) -> Item:
-        with self._store.writing():
+        with translating_store_errors(), self._store.writing():
             item = self._item(item_id)
             if not item.is_planned:
                 return item
@@ -94,7 +94,7 @@ class Lifecycle:
         return self._changed(item_id, lambda item, now: item.relocated_to(stage, now))
 
     def group(self, child_id: str, parent_id: str) -> Item:
-        with self._store.writing():
+        with translating_store_errors(), self._store.writing():
             child = self._item(child_id)
             parent = self._item(parent_id)
             now = self._clock()
@@ -144,7 +144,7 @@ class Lifecycle:
         return outcomes[-1] if outcomes else None
 
     def _changed(self, item_id: str, change: Callable[[Item, datetime], Item]) -> Item:
-        with self._store.writing():
+        with translating_store_errors(), self._store.writing():
             item = self._item(item_id)
             now = self._clock()
             with refusing_what_the_domain_refuses():
@@ -154,7 +154,7 @@ class Lifecycle:
     def _changed_outcome(
         self, outcome_id: str, change: Callable[[Outcome, datetime], Outcome]
     ) -> Outcome:
-        with self._store.writing():
+        with translating_store_errors(), self._store.writing():
             outcome = self._outcome(outcome_id)
             now = self._clock()
             with refusing_what_the_domain_refuses():

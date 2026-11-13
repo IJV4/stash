@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from stash.store.port import StoreBusyError
 
 _BUSY = "SQLITE_BUSY"
+_NESTED = "stash_nested"
 
 
 def _begin_immediate(connection: sqlite3.Connection) -> None:
@@ -20,6 +21,10 @@ def _begin_immediate(connection: sqlite3.Connection) -> None:
 
 @contextmanager
 def immediate_transaction(connection: sqlite3.Connection) -> Iterator[None]:
+    if connection.in_transaction:
+        with _savepoint(connection):
+            yield
+        return
     _begin_immediate(connection)
     try:
         yield
@@ -28,3 +33,15 @@ def immediate_transaction(connection: sqlite3.Connection) -> Iterator[None]:
         if connection.in_transaction:
             connection.execute("ROLLBACK")
         raise
+
+
+@contextmanager
+def _savepoint(connection: sqlite3.Connection) -> Iterator[None]:
+    connection.execute(f"SAVEPOINT {_NESTED}")
+    try:
+        yield
+    except BaseException:
+        connection.execute(f"ROLLBACK TO {_NESTED}")
+        connection.execute(f"RELEASE {_NESTED}")
+        raise
+    connection.execute(f"RELEASE {_NESTED}")

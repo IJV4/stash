@@ -46,12 +46,6 @@ def impatient_store(database: Path, rival: sqlite3.Connection) -> Iterator[Sqlit
         store.close()
 
 
-@pytest.fixture
-def plain_file(tmp_path: Path) -> Iterator[sqlite3.Connection]:
-    with closing(sqlite3.connect(tmp_path / "plain.db", isolation_level=None)) as connection:
-        yield connection
-
-
 def an_impatient_connection(database: Path) -> sqlite3.Connection:
     return sqlite3.connect(database, isolation_level=None, timeout=SHORT_WAIT.total_seconds())
 
@@ -107,17 +101,23 @@ def test_the_store_busy_error_says_that_another_writer_held_the_stash_for_the_wh
     assert "another writer" in str(caught.value)
 
 
+class DiskFailingConnection(sqlite3.Connection):
+    def execute(self, sql: str, *args: object) -> sqlite3.Cursor:
+        error = sqlite3.OperationalError("disk I/O error")
+        error.sqlite_errorname = "SQLITE_IOERR"
+        raise error
+
+
 @pytest.mark.integration
-def test_a_begin_that_fails_for_another_reason_is_not_reported_as_busy(
-    plain_file: sqlite3.Connection,
-) -> None:
+def test_a_begin_that_fails_for_another_reason_is_not_reported_as_busy(tmp_path: Path) -> None:
     # Setup
-    plain_file.execute("BEGIN")
+    connection = sqlite3.connect(tmp_path / "plain.db", factory=DiskFailingConnection)
 
     # Execute / Assert
     with (
-        pytest.raises(sqlite3.OperationalError, match="within a transaction"),
-        immediate_transaction(plain_file),
+        closing(connection),
+        pytest.raises(sqlite3.OperationalError, match="disk I/O"),
+        immediate_transaction(connection),
     ):
         pass
 

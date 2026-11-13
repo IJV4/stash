@@ -37,6 +37,7 @@ from stash.store._rows import (
     outcome_from_row,
 )
 from stash.store._steps import SqliteSteps
+from stash.store._transaction import immediate_transaction
 from stash.store.port import DEFAULT_PAGE_SIZE, BackupError, UnknownCaptureError
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
@@ -107,7 +108,7 @@ class SqliteStore:
 
     @contextmanager
     def writing(self) -> Iterator[None]:
-        with self._lock:
+        with self._lock, immediate_transaction(self._connection):
             yield
 
     def update_item(self, item: Item) -> None:

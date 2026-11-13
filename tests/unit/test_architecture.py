@@ -44,6 +44,7 @@ TRANSACTION_IMPORTERS = (
     "stash.store._steps",
     "stash.store._people",
     "stash.store._ledger",
+    "stash.store.sqlite",
 )
 CHECKS_IMPORTERS = (
     "stash.store.sqlite",

@@ -1,6 +1,7 @@
 import tempfile
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
+from datetime import timedelta
 from importlib.resources.abc import Traversable
 from pathlib import Path
 
@@ -8,7 +9,7 @@ import pytest
 
 from stash.domain import RawCapture
 from stash.store import Store
-from stash.store.sqlite import SqliteStore
+from stash.store.sqlite import BUSY_TIMEOUT, SqliteStore
 
 StoreFactory = Callable[[], AbstractContextManager[Store]]
 
@@ -28,8 +29,12 @@ class FreshStore(SqliteStore):
 
 
 @contextmanager
-def opened(path: Path, migrations: Traversable | None = None) -> Iterator[SqliteStore]:
-    store = SqliteStore(path, migrations)
+def opened(
+    path: Path,
+    migrations: Traversable | None = None,
+    busy_timeout: timedelta = BUSY_TIMEOUT,
+) -> Iterator[SqliteStore]:
+    store = SqliteStore(path, migrations, busy_timeout)
     try:
         yield store
     finally:
@@ -37,8 +42,14 @@ def opened(path: Path, migrations: Traversable | None = None) -> Iterator[Sqlite
 
 
 @contextmanager
-def two_connections(directory: Path) -> Iterator[tuple[SqliteStore, SqliteStore]]:
-    with opened(directory / "stash.db") as first, opened(directory / "stash.db") as second:
+def two_connections(
+    directory: Path, busy_timeout: timedelta = BUSY_TIMEOUT
+) -> Iterator[tuple[SqliteStore, SqliteStore]]:
+    path = directory / "stash.db"
+    with (
+        opened(path, busy_timeout=busy_timeout) as first,
+        opened(path, busy_timeout=busy_timeout) as second,
+    ):
         yield first, second
 
 

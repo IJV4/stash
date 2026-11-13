@@ -82,7 +82,7 @@ class Planning:
             logger.warning(UNUSABLE_OUTPUT_LOG, type(error).__name__)
             self._decline_if_still_proposable(item)
             raise ProposalUnusable from error
-        with self._store.writing(), _translating_store_errors():
+        with _translating_store_errors(), self._store.writing():
             current = self._item(item_id)
             if not self._still_needs_proposal(item, current):
                 raise PlanningRefused(NOT_PROPOSABLE)
@@ -143,7 +143,7 @@ class Planning:
         lead_days: int | None = None,
         due_on: date | None = None,
     ) -> Step:
-        with self._store.writing(), _translating_store_errors():
+        with _translating_store_errors(), self._store.writing():
             current = self._step(step_id)
             with _refusing_what_the_domain_refuses():
                 edited = current.edited(text=text, lead_days=lead_days, due_on=due_on)
@@ -151,13 +151,13 @@ class Planning:
         return edited
 
     def complete_step(self, step_id: str) -> Step:
-        with self._store.writing(), _translating_store_errors():
+        with _translating_store_errors(), self._store.writing():
             done = self._step(step_id).confirmed_now().marked_done()
             self._store.save_step(done)
         return done
 
     def _decline_if_still_proposable(self, asked_about: Item) -> None:
-        with self._store.writing(), _translating_store_errors():
+        with _translating_store_errors(), self._store.writing():
             current = self._item(asked_about.id)
             if self._still_needs_proposal(asked_about, current):
                 self._declines.record(current)
@@ -168,7 +168,7 @@ class Planning:
     @contextmanager
     def _locked_item(self, item_id: str) -> Iterator[None]:
         self._item(item_id)
-        with self._store.writing(), _translating_store_errors():
+        with _translating_store_errors(), self._store.writing():
             yield
 
     def _drop_unconfirmed_steps(self, item_id: str) -> None:

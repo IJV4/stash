@@ -8,7 +8,7 @@ from stash.capture.fixes import HISTORY_KEPT, Reroute
 from stash.domain import CaptureStatus
 
 
-def test_a_crash_while_deleting_the_item_leaves_the_capture_already_marked_as_a_request() -> None:
+def test_a_crash_while_deleting_the_item_leaves_the_capture_as_it_was() -> None:
     # Setup
     store, _ = store_with_filed_item(
         FaultyStore(fail_once={"delete_item_if_untouched": StoreFault("c1")})
@@ -20,7 +20,7 @@ def test_a_crash_while_deleting_the_item_leaves_the_capture_already_marked_as_a_
 
     # Assert
     capture = store.get_capture("c1")
-    assert capture is not None and capture.status is CaptureStatus.REQUEST
+    assert capture is not None and capture.status is CaptureStatus.FILED
 
 
 def test_pressing_that_was_a_question_again_after_a_crash_while_deleting_hands_the_text_back() -> (
