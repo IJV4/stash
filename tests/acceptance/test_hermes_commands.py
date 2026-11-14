@@ -164,6 +164,18 @@ def test_find_lists_items_whose_title_or_note_match() -> None:
     assert sorted(line.split(" · ")[1] for line in text.splitlines()) == ["Ichiran ramen", "Soup"]
 
 
+def test_find_ignores_spaces_around_what_was_typed() -> None:
+    # Setup
+    item = an_item(id="i1", capture_id="c1", title="Ichiran ramen", created_at=BASE)
+    plugin = register_stash(an_app(store=stored(item)))
+
+    # Execute
+    text = asyncio.run(called(plugin.ctx.commands["find"], "ramen "))
+
+    # Assert
+    assert "Ichiran ramen" in text
+
+
 def test_find_with_no_words_shows_the_usage_line() -> None:
     # Setup
     plugin = register_stash(an_app())

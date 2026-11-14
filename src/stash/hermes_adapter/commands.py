@@ -99,7 +99,7 @@ class FindCommand:
     async def run(self, raw_args: str) -> str:
         if not raw_args.strip():
             return FIND_USAGE
-        items = await asyncio.to_thread(self._reader.search_items, raw_args, MAX_LIMIT)
+        items = await asyncio.to_thread(self._reader.search_items, raw_args.strip(), MAX_LIMIT)
         return _listing([listing_line(item) for item in items], MAX_LIMIT)
 
 
