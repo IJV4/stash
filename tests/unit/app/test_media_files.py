@@ -3,6 +3,7 @@ import os
 import stat
 from pathlib import Path
 
+import pytest
 from log_records import recording_logs
 
 from stash.app.media_files import DirectoryMediaKeeper
@@ -58,6 +59,12 @@ def test_copies_are_private_to_the_owner(tmp_path: Path) -> None:
     assert stat.S_IMODE(os.stat(tmp_path / "media").st_mode) == 0o700
 
 
+DESCRIPTOR_LISTING = "/dev/fd"
+
+
+@pytest.mark.skipif(
+    not Path(DESCRIPTOR_LISTING).is_dir(), reason="no /dev/fd to count open descriptors"
+)
 def test_a_directory_is_skipped_as_not_a_regular_file_and_leaks_no_descriptor(
     tmp_path: Path,
 ) -> None:
@@ -78,4 +85,4 @@ def test_a_directory_is_skipped_as_not_a_regular_file_and_leaks_no_descriptor(
 
 
 def open_descriptors() -> int:
-    return len(os.listdir("/proc/self/fd")) if Path("/proc/self/fd").exists() else 0
+    return len(os.listdir(DESCRIPTOR_LISTING))
