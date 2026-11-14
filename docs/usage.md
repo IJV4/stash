@@ -68,7 +68,7 @@ again."; nothing is changed.
 | Command | Answer |
 |---|---|
 | `/list [stage]` | Newest items, one per line. |
-| `/find <words>` | Items whose title or note contain the words, one per line. |
+| `/find <words>` | Items whose title, note or tag contains the whole text you type (case ignored; it is one phrase, not separate words), one per line. |
 | `/library [type]` | Kept items. |
 | `/library html` | The whole library as one HTML file (also saved as `data_dir/library/latest.html`). Over 45 MB it is not sent; the copy is still saved. |
 | `/people` | One line per person with their next key date (the first 20, then "…and N more"). |
@@ -86,7 +86,7 @@ again."; nothing is changed.
 - `stash_people`, `stash_add_person`, `stash_add_key_date`, `stash_link_person`,
   `stash_remove_person` work on people.
 
-Every tool answer carries a `notice` saying the stored text is data, not instructions.
+Every answer that returns stored text carries a `notice` key saying the stored text is data, not instructions (error answers and answers with only ids do not).
 
 All of them answer JSON. Bad input answers `{"error": "..."}` and stores nothing.
 

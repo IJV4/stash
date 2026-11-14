@@ -5,6 +5,35 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-13, Plan 8 (the 2026-11-12 review findings) is built on `pc-m0`.** See `git log 4906cce..pc-m0`.
+  Topics: the GPU gate treats an unreadable GPU as busy; the plugin logs its GPU reading at start;
+  `writing()` is a database write lock; the digest and `stash doctor` count captures saved but not
+  filed; the ticker retries pending captures when the GPU is free; stash keeps its own copy of image
+  files; the page fetch connects to the address it checked; suggestions also draw from the oldest
+  Want-to items; `/find`; tool answers carry a `notice`; PATH and `%h` deploy drop-ins and a
+  doctor-in-the-service unit; review fixes (example `[nudges]` block, auto-retry questions, `/find` strip).
+  - New config: `[gpu] when_unreadable = "busy"`, `[nudges] auto_retry_minutes = 0` (off). New
+    settings row `capture.auto_retry_last`. New directory `data_dir/media`. No schema change.
+  - Default-on behaviour changes: an unreadable GPU now defers local filing; the digest and
+    `stash doctor` show captures saved but not filed; answers that return stored text carry a
+    `notice` key; `writing()` is a database write lock; `/find` exists; suggestions also draw from the
+    oldest Want-to items; the page fetch resolves DNS and connects to the checked address.
+  - Mac, after the merge: run `make check`. `uv.lock` on the PC is deliberately dirty and must never be
+    committed. `tests/integration/test_html_meta_tls.py` needs `openssl` and a loopback socket and
+    skips otherwise.
+  - Not done, owed: owner actions still open (interim backup/NAS mount, off-machine repo copy, filing
+    the pending capture); conditional tasks waiting on live checks (T17 filing dates after the eval
+    re-run, T18 hook decoupling after spike #23); `uv.lock` re-resolve to pypi.org on the Mac (T22);
+    T19 found 25 unit-test files that are coverage-redundant (analysis only, nothing deleted; the list
+    lived in the gitignored workspace, so re-run the method in Plan 8 T19 if you want it). Media copies
+    are not backed up by `stash backup` and have no retention.
+  - Do BEFORE anyone enables `auto_retry_minutes`: the auto-retry can race a live capture (the live
+    path waits on `_turn` and then resumes the item, so the owner can get a summary plus a
+    confirmation for the same item); a permanently failing oldest capture occupies the batch of 3; the
+    retry asks the GPU gate even when the provider is OpenRouter; `SerializedPipeline` holds `_turn`
+    for the whole batch so live messages can wait; `DirectoryMediaKeeper` copies any owner-readable
+    absolute path Hermes puts in `media_urls` (restrict to the Hermes cache root before images go to a
+    cloud model, Plan 5 T5).
 - **2026-11-04, how the PC runs stash now (ADR 0005).** stash lives in its own Hermes profile `stash`
   as a hardened systemd user service; the owner's default Hermes was restored. Nothing in the code
   changes, but note for deploy docs: restart the service after any `hermes plugins enable/disable`

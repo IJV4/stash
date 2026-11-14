@@ -88,7 +88,7 @@ local Ollama traffic must not go through a proxy.
 > first on the service's `PATH` so `nvidia-smi` is found; without it the GPU gate cannot read the GPU
 > from inside the sandbox. The hardening drop-in in the repo now writes `%h` instead of `/home/ismael`
 > (checked: `systemctl --user show` on a throwaway unit prints the paths expanded in
-> `BindReadOnlyPaths=` and `BindPaths=`). The copy already installed on the PC still has the
+> `BindReadOnlyPaths=`, `BindPaths=` and `InaccessiblePaths=`; systemd strips the leading `-` before expanding). The copy already installed on the PC still has the
 > hardcoded paths and keeps working; re-copy it at your convenience. It takes effect at the next
 > gateway start.
 >
@@ -169,7 +169,7 @@ ln -s ~/.config/systemd/user/hermes-gateway-stash.service.d ~/.config/systemd/us
 systemctl --user daemon-reload
 systemctl --user start stash-doctor.service; journalctl --user -u stash-doctor -n 30 --no-pager
 ```
-This probes Ollama and can load a model, so run it only when the GPU is free. **Check:** the
+This one-shot is untested: run it once with the GPU free and fix the unit if it fails to start (exit 203). The unit binds `~/.local/share/uv` read-only because `.venv/bin/stash` starts `.venv/bin/python3`, which resolves into it, and `ProtectHome=tmpfs` hides it otherwise. It probes Ollama and can load a model, so run it only when the GPU is free. **Check:** the
 `nvidia-smi` line reads "... MiB in use" (without `20-path.conf` it reads "no NVIDIA GPU found").
 
 To enable OpenRouter: put `OPENROUTER_API_KEY=...` in `~/.hermes/.env` **and** in
