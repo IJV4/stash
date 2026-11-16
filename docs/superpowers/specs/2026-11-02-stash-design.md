@@ -254,7 +254,7 @@ The eval set covers routing.
    often needs a login; my note covers that gap.
 4. AI files it: type, title, details, stage, tags, people.
 5. Reply: one line, e.g. `✅ Places · Tokyo · Want to`, with **fix buttons**
-   (change type / stage / edit). It asks a question only if it truly can't
+   (change type / stage). It asks a question only if it truly can't
    tell.
 6. Transcripts (media): use existing captions (yt-dlp) when available;
    otherwise enqueue **faster-whisper** (GPU). The queue runs when the LLM is
@@ -345,8 +345,8 @@ model = "<chosen by eval>"     # key comes from env OPENROUTER_API_KEY
 
 ### Browsing
 
-- Chat: list/filter/search ("books I read this year", "kept recipes"), inline
-  paging.
+- Chat: list/filter/search ("books I read this year", "kept recipes"). `/list`
+  shows up to 50 and counts the rest; `/find` and the agent tools narrow further.
 - Read-only **HTML library**: single self-contained HTML file, sent via
   Telegram on `/library` and kept on the PC. Nothing published to the
   internet.

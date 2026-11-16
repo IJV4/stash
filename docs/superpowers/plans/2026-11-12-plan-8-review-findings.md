@@ -58,6 +58,10 @@ Each task that depends on one says "Waits for Dn". Recommendations are mine; not
 | D8 | Hermes pin: `b7736eca98` (tested on the PC) or `43a35e8` (the source the plugin was read from)? | **Keep `b7736eca98`.** It is the version every PC result was measured on; ADR 0001 already records both. Record the choice in `CLAUDE.md` and `docs/deploy/wsl-setup.md` (T21). Re-evaluate only with a reason. |
 | D9 | Ship the "stored text is data" labelling (T16) before spike #8 runs? | **Yes.** It is cheap and cannot make the agent worse; #8 then measures the real scope, not this guard. |
 
+**Rulings (2026-11-16, branch review I1):** D6 and D7 went as recommended: the spec no longer
+lists inline paging or an "edit" fix button. D4 went as opt-in, not on: `[nudges] auto_retry_minutes`
+defaults to 0 until the auto-retry defects in the Mac handoff are fixed.
+
 ## Process
 
 - **Branch.** Stay on `pc-m0`. `git fetch` first; if `main` moved, merge per `CLAUDE.md`.
