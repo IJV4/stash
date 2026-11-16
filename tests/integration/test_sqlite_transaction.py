@@ -212,3 +212,19 @@ def test_a_commit_with_no_transaction_left_reaches_the_caller_as_the_commit_erro
         immediate_transaction(plain),
     ):
         plain.execute("ROLLBACK")
+
+
+@pytest.mark.integration
+def test_the_original_error_surfaces_when_sqlite_already_rolled_the_transaction_back(
+    connection: sqlite3.Connection,
+) -> None:
+    # Setup
+    connection.execute("BEGIN IMMEDIATE")
+
+    # Execute
+    with pytest.raises(Refused, match="disk full"), immediate_transaction(connection):
+        connection.execute("ROLLBACK")
+        raise Refused("disk full")
+
+    # Assert
+    assert not connection.in_transaction

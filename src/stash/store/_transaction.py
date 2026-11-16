@@ -41,7 +41,8 @@ def _savepoint(connection: sqlite3.Connection) -> Iterator[None]:
     try:
         yield
     except BaseException:
-        connection.execute(f"ROLLBACK TO {_NESTED}")
-        connection.execute(f"RELEASE {_NESTED}")
+        if connection.in_transaction:
+            connection.execute(f"ROLLBACK TO {_NESTED}")
+            connection.execute(f"RELEASE {_NESTED}")
         raise
     connection.execute(f"RELEASE {_NESTED}")
