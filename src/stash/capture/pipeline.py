@@ -64,7 +64,22 @@ class CapturePipeline:
             media_paths=self._owned(capture_id, message.media_paths),
             status=CaptureStatus.PENDING,
         )
-        return capture if self._store.add_capture(capture) else None
+        try:
+            added = self._store.add_capture(capture)
+        except BaseException:
+            self._discard_copies(capture, message)
+            raise
+        if not added:
+            self._discard_copies(capture, message)
+            return None
+        return capture
+
+    def _discard_copies(self, capture: RawCapture, message: IncomingMessage) -> None:
+        if self._keeper is None:
+            return
+        copies = [path for path in capture.media_paths if path not in message.media_paths]
+        if copies:
+            self._keeper.discard(copies)
 
     def _owned(self, capture_id: str, paths: tuple[str, ...]) -> tuple[str, ...]:
         if self._keeper is None or not paths:

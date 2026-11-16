@@ -2,9 +2,11 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 
+import pytest
 from capture_builders import RAMEN_URL, a_filing_answer, a_message
 from capture_narrowing import handle_filed
 from capture_rig import build_rig
+from fakes.faulty_store import FaultyStore, StoreFault
 from link_builders import a_link_info
 from log_records import recording_logs
 
@@ -162,3 +164,38 @@ def test_a_media_keeper_that_fails_does_not_stop_the_capture_being_saved() -> No
     # Assert
     assert capture is not None
     assert capture.media_paths == ("media/photo-1.jpg",)
+
+
+def test_a_redelivered_message_leaves_no_second_media_copy(tmp_path: Path) -> None:
+    # Setup
+    source = tmp_path / "photo.png"
+    source.write_bytes(b"fake image bytes")
+    media_root = tmp_path / "media"
+    rig = build_rig(keeper=DirectoryMediaKeeper(media_root))
+    message = a_message("", media_paths=(str(source),))
+    first = rig.pipeline.receive(message)
+
+    # Execute
+    second = rig.pipeline.receive(message)
+
+    # Assert
+    assert first is not None
+    assert second is None
+    assert [path.name for path in media_root.iterdir()] == [f"{first.id}-0.png"]
+
+
+def test_a_capture_the_store_refuses_leaves_no_media_copy_behind(tmp_path: Path) -> None:
+    # Setup
+    source = tmp_path / "photo.png"
+    source.write_bytes(b"fake image bytes")
+    media_root = tmp_path / "media"
+    store = FaultyStore(fail_on={"add_capture": StoreFault()})
+    rig = build_rig(store=store, keeper=DirectoryMediaKeeper(media_root))
+
+    # Execute
+    with pytest.raises(StoreFault):
+        rig.pipeline.receive(a_message("", media_paths=(str(source),)))
+
+    # Assert
+    assert list(media_root.iterdir()) == []
+    assert source.read_bytes() == b"fake image bytes"

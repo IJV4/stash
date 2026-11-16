@@ -39,6 +39,18 @@ class DirectoryMediaKeeper:
     def keep(self, capture_id: str, paths: Sequence[str]) -> tuple[str, ...]:
         return tuple(self._kept(capture_id, number, path) for number, path in enumerate(paths))
 
+    def discard(self, paths: Sequence[str]) -> None:
+        for path in paths:
+            target = Path(path)
+            if target.parent != self._root:
+                continue
+            try:
+                target.unlink(missing_ok=True)
+            except OSError as error:
+                logger.warning(
+                    "media copy not removed: %s", errno.errorcode.get(error.errno or 0, "OSError")
+                )
+
     def _kept(self, capture_id: str, number: int, path: str) -> str:
         try:
             data = self._read(path)
