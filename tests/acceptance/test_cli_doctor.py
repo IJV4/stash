@@ -6,6 +6,7 @@ from cli_rig import CliRig, build_cli_rig
 from fakes.installed_modules import InstalledModules
 
 from stash.config.loader import load_config
+from stash.gpu.gate import NO_GPU_READING
 
 PASSING_REPORT = [
     "✔ config — provider ollama, data directory {data}",
@@ -13,7 +14,7 @@ PASSING_REPORT = [
     "✔ ollama — model local-model is available",
     "✔ openrouter — key is valid; limit remaining: 10",
     "✔ openrouter model — model cloud/model is offered by OpenRouter",
-    "! nvidia-smi — no NVIDIA GPU found (nvidia-smi missing or failed)",
+    f"! nvidia-smi — {NO_GPU_READING}",
     "✔ yt-dlp — installed",
     "! deno — not found on PATH (yt-dlp needs a JavaScript runtime for some sites)",
     "! tesseract — not found on PATH (needed for the OCR eval arm)",

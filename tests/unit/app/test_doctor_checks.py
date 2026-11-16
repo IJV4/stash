@@ -8,9 +8,10 @@ from fakes.search_path import FakeSearchPath
 from fakes.store_factories import FreshStore
 
 from stash.app.doctor_checks import build_doctor
-from stash.config import ProviderName, StashConfig
+from stash.config import GpuConfig, ProviderName, StashConfig
 from stash.doctor import DoctorLine
 from stash.gpu import GpuProbe
+from stash.gpu.gate import NO_GPU_READING
 from stash.store import Store
 
 OLLAMA = ProviderName.OLLAMA
@@ -74,3 +75,25 @@ def test_the_deno_and_tesseract_checks_look_the_tools_up_on_the_path() -> None:
 
     # Assert
     assert [line.detail for line in lines[7:9]] == ["/usr/bin/deno", "/usr/bin/tesseract"]
+
+
+def test_the_gpu_line_says_an_unreadable_gpu_is_treated_as_busy_when_the_config_says_so() -> None:
+    # Setup
+    config = a_stash_config(gpu=GpuConfig(when_unreadable="busy"))
+
+    # Execute
+    [line] = [line for line in lines_of(config) if line.name == "nvidia-smi"]
+
+    # Assert
+    assert line.detail == NO_GPU_READING
+
+
+def test_the_gpu_line_keeps_the_plain_wording_when_an_unreadable_gpu_counts_as_free() -> None:
+    # Setup
+    config = a_stash_config(gpu=GpuConfig(when_unreadable="free"))
+
+    # Execute
+    [line] = [line for line in lines_of(config) if line.name == "nvidia-smi"]
+
+    # Assert
+    assert line.detail == "no NVIDIA GPU found (nvidia-smi missing or failed)"

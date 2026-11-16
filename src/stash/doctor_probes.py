@@ -3,13 +3,16 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from stash.config import StashConfig
+from stash.config import WHEN_UNREADABLE_BUSY, StashConfig
+from stash.config.model import WhenUnreadable
 from stash.gpu import GpuProbe
+from stash.gpu.gate import NO_GPU_READING
 from stash.llm import ProbeResult
 from stash.store import BACKUP_LAST_SUCCESS_KEY, ItemStore
 from stash.store.port import SettingsStore, Store
 
 STALE_BACKUP_AFTER = timedelta(hours=48)
+NO_GPU_MISSING = "no NVIDIA GPU found (nvidia-smi missing or failed)"
 NO_BACKUP_RECORDED = "no backup recorded yet"
 SECONDS_PER_HOUR = 3600
 
@@ -37,11 +40,14 @@ class DatabaseProbe:
 @dataclass(frozen=True, slots=True)
 class GpuReadingProbe:
     probe: GpuProbe
+    when_unreadable: WhenUnreadable
 
     def check(self) -> ProbeResult:
         sample = self.probe.sample()
         if sample is None:
-            return ProbeResult(False, "no NVIDIA GPU found (nvidia-smi missing or failed)")
+            if self.when_unreadable == WHEN_UNREADABLE_BUSY:
+                return ProbeResult(False, NO_GPU_READING)
+            return ProbeResult(False, NO_GPU_MISSING)
         return ProbeResult(
             True,
             f"{sample.used_mib} / {sample.total_mib} MiB in use, {sample.utilization_pct}% busy",

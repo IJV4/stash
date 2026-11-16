@@ -38,7 +38,9 @@ def build_doctor(
             DoctorCheck.mandatory("config", ConfigProbe(config)),
             DoctorCheck.mandatory("database", DatabaseProbe(store, config.db_path)),
             *_provider_checks(config, client),
-            DoctorCheck.optional("nvidia-smi", GpuReadingProbe(gpu_probe)),
+            DoctorCheck.optional(
+                "nvidia-smi", GpuReadingProbe(gpu_probe, config.gpu.when_unreadable)
+            ),
             DoctorCheck.optional("yt-dlp", PackageProbe(YT_DLP_MODULE, find_spec)),
             DoctorCheck.optional("deno", ExecutableProbe("deno", which, DENO_HINT)),
             DoctorCheck.optional("tesseract", ExecutableProbe("tesseract", which, TESSERACT_HINT)),
