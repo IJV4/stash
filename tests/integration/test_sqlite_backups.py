@@ -87,7 +87,7 @@ def test_a_failed_backup_leaves_an_existing_target_untouched(tmp_path: Path) -> 
     # Execute
     with (
         opened(tmp_path / "stash.db") as store,
-        patch("shutil.copyfile", side_effect=OSError("x")),
+        patch("shutil.copyfileobj", side_effect=OSError("x")),
         pytest.raises(BackupError),
     ):
         store.backup_to(target)
@@ -97,3 +97,15 @@ def test_a_failed_backup_leaves_an_existing_target_untouched(tmp_path: Path) -> 
         before,
         ["backup.db", "stash.db"],
     )
+
+
+@pytest.mark.integration
+def test_a_backup_file_is_readable_by_its_owner_only(tmp_path: Path) -> None:
+    # Setup
+    target = tmp_path / "stash-backup.db"
+    with opened(tmp_path / "stash.db") as store:
+        # Execute
+        store.backup_to(target)
+
+    # Assert
+    assert target.stat().st_mode & 0o777 == 0o600

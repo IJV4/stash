@@ -46,6 +46,7 @@ from stash.store.port import DEFAULT_PAGE_SIZE, BackupError, UnknownCaptureError
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
 BUSY_TIMEOUT = timedelta(seconds=5)
 BACKUP_TEMP_PREFIX = "stash-backup-"
+BACKUP_MODE = 0o600
 PARTIAL_SUFFIX = ".partial"
 
 
@@ -336,7 +337,11 @@ class SqliteStore:
 def _publish(finished: Path, target: Path) -> None:
     partial = target.with_name(f"{target.name}{PARTIAL_SUFFIX}")
     try:
-        shutil.copyfile(finished, partial)
+        descriptor = os.open(
+            partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, BACKUP_MODE
+        )
+        with os.fdopen(descriptor, "wb") as destination, finished.open("rb") as source:
+            shutil.copyfileobj(source, destination)
         os.replace(partial, target)
     except BaseException:
         partial.unlink(missing_ok=True)
