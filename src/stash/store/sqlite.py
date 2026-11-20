@@ -337,8 +337,9 @@ class SqliteStore:
 def _publish(finished: Path, target: Path) -> None:
     partial = target.with_name(f"{target.name}{PARTIAL_SUFFIX}")
     try:
+        partial.unlink(missing_ok=True)
         descriptor = os.open(
-            partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, BACKUP_MODE
+            partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, BACKUP_MODE
         )
         with os.fdopen(descriptor, "wb") as destination, finished.open("rb") as source:
             shutil.copyfileobj(source, destination)

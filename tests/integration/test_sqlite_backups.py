@@ -10,6 +10,7 @@ from builders import a_capture, an_item
 from fakes.store_factories import opened
 
 from stash.store import BackupError
+from stash.store.sqlite import PARTIAL_SUFFIX
 
 TODAY = date(2026, 11, 2)
 
@@ -103,6 +104,23 @@ def test_a_failed_backup_leaves_an_existing_target_untouched(tmp_path: Path) -> 
 def test_a_backup_file_is_readable_by_its_owner_only(tmp_path: Path) -> None:
     # Setup
     target = tmp_path / "stash-backup.db"
+    with opened(tmp_path / "stash.db") as store:
+        # Execute
+        store.backup_to(target)
+
+    # Assert
+    assert target.stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.integration
+def test_a_stale_partial_file_with_wide_permissions_does_not_widen_the_backup(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    target = tmp_path / "stash-backup.db"
+    stale = tmp_path / f"stash-backup.db{PARTIAL_SUFFIX}"
+    stale.write_bytes(b"left by a crash")
+    stale.chmod(0o644)
     with opened(tmp_path / "stash.db") as store:
         # Execute
         store.backup_to(target)
