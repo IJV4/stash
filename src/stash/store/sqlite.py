@@ -1,4 +1,7 @@
+import os
+import shutil
 import sqlite3
+import tempfile
 import threading
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import closing, contextmanager
@@ -42,6 +45,8 @@ from stash.store.port import DEFAULT_PAGE_SIZE, BackupError, UnknownCaptureError
 
 _PRIMARY_KEY_VIOLATION = "SQLITE_CONSTRAINT_PRIMARYKEY"
 BUSY_TIMEOUT = timedelta(seconds=5)
+BACKUP_TEMP_PREFIX = "stash-backup-"
+PARTIAL_SUFFIX = ".partial"
 
 
 def _value_of(member: StrEnum | None) -> str | None:
@@ -300,10 +305,15 @@ class SqliteStore:
 
     def backup_to(self, target: Path) -> None:
         try:
-            with self._lock, closing(sqlite3.connect(str(target))) as destination:
-                self._connection.backup(destination)
+            with tempfile.TemporaryDirectory(prefix=BACKUP_TEMP_PREFIX) as directory:
+                local = Path(directory) / target.name
+                with self._lock, closing(sqlite3.connect(str(local))) as destination:
+                    self._connection.backup(destination)
+                _publish(local, target)
         except sqlite3.Error as error:
             raise BackupError(str(error)) from error
+        except OSError as error:
+            raise BackupError(f"cannot write backup to {target}: {error}") from error
 
     def close(self) -> None:
         with self._lock:
@@ -321,3 +331,13 @@ class SqliteStore:
         require_non_negative("limit", limit)
         parameters = {"stage": stage.value, "cutoff": utc_text(cutoff), "limit": limit}
         return self._items_from(sql.STAGE_OLDER_THAN, parameters)
+
+
+def _publish(finished: Path, target: Path) -> None:
+    partial = target.with_name(f"{target.name}{PARTIAL_SUFFIX}")
+    try:
+        shutil.copyfile(finished, partial)
+        os.replace(partial, target)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise

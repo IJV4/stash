@@ -2,6 +2,7 @@ import sqlite3
 from contextlib import closing
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from backup_builders import a_backups
@@ -60,3 +61,39 @@ def test_a_sqlite_failure_while_backing_up_is_translated_to_backup_error(tmp_pat
     # Execute / Assert
     with opened(tmp_path / "stash.db") as store, pytest.raises(BackupError):
         store.backup_to(unwritable_target)
+
+
+@pytest.mark.integration
+def test_a_backup_into_a_missing_directory_raises_backup_error_and_leaves_nothing(
+    tmp_path: Path,
+) -> None:
+    # Setup
+    target = tmp_path / "missing" / "backup.db"
+
+    # Execute / Assert
+    with opened(tmp_path / "stash.db") as store, pytest.raises(BackupError):
+        store.backup_to(target)
+    assert not target.parent.exists()
+
+
+@pytest.mark.integration
+def test_a_failed_backup_leaves_an_existing_target_untouched(tmp_path: Path) -> None:
+    # Setup
+    target = tmp_path / "backup.db"
+    with closing(sqlite3.connect(target)) as previous:
+        previous.execute("CREATE TABLE marker (id INTEGER)")
+    before = target.read_bytes()
+
+    # Execute
+    with (
+        opened(tmp_path / "stash.db") as store,
+        patch("shutil.copyfile", side_effect=OSError("x")),
+        pytest.raises(BackupError),
+    ):
+        store.backup_to(target)
+
+    # Assert
+    assert (target.read_bytes(), sorted(p.name for p in tmp_path.iterdir())) == (
+        before,
+        ["backup.db", "stash.db"],
+    )
