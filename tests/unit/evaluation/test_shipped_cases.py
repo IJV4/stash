@@ -18,12 +18,12 @@ def is_text_routing(case: EvalCase) -> bool:
     return case.kind is CaseKind.TEXT and case.expect.scored_fields() == {EvalField.ROUTE}
 
 
-def test_seventeen_shipped_text_cases_are_filings() -> None:
+def test_nineteen_shipped_text_cases_are_filings() -> None:
     # Execute
     filings = [case for case in shipped_cases() if is_text_filing(case)]
 
     # Assert
-    assert len(filings) == 17
+    assert len(filings) == 19
 
 
 def test_eleven_shipped_text_cases_are_routing_cases_scored_on_route_only() -> None:

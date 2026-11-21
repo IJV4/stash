@@ -88,3 +88,30 @@ def test_words_in_a_links_description_reach_the_ai_only_inside_the_link_block() 
         False,
         True,
     )
+
+
+def test_the_ai_is_told_the_date_comes_from_the_capture_and_today_is_only_context() -> None:
+    # Setup
+    model = FakeChatModel()
+    filer = build_filer(model)
+
+    # Execute
+    filer.file("Date night at the Harbor Jazz Club on 2027-03-14 at 8pm", None)
+
+    # Assert
+    system, user = sent_texts(model)
+    assert "taken only from the captured text or image" in system
+    assert "never copy it into date" in system
+    assert user.splitlines()[0] == "Context only, not a value to copy: today is Monday 2026-11-02."
+
+
+def test_the_date_field_is_described_to_the_ai_as_the_date_the_item_is_about() -> None:
+    # Setup
+    model = FakeChatModel()
+    filer = build_filer(model)
+
+    # Execute
+    filer.file("Ramen in Shibuya", None)
+
+    # Assert
+    assert "null when the capture has no date" in str(model.schemas[0])

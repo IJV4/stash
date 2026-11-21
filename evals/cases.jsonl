@@ -29,3 +29,5 @@
 {"id": "r09", "arm": "text", "text": "cooked the lemon garlic roast chicken recipe I saved, would make it again", "link": null, "expect": {"route": "request"}}
 {"id": "r10", "arm": "text", "text": "Read 'The Glass Orchard' by Mira Voss, I just finished her other novel", "link": null, "expect": {"route": "capture"}}
 {"id": "r11", "arm": "text", "text": "Watch the documentary Salt Roads, I just wrapped up the Lantern series", "link": null, "expect": {"route": "capture"}}
+{"id": "t18", "arm": "text", "text": "Dentist checkup on 2027-01-19 at 9am", "link": null, "expect": {"route": "capture", "stage": "planned", "date": "2027-01-19"}}
+{"id": "t19", "arm": "text", "text": "Anniversary dinner at Casa Verde reserved for 2027-09-04", "link": null, "expect": {"route": "capture", "stage": "planned", "date": "2027-09-04"}}

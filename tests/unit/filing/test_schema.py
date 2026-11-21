@@ -81,10 +81,11 @@ def test_tags_and_people_are_arrays_of_strings(name: str) -> None:
 
 def test_the_date_is_a_year_month_day_string_or_null() -> None:
     # Assert
-    assert properties()["date"] == {
-        "type": ("string", "null"),
-        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-    }
+    date = properties()["date"]
+    assert (date["type"], date["pattern"]) == (
+        ("string", "null"),
+        "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+    )
 
 
 def test_the_title_is_a_string() -> None:

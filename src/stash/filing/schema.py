@@ -7,6 +7,11 @@ SCHEMA_NAME = "filing"
 FILEABLE_STAGES = (Stage.INBOX, Stage.WANT_TO, Stage.PLANNED)
 DATE_PATTERN = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 
+DATE_HELP = (
+    "The date the item is about, read from the capture; null when the capture has no date. "
+    "Never today's date unless the capture says so."
+)
+
 
 def _string_array() -> dict[str, object]:
     return {"type": "array", "items": {"type": "string"}}
@@ -25,7 +30,7 @@ def _properties() -> dict[str, object]:
         "details": {"type": "object", "additionalProperties": {"type": "string"}},
         "tags": _string_array(),
         "people": _string_array(),
-        "date": {"type": ["string", "null"], "pattern": DATE_PATTERN},
+        "date": {"type": ["string", "null"], "pattern": DATE_PATTERN, "description": DATE_HELP},
     }
 
 

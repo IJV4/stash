@@ -35,6 +35,10 @@ def _system_prompt() -> str:
         f"{Stage.INBOX.value} when you cannot tell, and "
         f"{Stage.PLANNED.value} only with an explicit date, resolved against today, "
         "as YYYY-MM-DD.\n"
+        "Date: the date the item is about, as YYYY-MM-DD, taken only from the captured text "
+        "or image, and null when the capture has none. Any calendar date written in the capture "
+        "(2027-09-04, 22 May 2027) is the date. Today's date is context for resolving "
+        'relative words such as "next Friday"; never copy it into date.\n'
         "Routes:\n"
         f"- {Route.CAPTURE.value}: something to remember or do; "
         f"a new thing stays a {Route.CAPTURE.value} even if it mentions finishing something else.\n"
@@ -51,7 +55,8 @@ def _system_prompt() -> str:
 
 def _user_text(text: str, link: LinkInfo | None, today: date) -> str:
     lines = [
-        f"Today is {WEEKDAYS[today.weekday()]} {today.isoformat()}.",
+        f"Context only, not a value to copy: today is {WEEKDAYS[today.weekday()]} "
+        f"{today.isoformat()}.",
         f"<captured>\n{_escaped(text[:CAPTURED_TEXT_LIMIT])}\n</captured>",
     ]
     if link is not None:
