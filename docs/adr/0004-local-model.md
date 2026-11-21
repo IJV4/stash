@@ -52,6 +52,8 @@ the report shows only aggregates). `i01` and `i03` pass. Date handling is the we
 investigate on the Mac: print per-case model output in the eval report, reproduce `t10`, and rerun
 with thinking off (see the latency finding above). Vision arm and gemma4:12b not run yet.
 
+Update 2026-11-21 (Plan 8 T17): the model copied the prompt's "Today is" date into `date`. After the prompt and schema fix, `stash eval --providers ollama --thinking off` scores date accuracy 100% on the text, vision and OCR arms (was 0%); `t10` and `i02` pass.
+
 ## Thinking control (2026-11-04, Mac)
 `[llm.thinking]` sets `default` or `off` per stash LLM task (`filing`, `suggestions`,
 `vision`). Each provider maps `off` to its own request field:
