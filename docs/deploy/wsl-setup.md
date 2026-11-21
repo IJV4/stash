@@ -179,32 +179,38 @@ the environment stash runs with, set `[llm] provider = "openrouter"` (or a
 
 ## 9. NAS backups
 
+The PC's NAS is a Synology at `192.168.10.20`. stash backs up into the home folder of a dedicated
+NAS user `stash` (the `home` share, which maps to whichever user logs in). **Not copied to B2:** the
+Hyper Backup task covers only the `backups` share and `homes/sofix`, and the owner chose to keep
+`homes/stash` out of it, so the NAS is the only extra copy until that changes.
+
+In DSM (owner): create user `stash` with a long password; remove it from the `users` group; every
+shared folder "No access"; Applications: **SMB = Allow**, everything else Deny. On this DSM version
+SMB is gated per account on the Applications tab, so denying it too gives `mount error(13)` at the
+session setup (the same detour as `backup-svc`, see the home-network hardening plan, Task 3).
+
 ```bash
 sudo mkdir -p /mnt/nas/stash-backups
-# /etc/fstab (credentials file chmod 600; values for your Synology share):
-# //<nas-ip>/<share>/stash-backups /mnt/nas/stash-backups cifs credentials=/home/<you>/.nas-cred,uid=<you>,gid=<you>,_netdev,nofail 0 0
-sudo mount -a
+printf 'username=stash\npassword=<password>\n' > ~/.nas-cred && chmod 600 ~/.nas-cred
+# /etc/fstab:
+# //192.168.10.20/home /mnt/nas/stash-backups cifs credentials=/home/<you>/.nas-cred,uid=<you>,gid=<you>,file_mode=0600,dir_mode=0700,vers=3.0,_netdev,nofail 0 0
+sudo systemctl daemon-reload && sudo mount /mnt/nas/stash-backups
 mkdir -p ~/.config/systemd/user
 cp deploy/systemd/stash-backup.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload && systemctl --user enable --now stash-backup.timer
 ```
-**Check:** `systemctl --user list-timers` shows `stash-backup.timer`;
-`systemctl --user start stash-backup.service` writes `stash-YYYYMMDD.db` on the NAS.
+**Check:** `systemctl --user list-timers` shows `stash-backup.timer` (03:30);
+`systemctl --user start stash-backup.service` writes `stash-YYYYMMDD.db` on the NAS and `stash doctor`
+shows `backup` fresh. Restore drill: copy the file to a scratch directory, point a scratch config's
+`data_dir` at it and run `stash list --config <scratch>`; the item count must match.
 
-Interim backup until the NAS is mounted (optional, Plan 8 T2; follow it only if you want it; this
-file does not record that the PC has done it). The packaged unit needs the NAS mount, so point it at
-a folder with a drop-in `~/.config/systemd/user/stash-backup.service.d/10-interim.conf`:
-```ini
-[Unit]
-RequiresMountsFor=
-[Service]
-ExecStart=
-ExecStart=%h/projects/stash/.venv/bin/stash backup --to <folder>
-```
-Plan 8 suggests a Windows-side folder (`/mnt/c/Users/<you>/stash-backups`), which survives
-`wsl --unregister`; it is the same physical disk, so it is a stopgap. Then `systemctl --user
-daemon-reload && systemctl --user enable --now stash-backup.timer`. **Remove the drop-in once the NAS
-is mounted** and run `daemon-reload` again.
+Do not open the database on the NAS with `sqlite3` (CIFS has no reliable locking and leaves `-wal`
+and `-shm` files); copy it to local disk first. `stash backup` itself writes to a local temporary
+file and moves the finished file onto the target, and creates it mode 0600.
+
+PC status (2026-11-21): done. Mounted, nightly timer on the packaged unit, restore drill passed
+(9 items). A second copy from the interim period sits in `C:\Users\ismae\stash-backups` and is no
+longer written to.
 
 ## 10. M0 spike
 

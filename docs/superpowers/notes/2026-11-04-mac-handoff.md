@@ -5,6 +5,15 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-21, the PC backs up to the NAS** (Plan 8 T1 to T3 done). Nightly 03:30 into `homes/stash`
+  (NAS user `stash`), not copied to B2 by the owner's choice. Code changes on `pc-m0`: `backup_to`
+  writes to a local temp file and then moves it onto the target (CIFS cannot lock SQLite), files are
+  created 0600 and a stale `.partial` is removed first; media copies are removed when a capture is a
+  redelivery or the store refuses it; a savepoint rollback keeps the original error; the doctor GPU
+  line says an unreadable GPU is treated as busy; the spec no longer lists inline paging or the edit
+  button (D6, D7); auto-retry stays off (D4). Branch review of Plan 8 found nothing Critical; I2 (the
+  auto-retry defects listed below) still blocks turning it on. `docs/deploy/wsl-setup.md` section 9
+  has the NAS setup. The repo is also on GitHub (`github` remote, public).
 - **2026-11-13, Plan 8 (the 2026-11-12 review findings) is built on `pc-m0`.** See `git log 4906cce..pc-m0`.
   Topics: the GPU gate treats an unreadable GPU as busy; the plugin logs its GPU reading at start;
   `writing()` is a database write lock; the digest and `stash doctor` count captures saved but not
