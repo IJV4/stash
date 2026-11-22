@@ -5,6 +5,14 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-21, filing dates fixed and spike #23 measured.** T17 is built: the filing prompt says `date`
+  comes only from the capture and "today" is context, not a value to copy (eval date accuracy 0% to 100%
+  with thinking off; `t18` and `t19` are new cases; relative dates like "next Friday" are not pinned
+  because the eval uses the real clock). Thinking `off` scored 100% on type, stage and details at 1.3 s
+  against 36.8 s for `default`; the default is not changed yet (owner decision). Spike #23: Hermes does not
+  time out the hook (link 40-65 s, question about 8 s); a second message waits for the first, nothing is
+  lost, so T18 is closed with no code change. Route accuracy is noisy (`t17`, `r01`, `r10`, `r11` fail).
+  Side finding: the agent once called `stash_set_stage` with `stage: 'plan'` (rejected by the schema).
 - **2026-11-21, the PC backs up to the NAS** (Plan 8 T1 to T3 done). Nightly 03:30 into `homes/stash`
   (NAS user `stash`), not copied to B2 by the owner's choice. Code changes on `pc-m0`: `backup_to`
   writes to a local temp file and then moves it onto the target (CIFS cannot lock SQLite), files are

@@ -321,6 +321,8 @@ The agent reads untrusted text (titles, notes, link metadata) and has mutating t
 
 **Run only if spike #23 (T24) shows Hermes times out or delays the hook.** Why the hook waits: ADR 0001 row #7 (a question must get `allow` from the hook so Hermes runs a normal agent turn; `inject_message` cannot open a chat). Today `MessageIntake._classified` awaits `steps.process` (up to about 100 s for a link) and `SerializedPipeline` (`capture/serial.py`) runs one at a time, so ten links queue for minutes inside the hook.
 
+**Closed 2026-11-21 (spike #23, thinking `default`):** nothing timed out (link hook 40-65 s, question hook about 8 s); the second message waits for the first and nothing is lost. The first branch below applies: no code change, latencies recorded in `docs/spike-m0.md` #23.
+
 - [ ] **Step 1: Decide from the measurement, in this order of preference,** and write the choice into the plan before coding:
   - If the *second message* waits for the first but nothing times out: do nothing; record the latency in ADR 0001 and close.
   - If only long link inspection is the cost: return `skip` after the raw save for a message that contains a URL and no `?` prefix, and classify in the background (`_in_flight` already holds tasks), sending the burst reply when done; only plain text (no URL, short filing call) keeps waiting so a question can still `allow`.
