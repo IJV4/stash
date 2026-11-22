@@ -26,17 +26,17 @@ def test_nineteen_shipped_text_cases_are_filings() -> None:
     assert len(filings) == 19
 
 
-def test_eleven_shipped_text_cases_are_routing_cases_scored_on_route_only() -> None:
+def test_nineteen_shipped_text_cases_are_routing_cases_scored_on_route_only() -> None:
     # Execute
     routing = [case for case in shipped_cases() if is_text_routing(case)]
 
     # Assert
-    assert len(routing) == 11
+    assert len(routing) == 19
 
 
-def test_the_shipped_routing_cases_expect_seven_requests_two_unsure_and_two_captures() -> None:
+def test_the_shipped_routing_cases_expect_nine_requests_two_unsure_and_eight_captures() -> None:
     # Execute
     routes = Counter(case.expect.route for case in shipped_cases() if is_text_routing(case))
 
     # Assert
-    assert routes == {Route.REQUEST: 7, Route.UNSURE: 2, Route.CAPTURE: 2}
+    assert routes == {Route.REQUEST: 9, Route.UNSURE: 2, Route.CAPTURE: 8}

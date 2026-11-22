@@ -31,3 +31,11 @@
 {"id": "r11", "arm": "text", "text": "Watch the documentary Salt Roads, I just wrapped up the Lantern series", "link": null, "expect": {"route": "capture"}}
 {"id": "t18", "arm": "text", "text": "Dentist checkup on 2027-01-19 at 9am", "link": null, "expect": {"route": "capture", "stage": "planned", "date": "2027-01-19"}}
 {"id": "t19", "arm": "text", "text": "Anniversary dinner at Casa Verde reserved for 2027-09-04", "link": null, "expect": {"route": "capture", "stage": "planned", "date": "2027-09-04"}}
+{"id": "r12", "arm": "text", "text": "Tell Marta the book club moved to Thursday", "link": null, "expect": {"route": "capture"}}
+{"id": "r13", "arm": "text", "text": "Check whether the bike shop on Elm Street fixed my brakes", "link": null, "expect": {"route": "capture"}}
+{"id": "r14", "arm": "text", "text": "Find a birthday card for Dad before the 15th", "link": null, "expect": {"route": "capture"}}
+{"id": "r15", "arm": "text", "text": "Try the new ramen spot Kumo Noodle, I just watched a show about Tokyo food", "link": null, "expect": {"route": "capture"}}
+{"id": "r16", "arm": "text", "text": "Listen to the podcast Harbor Lights, I just read a novel about sailors", "link": null, "expect": {"route": "capture"}}
+{"id": "r17", "arm": "text", "text": "Ask the landlord about the parking permit, gate code is 4821", "link": null, "expect": {"route": "capture"}}
+{"id": "r18", "arm": "text", "text": "watched the Quiet Rivers documentary I saved, the ending was moving", "link": null, "expect": {"route": "request"}}
+{"id": "r19", "arm": "text", "text": "finished reading Ember Coast from my list, five stars", "link": null, "expect": {"route": "request"}}
