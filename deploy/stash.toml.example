@@ -27,8 +27,8 @@ model = "<id-from-the-eval-report>"
 # suggestions = "openrouter"
 
 # Model thinking per task. "default" (unlisted tasks) sends no thinking field; "off" asks the provider to skip thinking.
-# [llm.thinking]
-# filing = "off"   # stash's own calls only; Hermes agent turns are configured in Hermes
+[llm.thinking]
+filing = "off"   # stash's own calls only; Hermes agent turns are configured in Hermes
 # Tasks: filing, suggestions, vision. `suggestions` also covers step proposals (planning/proposer.py
 # asks for LlmTask.SUGGESTIONS); `vision` has no production call until Plan 5.
 # The eval's runs follow --thinking (default: the filing setting).

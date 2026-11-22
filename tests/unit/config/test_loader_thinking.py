@@ -5,8 +5,6 @@ from config_toml import OLLAMA_TABLE, a_toml, load, load_message, with_key
 from stash.config import LlmTask, Thinking
 
 EXAMPLE_FILE = Path(__file__).resolve().parents[3] / "deploy" / "stash.toml.example"
-COMMENTED_BLOCK = '# [llm.thinking]\n# filing = "off"'
-UNCOMMENTED_BLOCK = '[llm.thinking]\nfiling = "off"'
 
 
 def with_thinking(entries: str) -> str:
@@ -94,13 +92,12 @@ def test_a_key_that_is_not_a_task_is_an_unknown_key(tmp_path: Path) -> None:
     assert message == "unknown config key(s): llm.thinking.chat"
 
 
-def test_the_example_files_thinking_block_works_once_uncommented(tmp_path: Path) -> None:
+def test_the_example_file_turns_thinking_off_for_filing(tmp_path: Path) -> None:
     # Setup
     example = EXAMPLE_FILE.read_text(encoding="utf-8")
-    assert COMMENTED_BLOCK in example
 
     # Execute
-    config = load(tmp_path, example.replace(COMMENTED_BLOCK, UNCOMMENTED_BLOCK), with_key())
+    config = load(tmp_path, example, with_key())
 
     # Assert
     assert config.llm.thinking_for(LlmTask.FILING) is Thinking.OFF

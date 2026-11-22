@@ -54,6 +54,10 @@ with thinking off (see the latency finding above). Vision arm and gemma4:12b not
 
 Update 2026-11-21 (Plan 8 T17): the model copied the prompt's "Today is" date into `date`. After the prompt and schema fix, `stash eval --providers ollama --thinking off` scores date accuracy 100% on the text, vision and OCR arms (was 0%); `t10` and `i02` pass.
 
+Decision 2026-11-21: `[llm.thinking] filing = "off"` is the shipped setting (`deploy/stash.toml.example`) and the PC's. With
+`qwen3.5:latest`, off scored 100% on type, stage and details (default 94%, 94%, 67%) at a p50 of 1.3 s against 36.8 s, and
+default had a 120 s read timeout. Unlisted tasks still send no thinking field. Re-run the comparison for any other model.
+
 ## Thinking control (2026-11-04, Mac)
 `[llm.thinking]` sets `default` or `off` per stash LLM task (`filing`, `suggestions`,
 `vision`). Each provider maps `off` to its own request field:
