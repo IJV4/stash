@@ -6,14 +6,14 @@
 
 **Architecture:** A route that the filing model calls `request` is accepted only when the text looks like a question (the floor, T3). Separately a throwaway spike (T1, T2) measures whether Nimble's probabilities separate real requests from captures that contain trigger words ("ask", "I just finished"). If they do, an optional gate (T4) lets a confident `request` through without the question shape, and any scorer failure falls back to the floor. Nothing in this plan changes the filing prompt (four rewrites on 2026-11-22 moved the failures around; see ADR 0004).
 
-**Tech Stack:** Python >= 3.11, httpx, Ollama (system install 0.33.2; the spike uses a separate user-space build >= 0.35.0 on port 11435), `nimble:9b-q4_K_M`, `uv`, `ruff`, `mypy --strict`, pytest.
+**Tech Stack:** Python >= 3.11, httpx, Ollama (system install 0.33.2, upgraded to >= 0.35.0 in T1), `nimble:9b-q4_K_M`, `uv`, `ruff`, `mypy --strict`, pytest.
 
 **Spec:** `docs/superpowers/specs/2026-11-02-stash-design.md` ("If the AI judges it a request, it answers and the raw copy is discarded"; "nothing is lost"). Evidence: `docs/adr/0004-local-model.md`, the 2026-11-21 eval and `evals/cases.jsonl` (cases t17, r10, r11 lose items; r12 to r19 are held-out).
 
 ## Global Constraints
 
 - Mac sandbox blocks Ollama: the suite stays offline (fakes, `httpx.MockTransport`). Only T1 and T2 touch a live service, on the PC.
-- **The owner needs the GPU for games.** T1 and T2 run only when the owner says the GPU is free, and they end with the spike server stopped and no model loaded. Never start or stop `hermes-gateway-stash` or the system `ollama` unit without the owner.
+- **The owner needs the GPU for games.** T1 and T2 run only when the owner says the GPU is free, and they end with no model loaded. Never start or stop `hermes-gateway-stash` or the system `ollama` unit without the owner; the upgrade in T1 needs the owner's sudo.
 - Fake data only: the spike reads `evals/cases.jsonl`, never the live database.
 - Layering: only `stash.app` imports adapters; a new HTTP adapter lives in `stash.llm`; the Filer depends on a Protocol, not on the adapter.
 - LLM output is untrusted: probabilities are validated and clamped at the boundary; a bad or missing answer means "no score", never an exception into the pipeline.
@@ -37,12 +37,13 @@
 
 ---
 
-## T1: A scratch Ollama >= 0.35 with Nimble (PC, owner present, no code)
+## T1: Upgrade the system Ollama to >= 0.35 and pull Nimble (PC, owner present, no code)
 
-- [ ] **Step 1 (OWNER): say the GPU is free.** Run `stash gpu status`; it must print `GPU free`. Stop nothing else.
-- [ ] **Step 2: Download Ollama into its own empty directory** (untrusted download): `mkdir -p ~/ollama-spike && cd ~/ollama-spike`, fetch the latest `ollama-linux-amd64.tgz` from the official GitHub releases, extract there. Run `~/ollama-spike/bin/ollama --version`. Passed: a version >= 0.35.0. If the release is older than 0.35.0, stop and record it; the spike cannot run.
-- [ ] **Step 3: Start it on its own port and model directory.** `OLLAMA_HOST=127.0.0.1:11435 OLLAMA_MODELS=$HOME/ollama-spike/models ~/ollama-spike/bin/ollama serve` in the background; `OLLAMA_HOST=127.0.0.1:11435 ~/ollama-spike/bin/ollama pull nimble:9b-q4_K_M` (5.6 GB). The system Ollama on 11434 and the gateway are untouched.
-- [ ] **Step 4: Prove the endpoint.** `curl http://127.0.0.1:11435/v1/systemone` with the choice example from `https://docs.ollama.com/capabilities/decision.md`. Passed: a JSON answer with `probabilities` summing to about 1 and a `confidence`. Failed: record the error text in `docs/spike-m0.md` row #31 and stop.
+- [ ] **Step 1 (OWNER): say the GPU is free.** `stash gpu status` prints `GPU free`; the gateway is stopped.
+- [ ] **Step 2: Record the way back.** `ollama --version` (0.33.2 today), `systemctl cat ollama > ~/ollama-unit-before.txt`, `ollama list > ~/ollama-models-before.txt`. Rollback is `curl -fsSL https://ollama.com/install.sh | OLLAMA_VERSION=0.33.2 sh`.
+- [ ] **Step 3 (OWNER, sudo): upgrade in place.** `curl -fsSL https://ollama.com/install.sh | sh`. Passed: `ollama --version` is >= 0.35.0; `ollama list` shows the same models as before; `ollama ps` after one request shows `CONTEXT 65536` (the override in `deploy/systemd/ollama.override.conf` survived; if it shows 4096 reapply it per `wsl-setup.md` section 3).
+- [ ] **Step 4: Prove nothing regressed before anything else.** `stash eval --providers ollama --thinking off`. Passed: route about 79% (30/38 on the 38 text cases), type, stage and date 100%, no errors; the same numbers as the 2026-11-22 baseline. If they differ, stop, roll back, and record it in `docs/spike-m0.md` row #31.
+- [ ] **Step 5: Pull Nimble and prove the endpoint.** `ollama pull nimble:9b-q4_K_M` (5.6 GB). `curl http://localhost:11434/v1/systemone` with the choice example from `https://docs.ollama.com/capabilities/decision.md`. Passed: a JSON answer with `probabilities` summing to about 1 and a `confidence`. Failed: record the error text in row #31 and stop.
 
 ## T2: The measurement spike (PC, throwaway script, ends with a decision)
 
@@ -51,14 +52,14 @@
 - Modify: `docs/spike-m0.md` (row #31), this plan (the decision line below)
 
 **Interfaces:**
-- Consumes: `evals/cases.jsonl` (`id`, `text`, `expect.route`), `POST http://127.0.0.1:11435/v1/systemone`.
+- Consumes: `evals/cases.jsonl` (`id`, `text`, `expect.route`), `POST http://localhost:11434/v1/systemone`.
 - Produces: a table of per-case probabilities and the decision below. No product code.
 
 - [ ] **Step 1: Write the script.** For every case with `arm == "text"`, send one `choice` question named `route` with options `capture`, `request`, `unsure` and a one-line description each (taken from the filing prompt's Routes block, without the example phrases). Run it twice: with the real option names and with neutral names `a`, `b`, `c` mapped back (label words bias answers). Print per case: expected route, the three probabilities, `confidence`, latency. Use `keep_alive` of `0` on the last request so the model unloads.
 - [ ] **Step 2: Run it** on all 38+ text cases. Record the first-call (cold) and warm latency, and the VRAM from `nvidia-smi` while Nimble is loaded.
 - [ ] **Step 3: Choose the threshold on the original cases only** (t01 to t19, r01 to r11), then evaluate once on the held-out r12 to r19. Report, for the chosen threshold `tau`: captures accepted as `request` (must be 0 on both sets), requests accepted as `request` (share), and the probability Nimble gives `t17`, `r10`, `r11`.
 - [ ] **Step 4: Apply the pass criteria** (fixed here, before the run): the gate is worth building only if, at one `tau`, **(a)** no capture-expected case in either set is accepted as `request`, **(b)** at least 70% of request-expected cases without a question mark (r03, r06 to r09, r18, r19) are still accepted, and **(c)** warm latency is under 1 s and VRAM with Nimble loaded leaves room for `qwen3.5` to swap in under 10 s. The set is small (about 40 cases against the ~100 the papers use), so say so in the record. Write `PASS` or `FAIL` with the numbers on the line `**T2 result:**` below, plus a row #31 in `docs/spike-m0.md`.
-- [ ] **Step 5: Clean up (OWNER sees it).** Stop the spike server; `~/ollama-spike/bin/ollama` ps equivalent must show no model; `nvidia-smi` shows the GPU free. Keep `~/ollama-spike` unless the owner wants the 7 GB back. Commit only the docs: `docs: spike #31, Nimble route probabilities (Plan 9 T2)`.
+- [ ] **Step 5: Clean up.** `ollama ps` shows no model (the last request used `keep_alive` 0); `nvidia-smi` shows the GPU free. Commit only the docs: `docs: spike #31, Nimble route probabilities (Plan 9 T2)`.
 
 **T2 result:** _not run yet._
 
@@ -93,7 +94,7 @@
 
 - [ ] **Step 1: Failing tests.** The Filer with a scripted model saying `request`: `test_a_confident_request_without_a_question_shape_is_accepted` (scorer returns request 0.97 at threshold 0.9), `test_an_unconfident_request_without_a_question_shape_becomes_unsure` (0.6), `test_a_missing_score_falls_back_to_the_floor` (None), `test_a_busy_gpu_skips_the_scorer` (the scorer is not called). Adapter tests with `httpx.MockTransport`: a normal answer maps to `RouteProbabilities`; a 500, a timeout, probabilities `NaN`, negative or summing to 0, and a missing option all return `None`. Config test: the default is `enabled = False`, an unknown key and a threshold outside (0, 1] raise `ConfigError`.
 - [ ] **Step 2: Run, expect failures; implement** the types, the adapter (one `choice` question `route`, the same option wording as T2's winning variant, `keep_alive` from config with a short default), the config table, the Filer step (floor first: question shape accepts; otherwise score; accept only at or above the threshold), the wiring in `stash.app` only, and the doctor line ("route gate: on, nimble reachable" or "off").
-- [ ] **Step 3: `make check`; live check (OWNER, GPU free):** `stash eval` with the gate on and the system Ollama upgraded to >= 0.35 or `base_url` pointing at the spike server. Passed: the T2 numbers reproduce through the product path.
+- [ ] **Step 3: `make check`; live check (OWNER, GPU free):** `stash eval` with the gate on and `base_url` at the system Ollama. Passed: the T2 numbers reproduce through the product path.
 - [ ] **Step 4: Docs** (`wsl-setup.md`: the Ollama >= 0.35 upgrade is an owner step; the gate is off by default; the VRAM swap cost) and a Mac handoff entry. **Commit** `feat: an optional decision-model gate lets a confident request through (Plan 9 T4)`.
 
 ## Verification
