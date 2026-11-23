@@ -51,13 +51,16 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
     T19 found 25 unit-test files that are coverage-redundant (analysis only, nothing deleted; the list
     lived in the gitignored workspace, so re-run the method in Plan 8 T19 if you want it). Media copies
     are not backed up by `stash backup` and have no retention.
-  - Do BEFORE anyone enables `auto_retry_minutes`: the auto-retry can race a live capture (the live
-    path waits on `_turn` and then resumes the item, so the owner can get a summary plus a
-    confirmation for the same item); a permanently failing oldest capture occupies the batch of 3; the
-    retry asks the GPU gate even when the provider is OpenRouter; `SerializedPipeline` holds `_turn`
-    for the whole batch so live messages can wait; `DirectoryMediaKeeper` copies any owner-readable
-    absolute path Hermes puts in `media_urls` (restrict to the Hermes cache root before images go to a
-    cloud model, Plan 5 T5).
+  - `auto_retry_minutes` defects, fixed 2026-11-23 on `pc-m0`: a live capture the auto-retry already
+    settled is answered with `Duplicate` (no second summary or confirmation); the retry rotates
+    through the pending captures with a persisted cursor (`capture.auto_retry_cursor`), so a failing
+    oldest capture cannot hold every batch of 3; the retry skips the GPU gate when filing runs on
+    OpenRouter or a busy GPU falls back to it (`retry_gate` in `stash.app.build`);
+    `SerializedPipeline.retry` takes `_turn` per capture, so live messages wait for one capture at
+    most. Still open before images go to a cloud model: `DirectoryMediaKeeper` copies any
+    owner-readable absolute path Hermes puts in `media_urls` (restrict to the Hermes cache root,
+    Plan 5 T5). Known small gap: a forced question raced by the retry still gets both the retry
+    summary line and the agent's answer (the live hook must ALLOW it).
 - **2026-11-04, how the PC runs stash now (ADR 0005).** stash lives in its own Hermes profile `stash`
   as a hardened systemd user service; the owner's default Hermes was restored. Nothing in the code
   changes, but note for deploy docs: restart the service after any `hermes plugins enable/disable`
