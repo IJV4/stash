@@ -28,7 +28,7 @@ from stash.capture import (
     FixHandler,
     SerializedPipeline,
 )
-from stash.config import StashConfig
+from stash.config import LlmConfig, LlmTask, ProviderName, StashConfig
 from stash.delivery import (
     AUTO_RETRY_BATCH,
     NudgeDelivery,
@@ -44,11 +44,24 @@ from stash.gpu_switch import GpuSwitch
 from stash.http_client import make_http_client
 from stash.lifecycle import Lifecycle
 from stash.llm import ModelRouter
+from stash.llm.port import BusyCheck
 from stash.nudges import DigestBuilder, Nudger, PersonDates, Schedule
 from stash.people import PeopleDirectory, PeopleLinker
 from stash.planning import Declines, Planning, StepProposer
 from stash.store.backup import Backups
 from stash.suggestions import QuietPicks, SuggestionDesk, SuggestionEngine
+
+
+def retry_gate(llm: LlmConfig, gate: BusyCheck) -> Callable[[datetime], bool]:
+    waits_for_gpu = (
+        llm.provider_for(LlmTask.FILING) is ProviderName.OLLAMA
+        and llm.busy_fallback != "openrouter"
+    )
+    return gate.is_busy if waits_for_gpu else _never_busy
+
+
+def _never_busy(now: datetime) -> bool:
+    return False
 
 
 def _utc_now() -> datetime:
@@ -120,7 +133,7 @@ def build_app(
             proposal_delivery=ProposalDelivery(planning, sqlite),
             retry_delivery=PendingRetryDelivery(
                 pipeline,
-                gate.is_busy,
+                retry_gate(config.llm, gate),
                 sqlite,
                 timedelta(minutes=config.nudges.auto_retry_minutes),
                 AUTO_RETRY_BATCH,
