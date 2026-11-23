@@ -52,3 +52,9 @@ core is unchanged. Gmail later uses the Google API directly.
 #7 failing is not a no-go. Its first run failed, so the hook now routes
 synchronously (it awaits the filer, then returns `allow` for questions so Hermes
 runs a normal agent turn); #7 and #14 are re-run against that, and #23 checks its cost.
+
+**#7 re-run, 2026-11-23 (Ollama 0.40.17):** PASS for the forced question. `? What is on my list`
+made one agent turn (2 API calls, `stash_list` tool, 732-char answer, 24 s cold, no filing call).
+The two plain captures sent after it were deferred `gpu_busy`, not filed: another app held 3.8 GB
+of VRAM, leaving 8.4 GB for stash against `min_free_vram_mib = 9000`. The floor and the
+"That was a question" button are still unmeasured live until those captures file.
