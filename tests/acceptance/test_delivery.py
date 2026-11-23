@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime, time, timedelta
 
 import pytest
@@ -52,7 +52,7 @@ from stash.delivery.retry import (
 from stash.delivery.retry import (
     SEND_FAILED_LOG as RETRY_SEND_FAILED_LOG,
 )
-from stash.domain import STEP_TEXT_LIMIT, NudgeKind
+from stash.domain import STEP_TEXT_LIMIT, NudgeKind, RawCapture
 from stash.llm import LlmBadOutput, LlmError, LlmUnavailable
 from stash.nudges import Nudger
 from stash.planning import MAX_PROPOSED_STEPS, Planning, Proposal, ProposedStep
@@ -440,9 +440,12 @@ class RecordingRetrier:
     def __init__(self, inner: CapturePipeline) -> None:
         self._inner = inner
         self.results: list[ProcessResult] = []
+        self.attempted: list[list[str]] = []
 
-    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
-        self.results = self._inner.retry_pending(limit)
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]:
+        chosen = list(captures)
+        self.attempted.append([capture.id for capture in chosen])
+        self.results = self._inner.retry(chosen)
         return self.results
 
 
@@ -561,6 +564,25 @@ def test_at_most_the_batch_size_is_retried_per_run_oldest_first() -> None:
         "Ramen 2",
     ]
     assert len(rig.store.pending_captures()) == FIVE_CAPTURES - AUTO_RETRY_BATCH
+
+
+def test_a_capture_that_keeps_failing_does_not_use_up_every_batch() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer(), error=LlmUnavailable("connection refused"))
+    pending_captures(rig, FIVE_CAPTURES)
+    retrier = RecordingRetrier(rig.pipeline)
+    delivery = PendingRetryDelivery(
+        retrier, rig.busy.is_busy, rig.store, RETRY_INTERVAL, AUTO_RETRY_BATCH
+    )
+
+    # Execute
+    delivery.deliver(BASE, lambda reply: None)
+    delivery.deliver(BASE + RETRY_INTERVAL, lambda reply: None)
+
+    # Assert
+    first, second = retrier.attempted
+    assert set(first + second) == {c.id for c in rig.store.pending_captures()}
+    assert second[:2] == [c.id for c in rig.store.pending_captures()[3:]]
 
 
 def test_the_default_retries_nothing_by_itself() -> None:

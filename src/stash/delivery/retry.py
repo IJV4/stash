@@ -1,23 +1,25 @@
 import datetime as dt
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Protocol
 
 from stash.capture import ASK_AGAIN, Filed, IsRequest, ProcessResult, Reply
-from stash.domain import printable_and_clip
+from stash.domain import RawCapture, printable_and_clip
 from stash.store.port import Store
 
 logger = logging.getLogger(__name__)
 
 AUTO_RETRY_BATCH = 3
 AUTO_RETRY_LAST_KEY = "capture.auto_retry_last"
+AUTO_RETRY_CURSOR_KEY = "capture.auto_retry_cursor"
+CURSOR_SEPARATOR = "|"
 REQUEST_PREVIEW_CHARS = 60
 NEVER = dt.timedelta(0)
 SEND_FAILED_LOG = "auto-retry summary send failed (%s); the captures are filed anyway"
 
 
 class PendingRetrier(Protocol):
-    def retry_pending(self, limit: int | None = None) -> list[ProcessResult]: ...
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]: ...
 
 
 class PendingRetryDelivery:
@@ -43,7 +45,9 @@ class PendingRetryDelivery:
         if self._gate_busy(now):
             return
         self._store.put_setting(AUTO_RETRY_LAST_KEY, now.isoformat())
-        results = self._pipeline.retry_pending(self._batch)
+        batch = self._next_batch()
+        self._remember_cursor(batch[-1])
+        results = self._pipeline.retry(batch)
         filed = [r for r in results if isinstance(r, Filed)]
         requests = [r for r in results if isinstance(r, IsRequest)]
         if not filed and not requests:
@@ -53,9 +57,35 @@ class PendingRetryDelivery:
         except Exception as error:
             logger.warning(SEND_FAILED_LOG, type(error).__name__)
 
+    def _next_batch(self) -> list[RawCapture]:
+        pending = self._store.pending_captures()
+        cursor = self._cursor()
+        if cursor is not None:
+            pending = [c for c in pending if _position(c) > cursor] + [
+                c for c in pending if _position(c) <= cursor
+            ]
+        return pending[: self._batch]
+
+    def _cursor(self) -> tuple[dt.datetime, str] | None:
+        stored = self._store.get_setting(AUTO_RETRY_CURSOR_KEY)
+        if stored is None:
+            return None
+        received, _, capture_id = stored.partition(CURSOR_SEPARATOR)
+        return dt.datetime.fromisoformat(received), capture_id
+
+    def _remember_cursor(self, last: RawCapture) -> None:
+        received, capture_id = _position(last)
+        self._store.put_setting(
+            AUTO_RETRY_CURSOR_KEY, f"{received.isoformat()}{CURSOR_SEPARATOR}{capture_id}"
+        )
+
     def _attempted_within_interval(self, now: dt.datetime) -> bool:
         last = self._store.get_setting(AUTO_RETRY_LAST_KEY)
         return last is not None and now - dt.datetime.fromisoformat(last) < self._interval
+
+
+def _position(capture: RawCapture) -> tuple[dt.datetime, str]:
+    return capture.received_at, capture.id
 
 
 def _summary(filed: list[Filed], requests: list[IsRequest]) -> Reply:
