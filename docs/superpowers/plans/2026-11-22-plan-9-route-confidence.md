@@ -65,7 +65,7 @@
 - [ ] **Step 4: Apply the pass criteria** (fixed here, before the run): PASS only if, at one `tau`, **(a)** no never-accept case in either set reaches `tau`, **(b)** at least 5 of the 6 floor-dropped requests reach it (only r18, r19 are held out; say so), and **(c)** warm latency is under 1 s and the Nimble-then-`qwen3.5` round trip under 10 s. The set is tiny (about 40 cases against the ~100 the papers use), so a PASS is weak evidence: the gate ships off by default. Write `PASS` or `FAIL` with the numbers and `tau` on the line `**T2 result:**` below, plus row #33.
 - [ ] **Step 5: Clean up and commit.** `ollama stop nimble:9b-q4_K_M` (and any other model listed); `ollama ps` empty; `nvidia-smi` shows the GPU free. Commit only the docs: `docs: spike #33, Nimble route probabilities (Plan 9 T2)`.
 
-**T2 result:** _not run yet._
+**T2 result: FAIL** (2026-11-23, spike #33). No threshold keeps the never-accept set at zero below 0.98 (t11 0.93, t12 0.82, r14 0.98, r21 0.76 to 0.88 are captures Nimble calls requests with confidence), and at 0.98 none of the six floor-dropped requests reaches it (criterion (b) needs 5). Warm latency 63 ms, but qwen3.5 right after Nimble took 9.4 s (criterion (c) borderline). T4 is not built (D2: no). The floor in T3 stays the fix.
 
 ## T3: The question-shape floor (waits for D1; no live service until Step 7)
 
@@ -93,7 +93,7 @@
 - [ ] **Step 6: Docs and commit.** Spec "Message routing": a request verdict without a question shape is filed as unsure. `usage.md`: what counts as a question, and that a report like "finished X" needs the button or `?`. Spike #25: the messages start with `?`. Mac handoff entry. `make check`; commit `fix: a request without a question shape is filed as unsure, never dropped (Plan 9 T3)`.
 - [ ] **Step 7 (OWNER, GPU free): live eval.** `stash eval --providers ollama --thinking off`, then unload. Passed: no capture-expected case reported `got request`. Record the route accuracy in ADR 0004 as one line labelled "with the question-shape floor (product route, not comparable with earlier raw-model numbers)"; commit it as docs.
 
-## T4: The route gate (conditional: only if T2 says PASS)
+## T4: The route gate (NOT BUILT: T2 said FAIL on 2026-11-23)
 
 **Files:**
 - Create: `src/stash/llm/systemone.py` (the adapter), `src/stash/filing/route_gate.py`
