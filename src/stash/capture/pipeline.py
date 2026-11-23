@@ -93,6 +93,9 @@ class CapturePipeline:
             return paths
 
     def process(self, capture: RawCapture) -> ProcessResult:
+        settled = self._settled(capture)
+        if settled is not None:
+            return settled
         if capture.source.is_agent:
             return self.process_agent(capture)
         existing = self._store.get_item(capture.item_id)
@@ -130,6 +133,18 @@ class CapturePipeline:
             except Exception:
                 logger.exception("capture %s failed unexpectedly; left pending", capture.id)
         return results
+
+    def _settled(self, capture: RawCapture) -> Duplicate | IsRequest | None:
+        current = self._store.get_capture(capture.id)
+        if current is None:
+            return None
+        match current.status:
+            case CaptureStatus.FILED:
+                return Duplicate()
+            case CaptureStatus.REQUEST:
+                return IsRequest(current)
+            case CaptureStatus.PENDING:
+                return None
 
     def _classified(self, capture: RawCapture) -> _Classified | Deferred:
         urls = extract_urls(capture.text)

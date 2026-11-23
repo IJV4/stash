@@ -5,7 +5,7 @@ from capture_builders import DEFERRED_REPLY, a_filing_answer, a_message
 from capture_narrowing import handle_deferred, handle_filed
 from capture_rig import BURST_WINDOW_SECONDS, build_rig
 
-from stash.capture import DeferralReason, Filed, reply_for
+from stash.capture import DeferralReason, Duplicate, Filed, reply_for
 from stash.llm import LlmError, LlmUnavailable
 
 WINDOW = timedelta(seconds=BURST_WINDOW_SECONDS)
@@ -88,3 +88,19 @@ def test_a_forwarded_backlog_gets_one_combined_reply_only_after_the_burst_window
     assert combined.text == (
         "✅ Saved 3 items:\n• Places · Ichiran ramen\n• Books · Dune\n• Ideas · Sell candles"
     )
+
+
+def test_a_live_capture_that_an_auto_retry_already_filed_is_not_answered_a_second_time() -> None:
+    # Setup
+    rig = build_rig(answer=a_filing_answer())
+    rig.busy.busy = True
+    capture = rig.pipeline.receive(a_message("Ramen in Shibuya"))
+    assert capture is not None
+    rig.busy.busy = False
+    rig.pipeline.retry_pending()
+
+    # Execute
+    result = rig.pipeline.process(capture)
+
+    # Assert
+    assert (result, len(rig.store.list_items())) == (Duplicate(), 1)
