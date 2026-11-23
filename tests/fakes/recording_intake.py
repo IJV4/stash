@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from builders import a_capture
 
 from stash.capture import DeferralReason, Deferred, Duplicate, Filed, IncomingMessage, ProcessResult
@@ -42,6 +44,11 @@ class RecordingIntake:
         self.calls.append("retry_pending")
         self._fail_once()
         return [self.result]
+
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]:
+        self.calls.append("retry")
+        self._fail_once()
+        return [self.result for _ in captures]
 
     def _fail_once(self) -> None:
         if self.fail_next is not None:

@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Iterable
 
 from stash.capture.message import IncomingMessage
 from stash.capture.ports import CaptureIntake
@@ -33,3 +34,10 @@ class SerializedPipeline:
     def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
         with self._turn:
             return self._inner.retry_pending(limit)
+
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]:
+        results: list[ProcessResult] = []
+        for capture in captures:
+            with self._turn:
+                results.extend(self._inner.retry([capture]))
+        return results

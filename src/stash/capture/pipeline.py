@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime
 
@@ -126,8 +126,11 @@ class CapturePipeline:
         return Duplicate() if capture is None else self.process(capture)
 
     def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
+        return self.retry(self._store.pending_captures()[:limit])
+
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]:
         results: list[ProcessResult] = []
-        for capture in self._store.pending_captures()[:limit]:
+        for capture in captures:
             try:
                 results.append(self.process(capture))
             except Exception:

@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import date
 from typing import Protocol
 
@@ -57,6 +57,8 @@ class CaptureIntake(Protocol):
     def handle(self, message: IncomingMessage) -> ProcessResult: ...
 
     def retry_pending(self, limit: int | None = None) -> list[ProcessResult]: ...
+
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]: ...
 
 
 class AgentIntake(Protocol):

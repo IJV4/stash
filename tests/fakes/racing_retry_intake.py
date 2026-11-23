@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from stash.capture import CaptureIntake, IncomingMessage, ProcessResult
 from stash.domain import RawCapture
 
@@ -20,3 +22,6 @@ class RacingRetryIntake:
 
     def retry_pending(self, limit: int | None = None) -> list[ProcessResult]:
         return self._inner.retry_pending(limit)
+
+    def retry(self, captures: Iterable[RawCapture]) -> list[ProcessResult]:
+        return self._inner.retry(captures)
