@@ -58,6 +58,8 @@ Decision 2026-11-21: `[llm.thinking] filing = "off"` is the shipped setting (`de
 `qwen3.5:latest`, off scored 100% on type, stage and details (default 94%, 94%, 67%) at a p50 of 1.3 s against 36.8 s, and
 default had a 120 s read timeout. Unlisted tasks still send no thinking field. Re-run the comparison for any other model.
 
+Update 2026-11-23 (Plan 9 T3, product route with the question-shape floor, not comparable with earlier raw-model numbers): `stash eval --providers ollama --thinking off` on the 41 text cases, qwen3.5 on Ollama 0.40.17, routes 71% (29/41) against 79% (30/38) before the floor, because a capture the model calls a request is now filed as `unsure` instead of being dropped. No capture-expected case is reported `got request` any more (t17, r10, r11, r12, r13, r16, r17, r21 got `unsure`). Type, stage, date and details stay 100%, p50 1.2 s, no errors. Route results move by a few cases from run to run (r20, a question with a question word, came back `unsure` from the model itself; t05 is a new capture-to-unsure case).
+
 ## Thinking control (2026-11-04, Mac)
 `[llm.thinking]` sets `default` or `off` per stash LLM task (`filing`, `suggestions`,
 `vision`). Each provider maps `off` to its own request field:
