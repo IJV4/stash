@@ -8,6 +8,7 @@ from stash.domain import Filing, Route, require_aware
 from stash.enrich.links import LinkInfo
 from stash.filing.parse import inbox_filing, parse_filing
 from stash.filing.prompt import build_messages
+from stash.filing.question_shape import looks_like_question
 from stash.filing.schema import FILING_SCHEMA, SCHEMA_NAME
 from stash.llm import ChatModel, ImagePart, LlmBadOutput, ModelSource
 
@@ -55,4 +56,7 @@ class Filer:
         except LlmBadOutput as error:
             logger.warning("filing model gave unusable output: %s", type(error).__name__)
             return inbox_filing(text, Route.UNSURE)
-        return parse_filing(answer, text)
+        filing = parse_filing(answer, text)
+        if looks_like_question(text):
+            return filing
+        return filing.without_request()

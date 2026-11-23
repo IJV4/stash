@@ -62,7 +62,9 @@ def _summary(filed: list[Filed], requests: list[IsRequest]) -> Reply:
     lines: list[str] = []
     if filed:
         lines.append(f"Filed {len(filed)} waiting capture(s) now that the AI is free:")
-        lines.extend(f"- {result.item.title}" for result in filed)
+        lines.extend(
+            f"- {result.item.title}{ASK_AGAIN if result.unsure else ''}" for result in filed
+        )
     lines.extend(
         f"- request — {printable_and_clip(result.capture.text, REQUEST_PREVIEW_CHARS)}{ASK_AGAIN}"
         for result in requests

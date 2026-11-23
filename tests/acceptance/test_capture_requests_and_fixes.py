@@ -257,3 +257,18 @@ def test_pressing_done_twice_within_a_minute_records_one_outcome_and_answers_the
     # Assert
     assert len(rig.store.outcomes_for(item.id)) == 1
     assert reply == first
+
+
+def test_a_progress_report_judged_a_request_is_filed_unsure_with_the_question_button() -> None:
+    # Setup
+    rig = build_rig(answer=a_request_answer())
+
+    # Execute
+    result = rig.pipeline.handle(a_message("finished Tidewater Notes, loved the ending"))
+
+    # Assert
+    assert isinstance(result, Filed)
+    assert (result.unsure, button_labels(reply_for(result).buttons)[-1]) == (
+        True,
+        ["That was a question →"],
+    )

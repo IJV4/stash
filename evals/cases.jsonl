@@ -23,10 +23,10 @@
 {"id": "i01", "arm": "image", "text": "", "link": null, "image": "images/recipe_card.png", "expect": {"route": "capture", "item_type": "recipe"}}
 {"id": "i02", "arm": "image", "text": "save this", "link": null, "image": "images/event_poster.png", "expect": {"route": "capture", "item_type": "activity", "date": "2027-05-22"}}
 {"id": "i03", "arm": "image", "text": "want this", "link": null, "image": "images/product_screenshot.png", "expect": {"route": "capture", "item_type": "purchase", "stage": "want_to"}}
-{"id": "r06", "arm": "text", "text": "finished Tidewater Notes last night, loved the ending", "link": null, "expect": {"route": "request"}}
-{"id": "r07", "arm": "text", "text": "tried the dumpling place on Alder Street from my list, honestly the best meal this month", "link": null, "expect": {"route": "request"}}
-{"id": "r08", "arm": "text", "text": "what I learned from the Deep Sleep Lab episode I saved: naps under 30 minutes work best", "link": null, "expect": {"route": "request"}}
-{"id": "r09", "arm": "text", "text": "cooked the lemon garlic roast chicken recipe I saved, would make it again", "link": null, "expect": {"route": "request"}}
+{"id": "r06", "arm": "text", "text": "finished Tidewater Notes last night, loved the ending", "link": null, "expect": {"route": "unsure"}}
+{"id": "r07", "arm": "text", "text": "tried the dumpling place on Alder Street from my list, honestly the best meal this month", "link": null, "expect": {"route": "unsure"}}
+{"id": "r08", "arm": "text", "text": "what I learned from the Deep Sleep Lab episode I saved: naps under 30 minutes work best", "link": null, "expect": {"route": "unsure"}}
+{"id": "r09", "arm": "text", "text": "cooked the lemon garlic roast chicken recipe I saved, would make it again", "link": null, "expect": {"route": "unsure"}}
 {"id": "r10", "arm": "text", "text": "Read 'The Glass Orchard' by Mira Voss, I just finished her other novel", "link": null, "expect": {"route": "capture"}}
 {"id": "r11", "arm": "text", "text": "Watch the documentary Salt Roads, I just wrapped up the Lantern series", "link": null, "expect": {"route": "capture"}}
 {"id": "t18", "arm": "text", "text": "Dentist checkup on 2027-01-19 at 9am", "link": null, "expect": {"route": "capture", "stage": "planned", "date": "2027-01-19"}}
@@ -37,5 +37,8 @@
 {"id": "r15", "arm": "text", "text": "Try the new ramen spot Kumo Noodle, I just watched a show about Tokyo food", "link": null, "expect": {"route": "capture"}}
 {"id": "r16", "arm": "text", "text": "Listen to the podcast Harbor Lights, I just read a novel about sailors", "link": null, "expect": {"route": "capture"}}
 {"id": "r17", "arm": "text", "text": "Ask the landlord about the parking permit, gate code is 4821", "link": null, "expect": {"route": "capture"}}
-{"id": "r18", "arm": "text", "text": "watched the Quiet Rivers documentary I saved, the ending was moving", "link": null, "expect": {"route": "request"}}
-{"id": "r19", "arm": "text", "text": "finished reading Ember Coast from my list, five stars", "link": null, "expect": {"route": "request"}}
+{"id": "r18", "arm": "text", "text": "watched the Quiet Rivers documentary I saved, the ending was moving", "link": null, "expect": {"route": "unsure"}}
+{"id": "r19", "arm": "text", "text": "finished reading Ember Coast from my list, five stars", "link": null, "expect": {"route": "unsure"}}
+{"id": "r20", "arm": "text", "text": "which restaurants have I saved", "link": null, "expect": {"route": "request"}}
+{"id": "r21", "arm": "text", "text": "tell Sam about the ferry times", "link": null, "expect": {"route": "capture"}}
+{"id": "r22", "arm": "text", "text": "loved the Harbor Lights podcast I saved, the last episode was the best", "link": null, "expect": {"route": "unsure"}}

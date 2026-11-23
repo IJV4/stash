@@ -234,7 +234,7 @@ def test_a_burst_with_one_question_allows_it_and_confirms_the_four_captures_toge
             a_filing_answer(title="Pho"),
         ]
     )
-    events = [an_event(text=f"message {n}", message_id=f"m{n}") for n in range(5)]
+    events = [an_event(text=f"which message {n}?", message_id=f"m{n}") for n in range(5)]
 
     # Execute
     verdicts = asyncio.run(rig.deliver(*events))

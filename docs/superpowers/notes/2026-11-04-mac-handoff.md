@@ -5,6 +5,13 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-23, Plan 9 T3: a request without a question shape is filed as unsure.** `Filer._ask`
+  turns a `request` verdict into `unsure` (`Filing.without_request()`) unless
+  `stash.filing.question_shape.looks_like_question` is true (`?` outside links, a question word, an
+  auxiliary plus I/we/you/there, or "show me"). Progress reports and imperatives now need the
+  `That was a question →` button or a leading `?`; multi-item and retry summaries say so with
+  `ASK_AGAIN`. Eval cases r06 to r09, r18, r19 now expect `unsure`; r20 to r22 are new (routing 22
+  cases, text arm 41). The prompt is untouched. The live eval (T3 Step 7) is not run yet.
 - **2026-11-21, filing dates fixed and spike #23 measured.** T17 is built: the filing prompt says `date`
   comes only from the capture and "today" is context, not a value to copy (eval date accuracy 0% to 100%
   with thinking off; `t18` and `t19` are new cases; relative dates like "next Friday" are not pinned

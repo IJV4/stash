@@ -11,8 +11,13 @@ tests are named after the behaviour they pin.
 - **A thought** ("try that ramen place in Shibuya"). It is filed as a type (place, recipe, book,
   media, gift, …) and a stage (inbox, want to, planned, doing, done, dropped).
 - **An image.** It is saved with its caption and filed from the caption alone; the image itself is not read yet (Plan 5). The file is copied into `data_dir/media`.
-- **A question.** It goes to the assistant instead of being filed. Start a message with `?` to
-  make sure it is treated as a question.
+- **A question.** It goes to the assistant instead of being filed. It counts as a question when
+  it contains a `?` (not inside a link), starts with a question word ("what", "which", "how", …)
+  or with "should I", "can you", "do we" and the like, or starts with "show me". Anything else
+  the AI calls a request is filed as unsure with the `That was a question →` button, and in a
+  combined confirmation its line says to send it again starting with `?`. So a report ("finished
+  <book>, 4 stars") or a command ("list my books") needs a leading `?`, or a tap on the button.
+  Start a message with `?` to make sure it is treated as a question. English only.
 - **Several messages at once.** They get one combined confirmation. If some of them could not be
   filed yet, its first line says so and names `/stash_retry`.
 
@@ -24,7 +29,7 @@ Nothing retries on its own: `/stash_retry` (or `stash retry`) files what is pend
 | Button | What it does |
 |---|---|
 | `Type`, `Stage` | Correct how an item was filed. |
-| `That was a question →` | Hand the message to the assistant instead (it is not filed). |
+| `That was a question →` | Hand the message to the assistant instead (the untouched item is deleted). |
 | `Done ✓` | Finish an item. Then `⭐1`–`⭐5` rate it, and `Keep 📚` / `Not keeping` decide whether it goes into your library. |
 | `Done ✓ · <name>` | On a reminder with several items: finish that one. The reminder stays, and the answer comes as a new message. |
 | `Didn't happen` | On a morning-after follow-up: the plan did not happen, and the item goes back to Want to. |

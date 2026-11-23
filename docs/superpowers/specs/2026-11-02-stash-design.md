@@ -240,6 +240,12 @@ free Saturday", "books I read this year"). **The AI decides**, with a safe
 default (owner decision):
 - Every incoming message is saved raw first, before any AI step.
 - If the AI judges it a request, it answers and the raw copy is discarded.
+  A request verdict is accepted only when the text has a question shape (a
+  `?` outside links, or it starts with a question word or "should I", "can
+  you", "show me" and the like). Otherwise it is filed as unsure, so a
+  progress report ("finished X"), an imperative ("list my books") or a note
+  with a trigger word is never lost; "That was a question →" or a leading `?`
+  hands it to the assistant.
 - If it is unsure, it treats it as a capture and adds a button "That was a
   question →" that re-runs it as a request.
 - `/commands` (e.g. `/suggest`, `/find`, `/library`) are always requests.

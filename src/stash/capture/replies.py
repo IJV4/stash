@@ -4,6 +4,7 @@ from typing import assert_never
 
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT, FixAction, FixKind
 from stash.capture.results import Deferred, Filed
+from stash.capture.routing import ASK_AGAIN
 from stash.domain import Item, derive_title
 
 TELEGRAM_TEXT_LIMIT = 4096
@@ -113,7 +114,7 @@ def _header(results: Sequence[Filed | Deferred]) -> str:
 def _bullet(result: Filed | Deferred) -> str:
     match result:
         case Filed():
-            return f"• {result.item.summary_line()}"
+            return f"• {result.item.summary_line()}{ASK_AGAIN if result.unsure else ''}"
         case Deferred():
             return f"• 📥 {derive_title(result.capture.text)} (not filed yet)"
         case _:

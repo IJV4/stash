@@ -10,6 +10,7 @@ from stash.capture.replies import (
     telegram_length,
 )
 from stash.capture.results import DeferralReason, Deferred, Duplicate, Filed
+from stash.capture.routing import ASK_AGAIN
 from stash.domain import ItemType
 
 
@@ -29,6 +30,14 @@ def test_a_summary_lists_a_deferred_capture_by_its_derived_title_as_not_filed_ye
 
     # Assert
     assert reply.text.splitlines()[2] == "• 📥 Ramen (not filed yet)"
+
+
+def test_a_summary_line_for_an_unsure_item_says_how_to_ask_it_again() -> None:
+    # Execute
+    reply = summary([a_filed("Dune", unsure=True), a_filed("Ramen")])
+
+    # Assert
+    assert [line.endswith(ASK_AGAIN) for line in reply.text.splitlines()[1:]] == [True, False]
 
 
 def test_a_summary_of_many_long_titles_never_exceeds_the_telegram_limit() -> None:

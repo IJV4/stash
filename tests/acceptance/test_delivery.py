@@ -4,7 +4,7 @@ from datetime import UTC, datetime, time, timedelta
 
 import pytest
 from builders import BASE, stored
-from capture_builders import a_filing_answer, a_message, a_request_answer
+from capture_builders import a_filing_answer, a_message, a_request_answer, an_unsure_answer
 from capture_rig import CaptureRig, build_rig
 from digest_builders import stored_every_section
 from digest_rig import a_digest_rig
@@ -425,11 +425,13 @@ RETRY_INTERVAL = timedelta(minutes=30)
 FIVE_CAPTURES = 5
 
 
-def pending_captures(rig: CaptureRig, count: int = 1, first: int = 0) -> None:
+def pending_captures(rig: CaptureRig, count: int = 1, first: int = 0, words: str = "Ramen") -> None:
     rig.busy.busy = True
     for number in range(first, first + count):
         rig.pipeline.handle(
-            a_message(f"Ramen {number}", f"m{number}", received_at=BASE + timedelta(minutes=number))
+            a_message(
+                f"{words} {number}", f"m{number}", received_at=BASE + timedelta(minutes=number)
+            )
         )
     rig.busy.busy = False
 
@@ -466,7 +468,7 @@ def test_a_free_gpu_files_a_pending_capture_and_sends_one_summary() -> None:
 def test_an_auto_retried_capture_that_is_a_question_tells_the_owner_to_ask_it_again() -> None:
     # Setup
     rig = build_rig(answer=a_request_answer())
-    pending_captures(rig)
+    pending_captures(rig, words="Which ramen")
     sent: list[Reply] = []
 
     # Execute
@@ -475,8 +477,21 @@ def test_an_auto_retried_capture_that_is_a_question_tells_the_owner_to_ask_it_ag
     # Assert
     assert rig.store.pending_captures() == []
     assert len(sent) == 1
-    assert "Ramen 0" in sent[0].text
+    assert "Which ramen 0" in sent[0].text
     assert ASK_AGAIN in sent[0].text
+
+
+def test_an_auto_retried_capture_filed_as_unsure_tells_the_owner_to_ask_it_again() -> None:
+    # Setup
+    rig = build_rig(answer=an_unsure_answer())
+    pending_captures(rig)
+    sent: list[Reply] = []
+
+    # Execute
+    a_retry_delivery(rig).deliver(BASE, sent.append)
+
+    # Assert
+    assert sent[0].text.endswith(ASK_AGAIN)
 
 
 def test_a_run_that_files_one_and_finds_a_question_sends_one_message_with_both() -> None:
@@ -484,7 +499,7 @@ def test_a_run_that_files_one_and_finds_a_question_sends_one_message_with_both()
     rig = build_rig(
         outcomes=[a_filing_answer(), a_request_answer()],
     )
-    pending_captures(rig, 2)
+    pending_captures(rig, 2, words="Which ramen")
     sent: list[Reply] = []
 
     # Execute
