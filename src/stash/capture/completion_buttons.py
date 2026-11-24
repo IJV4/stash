@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from stash.capture.callback_log import CallbackLog, Subject
 from stash.capture.callbacks import KeepChoice, date_for, rating_for
 from stash.capture.completion_replies import didnt_happen_reply, done_reply, kept_reply, rated_reply
+from stash.capture.open_items import open_item_with_prefix
 from stash.capture.ports import LifecycleActions
 from stash.capture.replies import Reply, busy, changed, gone, refused
 from stash.domain import Item, enum_member
@@ -42,6 +43,9 @@ class CompletionButtons:
     def done(self, item_id: str) -> Reply:
         return answering(partial(self._completed, item_id), self._log)
 
+    def progress_done(self, report_id: str, prefix: str | None) -> Reply:
+        return answering(partial(self._progress_done, report_id, prefix or ""), self._log)
+
     def rate(self, outcome_id: str, argument: str | None) -> Reply:
         rating = rating_for(argument)
         if rating is None:
@@ -71,6 +75,15 @@ class CompletionButtons:
         return done_reply(
             self._lifecycle.complete(item_id, on=self._date_already_past(history.item))
         )
+
+    def _progress_done(self, report_id: str, prefix: str) -> Reply:
+        target = open_item_with_prefix(self._store, prefix)
+        if self._store.get_item(report_id) is None or target is None or target.id == report_id:
+            self._log.unknown(Subject.ITEM, report_id)
+            return gone()
+        reply = self._completed(target.id)
+        self._store.delete_item_if_untouched(report_id)
+        return reply
 
     def _date_already_past(self, item: Item) -> date | None:
         today = self._clock().astimezone(self._timezone).date()

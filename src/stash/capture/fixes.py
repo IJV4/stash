@@ -75,6 +75,8 @@ class FixHandler:
                 )
             case FixKind.DONE:
                 return self._completion.done(action.subject_id)
+            case FixKind.PROGRESS_DONE:
+                return self._completion.progress_done(action.subject_id, action.argument)
             case FixKind.RATE:
                 return self._completion.rate(action.subject_id, action.argument)
             case FixKind.KEEP:

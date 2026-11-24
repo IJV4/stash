@@ -4,7 +4,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from stash.capture.message import IncomingMessage
-from stash.capture.ports import CaptureFiler, ItemLinker, MediaKeeper
+from stash.capture.open_items import open_items
+from stash.capture.ports import CaptureFiler, ItemLinker, MediaKeeper, ProgressMatching
 from stash.capture.results import (
     DeferralReason,
     Deferred,
@@ -45,6 +46,7 @@ class CapturePipeline:
         clock: Callable[[], datetime],
         linker: ItemLinker,
         keeper: MediaKeeper | None = None,
+        progress: ProgressMatching | None = None,
     ) -> None:
         self._store = store
         self._inspector = inspector
@@ -53,6 +55,7 @@ class CapturePipeline:
         self._clock = clock
         self._linker = linker
         self._keeper = keeper
+        self._progress = progress
 
     def receive(self, message: IncomingMessage) -> RawCapture | None:
         capture_id = self._new_id()
@@ -108,7 +111,7 @@ class CapturePipeline:
             return classified
         if classified.filing.route is Route.REQUEST:
             return self._request(capture)
-        return self._filed(capture, classified)
+        return self._filed(capture, classified, self._finished_by(capture))
 
     def process_agent(self, capture: RawCapture) -> Filed | Deferred:
         if not capture.source.is_agent:
@@ -177,7 +180,18 @@ class CapturePipeline:
         self._store.set_capture_status(capture.id, CaptureStatus.REQUEST)
         return IsRequest(capture.with_status(CaptureStatus.REQUEST))
 
-    def _filed(self, capture: RawCapture, classified: _Classified) -> Filed:
+    def _finished_by(self, capture: RawCapture) -> Item | None:
+        if self._progress is None:
+            return None
+        try:
+            return self._progress.match(capture.text, open_items(self._store))
+        except Exception:
+            logger.exception("capture %s: matching a progress report failed", capture.id)
+            return None
+
+    def _filed(
+        self, capture: RawCapture, classified: _Classified, finishes: Item | None = None
+    ) -> Filed:
         filing = classified.filing
         item = Item.from_filing(
             capture.item_id, capture, filing, classified.source_url, self._clock()
@@ -185,7 +199,7 @@ class CapturePipeline:
         self._store.save_item(item)
         self._link(item)
         self._store.set_capture_status(capture.id, CaptureStatus.FILED)
-        return Filed(item, unsure=filing.route is Route.UNSURE)
+        return Filed(item, unsure=filing.route is Route.UNSURE, finishes=finishes)
 
     def _link(self, item: Item) -> None:
         try:

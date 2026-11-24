@@ -14,6 +14,7 @@ class DeferralReason(StrEnum):
 class Filed:
     item: Item
     unsure: bool
+    finishes: Item | None = None
 
 
 @dataclass(frozen=True, slots=True)

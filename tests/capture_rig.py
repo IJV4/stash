@@ -10,7 +10,7 @@ from fakes.link_inspector import FakeLinkInspector
 from fakes.recording_chat_model import RecordingChatModel
 from fakes.scripted_chat_model import ScriptedChatModel
 from fakes.store_factories import FreshStore
-from filing_rig import build_filer
+from filing_rig import build_filer, build_progress_matcher
 from lifecycle_rig import LOCAL_ZONE, a_lifecycle
 from log_records import recording_logs
 from planning_rig import a_planning
@@ -79,6 +79,7 @@ def build_rig(
     model: RecordingChatModel | None = None,
     gate: BusyCheck | None = None,
     keeper: MediaKeeper | None = None,
+    matching: bool = False,
 ) -> CaptureRig:
     if outcomes is not None and (answer is not None or error is not None):
         raise ValueError("outcomes replaces answer and error")
@@ -107,6 +108,7 @@ def build_rig(
             clock,
             PeopleLinker(people, store),
             keeper,
+            build_progress_matcher(model, checked, clock) if matching else None,
         ),
         people=people,
         fixes=a_fix_handler(store, clock),

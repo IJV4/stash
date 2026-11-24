@@ -25,6 +25,7 @@ class FixKind(StrEnum):
     SKIP_STEPS = "n"
     STEP_DONE = "x"
     NOT_HAPPENED = "h"
+    PROGRESS_DONE = "p"
 
     @property
     def completes(self) -> bool:
@@ -38,6 +39,7 @@ class FixKind(StrEnum):
             FixKind.RATE,
             FixKind.KEEP,
             FixKind.NOT_HAPPENED,
+            FixKind.PROGRESS_DONE,
         )
 
 

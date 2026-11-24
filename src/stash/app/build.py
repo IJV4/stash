@@ -37,7 +37,7 @@ from stash.delivery import (
 )
 from stash.enrich.html_meta import Resolver
 from stash.enrich.ytdlp import default_ytdlp_extract
-from stash.filing import Filer
+from stash.filing import Filer, ProgressMatcher
 from stash.gpu import GpuGate
 from stash.gpu.probe import CommandRunner, NvidiaSmiProbe, run_command
 from stash.gpu_switch import GpuSwitch
@@ -102,6 +102,7 @@ def build_app(
                 clock,
                 PeopleLinker(people, sqlite),
                 DirectoryMediaKeeper(config.data_dir / MEDIA_DIRECTORY),
+                ProgressMatcher(router, clock),
             )
         )
         lifecycle = Lifecycle(sqlite, _new_id, clock, config.timezone)

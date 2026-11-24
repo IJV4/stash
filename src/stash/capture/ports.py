@@ -33,6 +33,10 @@ class PlanningActions(Protocol):
     def complete_step(self, step_id: str) -> Step: ...
 
 
+class ProgressMatching(Protocol):
+    def match(self, text: str, open_items: Sequence[Item]) -> Item | None: ...
+
+
 class ItemLinker(Protocol):
     def link(self, item: Item) -> None: ...
 

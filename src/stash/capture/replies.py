@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import assert_never
 
 from stash.capture.callbacks import TELEGRAM_CALLBACK_LIMIT, FixAction, FixKind
+from stash.capture.open_items import id_prefix
 from stash.capture.results import Deferred, Filed
 from stash.capture.routing import ASK_AGAIN
 from stash.domain import Item, derive_title
@@ -15,6 +16,9 @@ CHANGED_TEXT = "That changed meanwhile — try again."
 BUSY_TEXT = "The stash is busy — try again in a moment."
 REFUSED_TEXT = "I can't do that: {message}"
 DONE_LABEL = "Done ✓"
+MARK_DONE_LABEL = "Mark done: {title}"
+MARK_DONE_TITLE_LIMIT = 40
+ELLIPSIS = "…"
 RETRY_COMMAND = "/stash_retry"
 DEFERRED_TEXT = f"📥 Saved, not filed yet. Send {RETRY_COMMAND} to file it."
 
@@ -49,7 +53,7 @@ class Reply:
         object.__setattr__(self, "buttons", tuple(tuple(row) for row in self.buttons))
 
 
-def confirmation(item: Item, unsure: bool) -> Reply:
+def confirmation(item: Item, unsure: bool, finishes: Item | None = None) -> Reply:
     segments = [item.item_type.label, *_detail(item), item.stage.label]
     rows: list[tuple[Button, ...]] = [
         (
@@ -57,7 +61,7 @@ def confirmation(item: Item, unsure: bool) -> Reply:
             Button("Stage", FixAction(FixKind.STAGE_MENU, item.id).encode()),
         )
     ]
-    rows.extend(done_rows(item))
+    rows.extend(done_rows(item) if finishes is None else mark_done_rows(item, finishes))
     if unsure:
         question = FixAction(FixKind.QUESTION, item.capture_id).encode()
         rows.append((Button("That was a question →", question),))
@@ -68,6 +72,14 @@ def done_rows(item: Item) -> tuple[tuple[Button, ...], ...]:
     if item.is_done:
         return ()
     return ((Button(DONE_LABEL, FixAction(FixKind.DONE, item.id).encode()),),)
+
+
+def mark_done_rows(report: Item, finishes: Item) -> tuple[tuple[Button, ...], ...]:
+    title = finishes.title
+    if len(title) > MARK_DONE_TITLE_LIMIT:
+        title = title[: MARK_DONE_TITLE_LIMIT - 1].rstrip() + ELLIPSIS
+    action = FixAction(FixKind.PROGRESS_DONE, report.id, id_prefix(finishes))
+    return ((Button(MARK_DONE_LABEL.format(title=title), action.encode()),),)
 
 
 def deferred() -> Reply:
@@ -93,7 +105,7 @@ def refused(message: str) -> Reply:
 def reply_for(result: Filed | Deferred) -> Reply:
     match result:
         case Filed():
-            return confirmation(result.item, result.unsure)
+            return confirmation(result.item, result.unsure, result.finishes)
         case Deferred():
             return deferred()
         case _:
