@@ -8,7 +8,7 @@ from fakes.chat_model import FakeChatModel
 from router_builders import default_thinking_models
 
 from stash.config import ProviderName
-from stash.filing import Filer
+from stash.filing import Filer, ProgressMatcher
 from stash.llm import BusyCheck, ChatModel, ModelRouter, TextPart
 
 LOS_ANGELES = ZoneInfo("America/Los_Angeles")
@@ -35,3 +35,16 @@ def sent_texts(model: FakeChatModel) -> list[str]:
         for part in message.parts
         if isinstance(part, TextPart)
     ]
+
+
+def build_progress_matcher(
+    model: ChatModel,
+    busy: BusyCheck | None = None,
+    clock: Callable[[], datetime] | None = None,
+) -> ProgressMatcher:
+    router = ModelRouter(
+        an_llm_config(),
+        default_thinking_models({ProviderName.OLLAMA: model}),
+        FakeBusy() if busy is None else busy,
+    )
+    return ProgressMatcher(router, (lambda: NOON_UTC) if clock is None else clock)
