@@ -75,7 +75,7 @@ Interface (decided in conversation):
 
 Engine (decided in conversation):
 1. **Hermes Agent (Nous Research) + a custom `stash` plugin** — chosen. Hermes
-   provides the Telegram gateway (text, voice transcription, images, files,
+   provides the Telegram gateway (text, images, files,
    inline buttons), cron scheduling, provider-agnostic LLM access (Ollama,
    llama.cpp, OpenRouter, Nous Portal…), a Google Workspace skill for later,
    Windows/WSL/Linux support. Trade-off: we inherit its design and a fast
@@ -123,8 +123,8 @@ Researched 2026-11-02 from the GitHub repo docs
    CLI, and only the digest uses a Hermes cron/agent run.
 3. How the agent receives shared links from the Android share sheet (plain
    message text expected).
-4. Hermes' voice transcription backend and whether it can share the Whisper
-   setup.
+4. ~~Voice transcription backend~~ — dropped 2026-11-24: the owner does not use
+   voice notes. Whisper stays only for video transcripts (M5).
 5. Which local model gives reliable tool calls at 64k context within 12 GB
    VRAM (candidates: Hermes 3 8B, Qwen-family 7–8B; Q4 weights + quantized KV
    cache).
