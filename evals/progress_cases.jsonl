@@ -1,0 +1,71 @@
+{"set": "set1", "open": ["Smoke a brisket", "Buy a present for Khoi", "Book flights to Lisbon", "Read The Overstory", "Call the dentist", "Fix the bike tire", "Watch Dune Part Two", "Try Ramen Ichiban in Tokyo", "Renew passport", "Cook lemon garlic roast chicken", "Learn to juggle", "Visit the botanical garden", "Order new running shoes", "Clean the garage", "Take the car to the garage for service", "Write thank-you cards", "Pay the electricity bill", "Plan Mia's birthday party"]}
+{"set": "set1", "text": "Finished the brisket", "finishes": "Smoke a brisket"}
+{"set": "set1", "text": "I bought Khoi's present already", "finishes": "Buy a present for Khoi"}
+{"set": "set1", "text": "Booked the flights to Lisbon", "finishes": "Book flights to Lisbon"}
+{"set": "set1", "text": "Done with The Overstory", "finishes": "Read The Overstory"}
+{"set": "set1", "text": "Called the dentist, all sorted", "finishes": "Call the dentist"}
+{"set": "set1", "text": "The bike tire is fixed", "finishes": "Fix the bike tire"}
+{"set": "set1", "text": "We watched Dune Part Two last night", "finishes": "Watch Dune Part Two"}
+{"set": "set1", "text": "Went to Ramen Ichiban, it was great", "finishes": "Try Ramen Ichiban in Tokyo"}
+{"set": "set1", "text": "Renewed my passport today", "finishes": "Renew passport"}
+{"set": "set1", "text": "Cooked the lemon garlic chicken tonight", "finishes": "Cook lemon garlic roast chicken"}
+{"set": "set1", "text": "Garage is cleaned", "finishes": "Clean the garage"}
+{"set": "set1", "text": "Already paid the electricity bill", "finishes": "Pay the electricity bill"}
+{"set": "set1", "text": "Ordered the running shoes", "finishes": "Order new running shoes"}
+{"set": "set1", "text": "Finally finished the thank-you cards", "finishes": "Write thank-you cards"}
+{"set": "set1", "text": "Mia's birthday party is planned", "finishes": "Plan Mia's birthday party"}
+{"set": "set1", "text": "Buy more brisket seasoning", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Brisket rub recipe from Sam", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Present ideas for Mum", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Lisbon hotel recommendations from Ana", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "The Overstory audiobook is on sale", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Dentist in Hanoi recommended by Lan", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Bike lights are cheap on that site", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Dune Part Three trailer is out", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Ramen Ichiban has a new branch in Osaka", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Garage sale this Saturday at the park", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Electricity prices are going up next month", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Finished reading a great article about passports and visas", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Bought a new smoker for next year", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Mia's school play is on Friday", "finishes": null, "kind": "near_miss"}
+{"set": "set1", "text": "Finished the quarterly taxes", "finishes": null, "kind": "no_open_item"}
+{"set": "set1", "text": "I bought milk and eggs already", "finishes": null, "kind": "no_open_item"}
+{"set": "set1", "text": "Done with the gym for today", "finishes": null, "kind": "no_open_item"}
+{"set": "set1", "text": "Booked a table at the new Thai place", "finishes": null, "kind": "no_open_item"}
+{"set": "set1", "text": "Watched the football game", "finishes": null, "kind": "no_open_item"}
+{"set": "set2", "open": ["Assemble the new bookshelf", "Email Tuan about the invoice", "Take Bao to the vet", "Buy a birthday gift for Dad", "Try the pho place on Hang Bac street", "Back up the photo library", "Repaint the fence", "Learn basic Spanish", "Watch Spirited Away", "Return the library books", "Make banh mi at home", "Sign up for the 10k run", "Replace the kitchen tap", "Read Sapiens", "Visit Hoi An"]}
+{"set": "set2", "text": "Bookshelf is assembled, finally", "finishes": "Assemble the new bookshelf"}
+{"set": "set2", "text": "Emailed Tuan the invoice", "finishes": "Email Tuan about the invoice"}
+{"set": "set2", "text": "Bao went to the vet today, all good", "finishes": "Take Bao to the vet"}
+{"set": "set2", "text": "Got Dad's birthday gift already", "finishes": "Buy a birthday gift for Dad"}
+{"set": "set2", "text": "Tried the pho place on Hang Bac, amazing", "finishes": "Try the pho place on Hang Bac street"}
+{"set": "set2", "text": "Photo library backup done", "finishes": "Back up the photo library"}
+{"set": "set2", "text": "I painted the fence over the weekend", "finishes": "Repaint the fence"}
+{"set": "set2", "text": "Watched Spirited Away with the kids", "finishes": "Watch Spirited Away"}
+{"set": "set2", "text": "Dropped off the library books", "finishes": "Return the library books"}
+{"set": "set2", "text": "Made banh mi for dinner, it worked", "finishes": "Make banh mi at home"}
+{"set": "set2", "text": "Signed up for the 10k run", "finishes": "Sign up for the 10k run"}
+{"set": "set2", "text": "The kitchen tap has been replaced", "finishes": "Replace the kitchen tap"}
+{"set": "set2", "text": "Just finished Sapiens", "finishes": "Read Sapiens"}
+{"set": "set2", "text": "We visited Hoi An last week, loved it", "finishes": "Visit Hoi An"}
+{"set": "set2", "text": "Done: sent Tuan the invoice email", "finishes": "Email Tuan about the invoice"}
+{"set": "set2", "text": "Sapiens is on sale at the bookshop", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Need to buy another bookshelf for the study", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Tuan's invoice template looks outdated", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Vet clinic near Bao's school opens at 8", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Gift wrap ideas for Dad's birthday", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Hang Bac street has a night market on weekends", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Spirited Away soundtrack is lovely", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Hoi An hotel with a pool, recommended by Mai", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Fence paint colours to consider", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Spanish podcast recommendation: Notes in Spanish", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Kitchen tap leaks a little when hot", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "10k run training plan from a friend", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Finished the book I was reading on the plane", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Bought a new backup drive", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Library hours changed to 9 to 5", "finishes": null, "kind": "near_miss"}
+{"set": "set2", "text": "Finished the laundry", "finishes": null, "kind": "no_open_item"}
+{"set": "set2", "text": "Booked a haircut for Friday", "finishes": null, "kind": "no_open_item"}
+{"set": "set2", "text": "I bought bananas already", "finishes": null, "kind": "no_open_item"}
+{"set": "set2", "text": "Done with the standup call", "finishes": null, "kind": "no_open_item"}
+{"set": "set2", "text": "Called Mum", "finishes": null, "kind": "no_open_item"}

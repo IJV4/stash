@@ -5,6 +5,23 @@ the code plans are `docs/superpowers/plans/2026-11-0*-plan-N-*.md` (Plan 1 is bu
 
 ## Updates since your last merge (newest first; re-read this list every time you merge `pc-m0`)
 
+- **2026-11-23, a progress report offers "Mark done: <item>".** "Finished the brisket" used to be
+  filed as a stray unsure item while "Smoke a brisket" stayed open. Now `CapturePipeline` asks
+  `stash.filing.ProgressMatcher` (port `ProgressMatching`) after filing: a noun-overlap gate against the
+  newest 40 open items per stage (a verb shared with a title never counts), then one small model call
+  (filing task, schema `progress_match`: `says_it_is_finished` plus the list number) over the whole open
+  list; the pick must pass the gate again. Any failure or busy GPU means no button. `Filed.finishes`
+  carries the match; the confirmation swaps `Done ✓` for `Mark done: <title>` (callback `stash:p:<report
+  id>:<first 12 of the target id>`, new `FixKind.PROGRESS_DONE`). Pressing it completes the target
+  through the normal done flow (rating and keep buttons follow) and deletes the report item if untouched;
+  the raw capture stays. Measured on 69 fake messages in `evals/progress_cases.jsonl` (the eval harness
+  cannot hold open items, so the numbers come from a throwaway script): deterministic verb list plus
+  word overlap, precision 0.90 and recall 0.60 on the held-out set (loose "-ed" verbs: 0.79 and 1.00);
+  list in the filing prompt in one call, precision 0.60; gate plus the finished flag and full list,
+  precision 1.00 and recall 0.97 (29 of 30), 0 false buttons in 39 negatives. Live check over a
+  temporary DB with qwen3.5: 4 of 4 reports matched and closed, no stray item left, 3 of 3 near-misses
+  got no button. Known limits: the multi-message summary has no button; only the newest 40 open items
+  per stage are considered.
 - **2026-11-23, Plan 9 T3: a request without a question shape is filed as unsure.** `Filer._ask`
   turns a `request` verdict into `unsure` (`Filing.without_request()`) unless
   `stash.filing.question_shape.looks_like_question` is true (`?` outside links, a question word, an
