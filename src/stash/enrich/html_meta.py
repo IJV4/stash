@@ -43,6 +43,12 @@ class _Pinned:
     extensions: dict[str, str]
 
 
+@dataclass(frozen=True, slots=True)
+class _Hop:
+    html: str | None
+    location: str | None
+
+
 class HtmlMetaInspector:
     def __init__(
         self,
@@ -77,20 +83,13 @@ class HtmlMetaInspector:
         for _ in range(MAX_REDIRECTS + 1):
             if expired():
                 return None
-            pinned = self._pinned(current)
-            if pinned is None:
+            candidates = self._pinned(current)
+            if not candidates:
                 return None
-            with self._client.stream(
-                "GET",
-                pinned.url,
-                headers={**REQUEST_HEADERS, **pinned.headers},
-                extensions=pinned.extensions,
-                follow_redirects=False,
-                timeout=REQUEST_TIMEOUT_SECONDS,
-            ) as response:
-                if not response.has_redirect_location:
-                    return _html_text(response, expired)
-                current = str(httpx.URL(current).join(response.headers["location"]))
+            hop = self._first_reachable(candidates, expired)
+            if hop.location is None:
+                return hop.html
+            current = str(httpx.URL(current).join(hop.location))
             if not is_public_http_url(current):
                 logger.info(
                     "page fetch refused a redirect to a non-public link: host %s",
@@ -99,25 +98,48 @@ class HtmlMetaInspector:
                 return None
         return None
 
-    def _pinned(self, url: str) -> _Pinned | None:
+    def _first_reachable(self, candidates: Sequence[_Pinned], expired: Callable[[], bool]) -> _Hop:
+        for pinned in candidates[:-1]:
+            if expired():
+                break
+            try:
+                return self._get(pinned, expired)
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                logger.info("page fetch could not connect to one checked address, trying the next")
+        return self._get(candidates[-1], expired)
+
+    def _get(self, pinned: _Pinned, expired: Callable[[], bool]) -> _Hop:
+        with self._client.stream(
+            "GET",
+            pinned.url,
+            headers={**REQUEST_HEADERS, **pinned.headers},
+            extensions=pinned.extensions,
+            follow_redirects=False,
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        ) as response:
+            if response.has_redirect_location:
+                return _Hop(None, response.headers["location"])
+            return _Hop(_html_text(response, expired), None)
+
+    def _pinned(self, url: str) -> list[_Pinned]:
         target = httpx.URL(url)
         if _is_literal_address(target.host):
-            return _Pinned(target, {}, {}) if self._is_public(target.host) else None
+            return [_Pinned(target, {}, {})] if self._is_public(target.host) else []
         name = target.raw_host.decode("ascii")
         port = target.port or DEFAULT_PORTS[target.scheme]
         try:
             addresses = self._resolve(name, port)
         except OSError as error:
             logger.info("page fetch could not resolve host %s: %s", name, type(error).__name__)
-            return None
+            return []
         if not addresses or not all(self._is_public(address) for address in addresses):
             logger.info("page fetch refused host %s: it resolves to a non-public address", name)
-            return None
-        return _Pinned(
-            target.copy_with(host=addresses[0]),
-            {HOST_HEADER: target.netloc.decode("ascii"), CONNECTION_HEADER: CLOSE_CONNECTION},
-            {SNI_EXTENSION: name},
-        )
+            return []
+        headers = {HOST_HEADER: target.netloc.decode("ascii"), CONNECTION_HEADER: CLOSE_CONNECTION}
+        return [
+            _Pinned(target.copy_with(host=address), headers, {SNI_EXTENSION: name})
+            for address in addresses
+        ]
 
 
 def _is_literal_address(host: str) -> bool:

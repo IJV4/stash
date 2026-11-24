@@ -357,3 +357,26 @@ def test_a_public_address_link_is_fetched_without_asking_the_resolver(url: str) 
 
     # Assert
     assert (info.title, resolver.calls) == ("Ramen", [])
+
+
+def test_a_connect_failure_on_the_first_address_falls_back_to_the_next_checked_address() -> None:
+    # Setup
+    unreachable_first = "2620:0:863:ed1a::1"
+    reachable_second = "93.184.216.35"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == unreachable_first:
+            raise httpx.ConnectError("no route")
+        return page_with_title("Ramen")
+
+    resolver = FakeResolver({"example.com": [unreachable_first, reachable_second]})
+    rig = build_html_rig(handler, resolve=resolver)
+
+    # Execute
+    info = rig.inspector.inspect(PAGE_URL)
+
+    # Assert
+    assert (info.title, [request.url.host for request in rig.requests]) == (
+        "Ramen",
+        [unreachable_first, reachable_second],
+    )
